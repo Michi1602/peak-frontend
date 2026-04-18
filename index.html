@@ -488,13 +488,37 @@ function tNu(p){
   c+='<div class="mbar-w"><div class="mbar-l"><span>Carbs</span><span>'+p.carbs+'g</span></div><div class="mbar"><div class="mfill" style="width:58%;background:#4A90D9"></div></div></div>';
   c+='<div class="mbar-w"><div class="mbar-l"><span>Fat</span><span>'+p.fat+'g</span></div><div class="mbar"><div class="mfill" style="width:48%;background:#888"></div></div></div>';
   c+='<div class="dstit">'+t('tm')+'</div>';
-  c+=p.todayMeals.map(function(m,i){var r=mrat[i];return '<div class="mc"><span class="me">'+m.emoji+'</span><div class="mi"><div class="mn">'+m.name+'</div><div class="mm">'+m.time+' · '+m.macro+'</div>'+(!r?'<div class="rrow">'+[1,2,3,4,5].map(function(s){return '<span class="star" onclick="rateMeal('+i+','+s+',this)">⭐</span>';}).join('')+'</div>':'<div style="font-size:10px;color:var(--red);margin-top:3px;letter-spacing:.5px">RATED '+r+'/5 ✓</div>')+'</div><span class="mk">'+m.kcal+' kcal</span></div>';}).join('');
+  c+=p.todayMeals.map(function(m,i){var r=mrat[i];return '<div class="mc" style="cursor:pointer" onclick="showMealDetail('+i+')"><span class="me">'+m.emoji+'</span><div class="mi"><div class="mn">'+m.name+'</div><div class="mm">'+m.time+' · '+m.macro+'</div>'+(!r?'<div class="rrow" onclick="event.stopPropagation()">'+[1,2,3,4,5].map(function(s){return '<span class="star" onclick="rateMeal('+i+','+s+',this)">⭐</span>';}).join('')+'</div>':'<div style="font-size:10px;color:var(--red);margin-top:3px;letter-spacing:.5px">RATED '+r+'/5 ✓</div>')+'</div><span class="mk">'+m.kcal+' kcal</span><span style="font-size:10px;color:var(--faint);margin-left:6px">→</span></div>';}).join('');
   c+='<div class="aib" style="margin-top:12px"><div class="ailbl"><div class="aidot"></div>PEAK AI</div><p>Not feeling the plan? <span style="color:var(--red);cursor:pointer;font-weight:700" onclick="showMood()">Pick a cuisine mood →</span></p></div><div id="moodA"></div>';
   c+='<button class="blog" onclick="logout()">'+t('lo')+'</button>';
   dshell('nutrition',c,p);
 }
 
-function showMood(){var cu=['🇲🇽 Mexican','🍝 Italian','🍜 Asian','🥗 Mediterranean','🍔 American','🍛 Indian','🇯🇵 Japanese','🥙 Middle Eastern'];var a=document.getElementById('moodA');if(a)a.innerHTML='<div style="margin-top:8px"><div class="chips">'+cu.map(function(c){return '<div class="chip2 cc" onclick="pickMood(\''+c+'\')">'+c+'</div>';}).join('')+'</div></div>';}
+async function showMealDetail(idx){
+  var p=fp();var m=p.todayMeals[idx];if(!m)return;
+  var tabs=[{k:'nutrition',l:t('nu')},{k:'fitness',l:t('fi')},{k:'recovery',l:t('re')},{k:'scanner',l:t('sc')},{k:'log',l:t('lg')},{k:'recipes',l:t('rp')}];
+  var loading='<div class="dhead"><div class="ctitle" style="font-size:22px">'+m.emoji+' '+m.name+'</div><div class="dsub">'+m.time+' · '+m.kcal+' kcal · '+m.macro+'</div></div><div class="dnav">'+tabs.map(function(tb){return '<button class="ntab '+(tb.k==='nutrition'?'act':'')+'" onclick="showTab(\''+tb.k+'\')">'+tb.l+'</button>';}).join('')+'</div><div class="dbody" id="db"><div class="lw"><div class="spin"></div><div class="lt" style="font-size:16px">Loading recipe...</div></div></div>';
+  card(loading);
+  try{
+    var res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,messages:[{role:'user',content:'Create a detailed recipe for "'+m.name+'" in language: '+lang+'. Target: '+m.kcal+' kcal, '+m.macro+'. Goal: '+ud.goal+', allergies: '+(ud.al||[]).join(',')+'. Include macros AND key micronutrients. JSON only:\n{"name":"'+m.name+'","kcal":'+m.kcal+',"protein":<g>,"carbs":<g>,"fat":<g>,"micros":{"iron":"<mg>","calcium":"<mg>","vitC":"<mg>","vitD":"<mcg>","zinc":"<mg>"},"prepTime":<min>,"cookTime":<min>,"servings":1,"ingredients":["<i1 with quantity>","<i2>","<i3>","<i4>","<i5>","<i6>"],"steps":["<s1>","<s2>","<s3>","<s4>"],"shoppingList":["<item1>","<item2>","<item3>","<item4>","<item5>"],"tip":"<chef tip>"}'}]})});
+    var d=await res.json();
+    var rec=JSON.parse((d.content[0].text||'{}').replace(/```json|```/g,'').trim());
+    var c='<div class="rec-detail-back" onclick="showTab(\'nutrition\')" style="display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--dim);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:16px">← Back</div>';
+    c+='<div style="font-size:11px;color:var(--red);font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:12px">Macros & Micros</div>';
+    c+='<div class="sgrid" style="margin-bottom:14px"><div class="stat"><div class="stl">Kcal</div><div class="stv">'+rec.kcal+'</div></div><div class="stat"><div class="stl">Protein</div><div class="stv">'+rec.protein+'g</div></div><div class="stat"><div class="stl">Carbs</div><div class="stv">'+rec.carbs+'g</div></div><div class="stat"><div class="stl">Fat</div><div class="stv">'+rec.fat+'g</div></div></div>';
+    if(rec.micros)c+='<div class="sgrid" style="margin-bottom:16px"><div class="stat"><div class="stl">Iron</div><div class="stv">'+rec.micros.iron+'</div></div><div class="stat"><div class="stl">Calcium</div><div class="stv">'+rec.micros.calcium+'</div></div><div class="stat"><div class="stl">Vit C</div><div class="stv">'+rec.micros.vitC+'</div></div><div class="stat"><div class="stl">Zinc</div><div class="stv">'+rec.micros.zinc+'</div></div></div>';
+    c+='<div style="font-size:11px;color:var(--red);font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">Ingredients</div>';
+    c+=rec.ingredients.map(function(i){return '<div style="font-size:12px;padding:4px 0;color:var(--ink2);border-bottom:1px solid var(--border)">→ '+i+'</div>';}).join('');
+    c+='<div style="font-size:11px;color:var(--red);font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;margin-top:16px">Steps · '+rec.prepTime+' prep + '+rec.cookTime+' cook min</div>';
+    c+=rec.steps.map(function(s,i){return '<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)"><span style="color:var(--red);font-weight:900;flex-shrink:0">'+(i+1)+'.</span><span style="font-size:12px;color:var(--ink2);line-height:1.55">'+s+'</span></div>';}).join('');
+    if(rec.tip)c+='<div class="aib" style="margin-top:14px"><div class="ailbl"><div class="aidot"></div>Chef Tip</div><p>'+rec.tip+'</p></div>';
+    c+='<div style="font-size:11px;color:var(--red);font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;margin-top:16px">Shopping List</div>';
+    c+=rec.shoppingList.map(function(s){return '<div style="font-size:12px;padding:4px 0;color:var(--ink2);border-bottom:1px solid var(--border)">🛒 '+s+'</div>';}).join('');
+    document.getElementById('db').innerHTML=c;
+  }catch(e){document.getElementById('db').innerHTML='<div class="ebox" style="display:block">Could not load recipe. Try again.</div><button class="bnx" style="margin-top:10px;width:100%" onclick="showTab(\'nutrition\')">← Back</button>';}
+}
+
+function showMood(){var cu=['🇲🇽 Mexican','🍝 Italian','🍜 Asian','🥗 Mediterranean','🍔 American','🍛 Indian','🇯🇵 Japanese','🥙 Middle Eastern'];var a=document.getElementById('moodA');if(a)a.innerHTML='<div style="margin-top:8px"><div class="chips">'+cu.map(function(c){return '<div class="chip2 cc" onclick="pickMood(\''+c.replace(/'/g,"\\'")+'\')" style="cursor:pointer">'+c+'</div>';}).join('')+'</div></div>';}
 
 async function pickMood(c){
   var a=document.getElementById('moodA');if(a)a.innerHTML='<div class="aib" style="margin-top:8px"><div class="ailbl"><div class="aidot"></div>PEAK AI</div><p>Building a '+c+' meal...</p></div>';
@@ -506,7 +530,8 @@ async function pickMood(c){
 }
 
 function tFi(p){
-  var c='<div class="sgrid"><div class="stat"><div class="stl">'+t('sp')+'</div><div class="stv">'+(ud.sport||'—')+'</div></div><div class="stat"><div class="stl">Level</div><div class="stv">'+(ud.level||'—')+'</div></div><div class="stat"><div class="stl">Sessions</div><div class="stv">'+(ud.sessions||'—')+'×/wk</div></div><div class="stat"><div class="stl">Duration</div><div class="stv">'+(ud.dur||'—')+' min</div></div></div>';
+  var sport=ud.sport||'—';var level=ud.level||'—';
+  var c='<div class="sgrid"><div class="stat"><div class="stl">'+t('sp')+'</div><div class="stv">'+sport+'</div></div><div class="stat"><div class="stl">Level</div><div class="stv">'+level+'</div></div><div class="stat"><div class="stl">Sessions</div><div class="stv">'+(ud.sessions||'—')+'×/wk</div></div><div class="stat"><div class="stl">Duration</div><div class="stv">'+(ud.dur||'—')+' min</div></div></div>';
   if(p&&p.workout){
     c+='<div class="dstit">'+t('tw')+'</div>';
     c+='<div class="wc"><div class="wt">'+p.workout.title+' · '+p.workout.duration+' MIN</div><div class="wd" style="margin-bottom:6px">'+p.workout.desc+'</div>';
@@ -514,7 +539,16 @@ function tFi(p){
     c+='</div>';
     var exArr=p.workout.exercises||[];
     c+=exArr.map(function(e,i){var nm=typeof e==='string'?e:(e.name||'Exercise '+(i+1));var dt=typeof e==='string'?'':(e.detail||'');return '<div class="ex-row"><div class="ex-num">'+(i+1)+'</div><div class="ex-info"><div class="ex-name">'+nm+'</div>'+(dt?'<div class="ex-detail">'+dt+'</div>':'')+'</div></div>';}).join('');
-    c+='<div class="aib" style="margin-top:14px"><div class="ailbl"><div class="aidot"></div>Rate your workout</div>'+['Effort','Energy','Enjoyment'].map(function(cat){var r=wrat[cat];return '<div style="display:flex;align-items:center;gap:9px;margin-bottom:7px"><span style="font-size:9px;font-weight:700;letter-spacing:1.5px;width:70px;flex-shrink:0;color:var(--faint)">'+cat.toUpperCase()+'</span>'+[1,2,3,4,5].map(function(s){return '<span style="font-size:16px;cursor:pointer;opacity:'+(r&&s<=r?1:0.2)+'" onclick="rateWk(\''+cat+'\','+s+',this)">⭐</span>';}).join('')+'</div>';}).join('')+'</div>';
+    // Live adjustment buttons
+    c+='<div class="aib" style="margin-top:14px"><div class="ailbl"><div class="aidot"></div>Live Adjustments</div><p style="margin-bottom:10px">Adjust today\'s session on the fly:</p>';
+    c+='<div class="tiles c2" style="margin-bottom:8px">';
+    c+='<div class="tile" onclick="adjustWorkout(\'easier\')" style="cursor:pointer"><span class="tl">🔽 Too hard</span></div>';
+    c+='<div class="tile" onclick="adjustWorkout(\'harder\')" style="cursor:pointer"><span class="tl">🔼 Too easy</span></div>';
+    c+='<div class="tile" onclick="adjustWorkout(\'shorter\')" style="cursor:pointer"><span class="tl">⏱ Less time</span></div>';
+    c+='<div class="tile" onclick="adjustWorkout(\'injury\')" style="cursor:pointer"><span class="tl">🩹 Minor injury</span></div>';
+    c+='</div>';
+    c+='<div id="adjResult"></div></div>';
+    c+='<div class="aib" style="margin-top:10px"><div class="ailbl"><div class="aidot"></div>Rate your workout</div>'+['Effort','Energy','Enjoyment'].map(function(cat){var r=wrat[cat];return '<div style="display:flex;align-items:center;gap:9px;margin-bottom:7px"><span style="font-size:9px;font-weight:700;letter-spacing:1.5px;width:70px;flex-shrink:0;color:var(--faint)">'+cat.toUpperCase()+'</span>'+[1,2,3,4,5].map(function(s){return '<span style="font-size:16px;cursor:pointer;opacity:'+(r&&s<=r?1:0.2)+'" onclick="rateWk(\''+cat+'\','+s+',this)">⭐</span>';}).join('')+'</div>';}).join('')+'</div>';
   }
   dshell('fitness',c,p);
 }
@@ -612,6 +646,20 @@ async function genRec(){
   }
 }
 
+async function adjustWorkout(type){
+  var el=document.getElementById('adjResult');
+  if(el)el.innerHTML='<div style="font-size:11px;color:var(--dim);padding:8px 0">Adjusting...</div>';
+  var msgs={easier:'Make this workout easier — reduce intensity by 20%, swap hardest exercise for lighter alternative',harder:'Make this workout harder — add one more set, increase intensity 20%',shorter:'Shorten this workout to 20-30 min — keep most important exercises only',injury:'Adapt this workout for a minor injury — remove impact exercises, focus on upper/lower body split'};
+  var p=fp();
+  try{
+    var res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,messages:[{role:'user',content:'Sport: '+ud.sport+', level: '+ud.level+', current exercises: '+JSON.stringify(p.workout.exercises)+'. '+msgs[type]+'. Language: '+lang+'. JSON only: {"title":"<adjusted title>","exercises":[{"name":"<n>","detail":"<sets/reps>"},{"name":"<n>","detail":"<sets/reps>"},{"name":"<n>","detail":"<sets/reps>"}],"note":"<one line why this helps>"}'}]})});
+    var d=await res.json();
+    var adj=JSON.parse((d.content[0].text||'{}').replace(/```json|```/g,'').trim());
+    if(plan&&plan.workout){plan.workout.title=adj.title;plan.workout.exercises=adj.exercises;}
+    if(el)el.innerHTML='<div class="wc" style="margin-top:6px"><div class="wt">'+adj.title+'</div>'+adj.exercises.map(function(e,i){return '<div style="font-size:12px;padding:3px 0;color:var(--ink2)"><span style="color:var(--red);font-weight:700">'+(i+1)+'.</span> '+e.name+' — '+e.detail+'</div>';}).join('')+'<div style="font-size:11px;color:var(--faint);margin-top:6px;font-style:italic">'+adj.note+'</div></div>';
+  }catch(e){if(el)el.innerHTML='<div style="font-size:11px;color:var(--faint)">Could not adjust. Try again.</div>';}
+}
+
 function rateMeal(idx,score,el){mrat[idx]=score;var row=el.closest('.rrow');if(row)row.querySelectorAll('.star').forEach(function(s,i){s.style.opacity=i<score?1:0.2;});if(score<=1){setTimeout(function(){var b=document.createElement('div');b.className='aib';b.style.marginTop='8px';b.innerHTML='<div class="ailbl"><div class="aidot"></div>PEAK AI</div><p>Noted — removed from future suggestions.</p>';var db=document.getElementById('db');if(db)db.appendChild(b);},300);}if(score>=4){setTimeout(function(){var b=document.createElement('div');b.className='aib';b.style.marginTop='8px';b.innerHTML='<div class="ailbl"><div class="aidot"></div>PEAK AI</div><p>Added to favourites — more like this coming.</p>';var db=document.getElementById('db');if(db)db.appendChild(b);},300);}}
 function rateWk(cat,score,el){wrat[cat]=score;var row=el.parentElement;if(row)row.querySelectorAll('span').forEach(function(s,i){s.style.opacity=i<score?1:0.2;});if(score>=4&&cat==='Effort')setTimeout(function(){alert('Intensity up next session. 💪');},200);if(score<=2&&cat==='Effort')setTimeout(function(){alert('Difficulty adjusted for next session.');},200);}
 
@@ -620,7 +668,18 @@ function showLogin(){
   document.getElementById('sl').textContent='Login';
   card('<div class="ch"><div class="chip">✦ '+t('lt')+' '+t('le2')+'</div><div class="ctitle">'+t('lt')+' <em>'+t('le2')+'</em></div><p class="csub">'+t('ls2')+'</p></div><div class="cb"><div id="el2" class="ebox"></div><button class="bgoog"><svg width="15" height="15" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>'+t('gg')+'</button><div class="divider">or</div><div class="field"><label>'+t('ef')+'</label><input type="email" id="lem" placeholder="michael@example.com"></div><div class="field"><label>'+t('pf')+'</label><input type="password" id="lpw" placeholder="••••••••"></div></div><div class="cf"><button class="bnx" onclick="doLogin()" style="flex:1;letter-spacing:3px">'+t('lb2').toUpperCase()+' →</button></div><div style="padding:0 32px 20px;text-align:center;font-size:11px;color:var(--faint)">'+t('na')+' <span style="color:var(--red);cursor:pointer;font-weight:700" onclick="step=1;render()">'+t('sf')+'</span></div>');
 }
-function doLogin(){var em=document.getElementById('lem').value;if(!em){showE('el2','Please enter your email.');return;}ud.email=em;loadS();try{var sp=sessionStorage.getItem('pk_plan');if(sp)plan=JSON.parse(sp);}catch(e){}if(plan)showDash(fp());else fetchPlan().then(function(){showDash(fp());});}
+function doLogin(){
+  var em=document.getElementById('lem').value;
+  if(!em){showE('el2','Please enter your email.');return;}
+  ud.email=em;
+  loadS(); // restore ud from sessionStorage
+  try{var sp=sessionStorage.getItem('pk_plan');if(sp)plan=JSON.parse(sp);}catch(e){}
+  // If no saved data, set demo values so dashboard shows something
+  if(!ud.name)ud.name=em.split('@')[0];
+  if(!ud.goal)ud.goal=lang==='de'?'Tägliche Gewohnheiten':'Build daily habits';
+  if(plan)showDash(fp());
+  else fetchPlan().then(function(){showDash(fp());});
+}
 function logout(){plan=null;ud={};flog=[];mrat={};wrat={};try{sessionStorage.clear();}catch(e){}step=1;render();}
 function showE(id,msg){var el=document.getElementById(id);if(el){el.textContent='⚠ '+msg;el.style.display='block';}}
 function sel(el,key,val){el.closest('.tiles').querySelectorAll('.tile').forEach(function(t){t.classList.remove('sel');});el.classList.add('sel');ud[key]=val;}
@@ -634,4 +693,4 @@ render();
 <link rel="manifest" href="/manifest.json">
 <script>if('serviceWorker' in navigator)navigator.serviceWorker.register('/service-worker.js');</script>
 </body>
-</html>
+</html> 
