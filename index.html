@@ -398,34 +398,48 @@ function tNu(p){
 function showMoodPicker(){
   var cu=['🇲🇽 Mexican','🍝 Italian','🍜 Asian','🥗 Mediterranean','🍔 American','🍛 Indian','🇯🇵 Japanese','🥙 Middle Eastern'];
   var a=document.getElementById('moodA');
-  if(a)a.innerHTML='<div style="margin-top:8px"><div class="chips">'+cu.map(function(c){var safe=c.replace(/'/g,'&#39;');return '<div class="chip2" onclick="pickMood(\''+safe+'\')" style="cursor:pointer">'+c+'</div>';}).join('')+'</div></div>';
+  if(!a)return;
+  a.innerHTML='<div style="margin-top:8px"><div class="chips" id="cuisineChips">'+cu.map(function(c,i){return '<div class="chip2" data-cuisine="'+i+'" style="cursor:pointer">'+c+'</div>';}).join('')+'</div></div>';
+  // Attach click handlers after render
+  document.querySelectorAll('#cuisineChips .chip2').forEach(function(el,i){
+    el.addEventListener('click',function(){pickMood(cu[i]);});
+  });
 }
 
 async function pickMood(cuisine){
   var a=document.getElementById('moodA');
   if(!a)return;
-  a.innerHTML='<div class="aib" style="margin-top:8px"><div class="ailbl"><div class="aidot"></div>PEAK AI</div><p>Building '+cuisine+' meal with recipe...</p><div class="spin" style="width:22px;height:22px;margin:8px 0 0;border-width:2px"></div></div>';
+  var de=lang==='de';
+  a.innerHTML='<div class="aib" style="margin-top:8px"><div class="ailbl"><div class="aidot"></div>PEAK AI</div><p>'+(de?'Erstelle '+cuisine+' Rezept...':'Building '+cuisine+' recipe...')+'</p><div class="spin" style="width:22px;height:22px;margin:8px 0 0;border-width:2px"></div></div>';
   var p=fp();
-  var prompt='Create one '+cuisine+' recipe. Language: '+lang+'. Goal: '+ud.goal+', ~'+Math.round(p.calories/3)+' kcal, ~'+Math.round(p.protein/3)+'g protein per meal. Allergies: '+(ud.al||[]).join(',')+'. Cooking: '+ud.cook+'.\nRespond ONLY valid JSON no markdown:\n{"name":"<n>","kcal":<number>,"protein":<number>,"carbs":<number>,"fat":<number>,"time":<minutes>,"ingredients":["<i1 with quantity>","<i2>","<i3>","<i4>","<i5>"],"steps":["<s1>","<s2>","<s3>"],"shoppingList":["<s1>","<s2>","<s3>","<s4>"],"tip":"<chef tip>"}';
+  var prompt='Create one '+cuisine+' recipe. Language: '+lang+'. Goal: '+ud.goal+', ~'+Math.round(p.calories/3)+' kcal, ~'+Math.round(p.protein/3)+'g protein. Allergies: '+(ud.al||[]).join(',')+'. Cooking level: '+ud.cook+'.\nRespond ONLY with valid JSON, no markdown:\n{"name":"<recipe name>","kcal":<number>,"protein":<number>,"carbs":<number>,"fat":<number>,"time":<minutes>,"ingredients":["<ingredient with quantity>","<ingredient>","<ingredient>","<ingredient>","<ingredient>"],"steps":["<step 1>","<step 2>","<step 3>"],"shoppingList":["<item>","<item>","<item>","<item>"],"tip":"<one chef tip>"}';
   try{
-    var res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:700,messages:[{role:'user',content:prompt}]})});
+    var res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,messages:[{role:'user',content:prompt}]})});
+    if(!res.ok)throw new Error('API '+res.status);
     var d=await res.json();
-    var meal=JSON.parse((d.content[0].text||'{}').replace(/```json|```/g,'').trim());
-    if(!meal.name)throw new Error('bad');
-    var de=lang==='de';
+    if(!d.content||!d.content[0])throw new Error('No content');
+    var raw=d.content[0].text.replace(/```json|```/g,'').trim();
+    var meal=JSON.parse(raw);
+    if(!meal.name||!meal.ingredients)throw new Error('Invalid data');
     var html='<div style="margin-top:10px;background:var(--cbg);border:1px solid var(--b2);padding:13px">';
     html+='<div style="font-size:14px;font-weight:700;color:var(--white);margin-bottom:3px">'+meal.name+'</div>';
-    html+='<div class="sg" style="margin:8px 0"><div class="stat"><div class="stl">Kcal</div><div class="stv">'+meal.kcal+'</div></div><div class="stat"><div class="stl">'+t('pg')+'</div><div class="stv">'+meal.protein+'g</div></div><div class="stat"><div class="stl">'+(de?'Kohlenh.':'Carbs')+'</div><div class="stv">'+meal.carbs+'g</div></div><div class="stat"><div class="stl">'+(de?'Fette':'Fat')+'</div><div class="stv">'+meal.fat+'g</div></div></div>';
-    html+='<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:var(--red);text-transform:uppercase;margin-bottom:6px">'+(de?'Zutaten':'Ingredients')+' · '+meal.time+' min</div>';
+    html+='<div style="font-size:11px;color:var(--dim);margin-bottom:8px">'+meal.kcal+' kcal · '+meal.protein+'g protein · '+meal.time+' min</div>';
+    html+='<div class="sg" style="margin-bottom:10px"><div class="stat"><div class="stl">Kcal</div><div class="stv">'+meal.kcal+'</div></div><div class="stat"><div class="stl">'+t('pg')+'</div><div class="stv">'+meal.protein+'g</div></div><div class="stat"><div class="stl">'+(de?'KH':'Carbs')+'</div><div class="stv">'+meal.carbs+'g</div></div><div class="stat"><div class="stl">'+(de?'Fett':'Fat')+'</div><div class="stv">'+meal.fat+'g</div></div></div>';
+    html+='<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:var(--red);text-transform:uppercase;margin-bottom:6px">'+(de?'Zutaten':'Ingredients')+'</div>';
     html+=meal.ingredients.map(function(i){return '<div style="font-size:12px;padding:3px 0;color:var(--ink2);border-bottom:1px solid var(--border)">→ '+i+'</div>';}).join('');
     html+='<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:var(--red);text-transform:uppercase;margin:10px 0 6px">'+(de?'Zubereitung':'Steps')+'</div>';
     html+=meal.steps.map(function(s,i){return '<div style="display:flex;gap:7px;padding:4px 0;border-bottom:1px solid var(--border)"><span style="color:var(--red);font-weight:900;flex-shrink:0">'+(i+1)+'.</span><span style="font-size:12px;color:var(--ink2);line-height:1.5">'+s+'</span></div>';}).join('');
     html+='<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:var(--red);text-transform:uppercase;margin:10px 0 6px">'+(de?'Einkaufsliste':'Shopping List')+'</div>';
     html+=meal.shoppingList.map(function(s){return '<div style="font-size:12px;padding:3px 0;color:var(--ink2);border-bottom:1px solid var(--border)">🛒 '+s+'</div>';}).join('');
     if(meal.tip)html+='<div class="aib" style="margin-top:10px"><div class="ailbl"><div class="aidot"></div>'+(de?'Tipp':'Chef Tip')+'</div><p>'+meal.tip+'</p></div>';
+    // Button to pick another cuisine
+    html+='<button class="blog" style="margin-top:10px" onclick="showMoodPicker()">'+(de?'← Andere Küche wählen':'← Pick another cuisine')+'</button>';
     html+='</div>';
     a.innerHTML=html;
-  }catch(e){a.innerHTML='<div style="font-size:12px;color:var(--faint);margin-top:8px;padding:8px;border:1px solid var(--border)">'+(lang==='de'?'Fehler. Bitte erneut versuchen.':'Could not generate. Please try again.')+'</div>';}
+  }catch(e){
+    console.error('pickMood error:',e);
+    a.innerHTML='<div style="font-size:12px;color:var(--faint);margin-top:8px;padding:10px;border:1px solid var(--border)">'+(de?'Fehler. Bitte erneut versuchen.':'Could not generate. Please try again.')+'</div><button class="blog" style="margin-top:8px" onclick="showMoodPicker()">'+(de?'Nochmal versuchen':'Try again')+'</button>';
+  }
 }
 
 // ── MEAL DETAIL ───────────────────────────────────────────────────────
