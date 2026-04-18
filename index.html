@@ -7,230 +7,167 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#F9F9F7;--white:#FFFFFF;--ink:#1C1C1A;--ink-light:#6B6B68;--ink-faint:#BDBDB8;--accent:#2D6A4F;--accent-light:#EAF4EE;--accent-mid:#52B788;--warn:#E76F51;--warn-light:#FEF0EC;--gold:#C8920A;--gold-light:#FDF6E3;--border:#E8E8E3;--shadow:0 4px 32px rgba(0,0,0,0.07);--radius:16px}
+:root{--bg:#F9F9F7;--white:#fff;--ink:#1C1C1A;--ink-light:#6B6B68;--ink-faint:#BDBDB8;--accent:#2D6A4F;--accent-light:#EAF4EE;--accent-mid:#52B788;--warn:#E76F51;--gold:#C8920A;--gold-light:#FDF6E3;--border:#E8E8E3;--shadow:0 4px 32px rgba(0,0,0,0.07)}
 html,body{height:100%;background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
-
-/* TOPBAR */
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 32px;background:var(--white);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;gap:16px}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;background:var(--white);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;gap:12px}
 .logo{font-family:'DM Serif Display',serif;font-size:22px;color:var(--ink);flex-shrink:0}.logo span{color:var(--accent)}
-.progress-bar-wrap{flex:1;max-width:320px}
+.progress-bar-wrap{flex:1;max-width:280px}
 .progress-bar-track{height:4px;background:var(--border);border-radius:4px;overflow:hidden}
 .progress-bar-fill{height:100%;background:var(--accent);border-radius:4px;transition:width 0.5s ease}
-.topbar-right{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.topbar-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .step-label{font-size:13px;color:var(--ink-light);font-weight:500;white-space:nowrap}
-.lang-btn{font-size:12px;color:var(--ink-light);cursor:pointer;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:none;font-family:'DM Sans',sans-serif}
+.lang-btn{font-size:12px;color:var(--ink-light);cursor:pointer;padding:5px 9px;border:1px solid var(--border);border-radius:7px;background:none;font-family:'DM Sans',sans-serif;transition:all 0.17s}
 .lang-btn:hover{border-color:var(--accent);color:var(--accent)}
-.topbar-login{font-size:13px;color:var(--accent);font-weight:600;cursor:pointer;padding:8px 16px;border:1.5px solid var(--accent);border-radius:10px;background:none;font-family:'DM Sans',sans-serif}
-.topbar-login:hover{background:var(--accent-light)}
-
-/* MAIN LAYOUT */
-.main{display:flex;align-items:flex-start;justify-content:center;padding:40px 24px;min-height:calc(100vh - 73px)}
-.card{background:var(--white);border-radius:24px;box-shadow:var(--shadow);border:1px solid var(--border);width:100%;max-width:640px;overflow:hidden;animation:slideUp 0.4s ease}
-@keyframes slideUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
-.card-header{padding:36px 44px 0}.card-body{padding:24px 44px}.card-footer{padding:4px 44px 32px;display:flex;align-items:center;gap:12px}
-
-/* TYPOGRAPHY */
-.step-chip{display:inline-flex;align-items:center;gap:5px;background:var(--accent-light);color:var(--accent);font-size:11px;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;padding:5px 12px;border-radius:100px;margin-bottom:12px}
-.card-title{font-family:'DM Serif Display',serif;font-size:28px;line-height:1.2;margin-bottom:6px}.card-title em{font-style:italic;color:var(--accent)}
-.card-sub{font-size:14px;color:var(--ink-light);line-height:1.65}
-.section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--ink-faint);margin-bottom:10px;margin-top:20px}
-
-/* FORM */
-.field{margin-bottom:18px}
+.login-btn{font-size:13px;color:var(--accent);font-weight:600;cursor:pointer;padding:7px 14px;border:1.5px solid var(--accent);border-radius:9px;background:none;font-family:'DM Sans',sans-serif;transition:all 0.17s}
+.login-btn:hover{background:var(--accent-light)}
+.main{display:flex;align-items:flex-start;justify-content:center;padding:36px 20px;min-height:calc(100vh - 70px)}
+.card{background:var(--white);border-radius:22px;box-shadow:var(--shadow);border:1px solid var(--border);width:100%;max-width:620px;overflow:hidden;animation:slideUp 0.38s ease}
+@keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.card-header{padding:34px 40px 0}.card-body{padding:22px 40px}.card-footer{padding:4px 40px 30px;display:flex;align-items:center;gap:10px}
+.step-chip{display:inline-flex;align-items:center;gap:4px;background:var(--accent-light);color:var(--accent);font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;padding:4px 11px;border-radius:100px;margin-bottom:12px}
+.card-title{font-family:'DM Serif Display',serif;font-size:27px;line-height:1.2;margin-bottom:6px}.card-title em{font-style:italic;color:var(--accent)}
+.card-sub{font-size:14px;color:var(--ink-light);line-height:1.6}
+.field{margin-bottom:16px}
 label{display:block;font-size:13px;font-weight:600;color:var(--ink);margin-bottom:6px}
-input[type="text"],input[type="number"],input[type="email"],input[type="password"],textarea,select{width:100%;padding:12px 16px;border:1.5px solid var(--border);border-radius:12px;font-family:'DM Sans',sans-serif;font-size:15px;color:var(--ink);background:var(--white);outline:none;transition:border-color 0.2s;appearance:none}
-input:focus,textarea:focus,select:focus{border-color:var(--accent)}
-input::placeholder,textarea::placeholder{color:var(--ink-faint)}
-textarea{resize:vertical;min-height:80px}
-.input-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.input-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
-.unit-input{position:relative;display:flex;align-items:center}.unit-input input{padding-right:48px}
-.unit-tag{position:absolute;right:14px;font-size:13px;font-weight:500;color:var(--ink-faint);pointer-events:none}
-
-/* TILES */
-.tiles{display:grid;gap:8px}.tiles.cols-2{grid-template-columns:1fr 1fr}.tiles.cols-3{grid-template-columns:1fr 1fr 1fr}.tiles.cols-4{grid-template-columns:1fr 1fr 1fr 1fr}
-.tile{border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;cursor:pointer;transition:all 0.17s;display:flex;align-items:center;gap:9px;user-select:none}
-.tile:hover{border-color:var(--accent-mid);background:var(--accent-light)}.tile.selected{border-color:var(--accent);background:var(--accent-light)}.tile.selected .tile-check{opacity:1}
-.tile-icon{font-size:18px;flex-shrink:0}.tile-text{flex:1}.tile-label{font-size:13px;font-weight:600;line-height:1.2}.tile-desc{font-size:11px;color:var(--ink-light);margin-top:2px}
-.tile-check{width:18px;height:18px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:9px;opacity:0;transition:opacity 0.2s;flex-shrink:0}
-.sport-tile{border:1.5px solid var(--border);border-radius:12px;padding:12px 8px;cursor:pointer;transition:all 0.17s;text-align:center;user-select:none}
-.sport-tile:hover{border-color:var(--accent-mid);background:var(--accent-light)}.sport-tile.selected{border-color:var(--accent);background:var(--accent-light)}
-.sport-emoji{font-size:24px;display:block;margin-bottom:4px}.sport-name{font-size:11px;font-weight:600}
-
-/* CHIPS */
-.chips{display:flex;flex-wrap:wrap;gap:7px}
-.chip{padding:6px 13px;border:1.5px solid var(--border);border-radius:100px;font-size:12px;font-weight:500;cursor:pointer;transition:all 0.17s;color:var(--ink);user-select:none}
-.chip:hover{border-color:var(--accent-mid)}.chip.selected{background:var(--warn);border-color:var(--warn);color:#fff}
-.chip.diet-chip.selected{background:var(--accent);border-color:var(--accent);color:#fff}
-.chip.cuisine-chip.selected{background:var(--accent);border-color:var(--accent);color:#fff}
-.chip.sport-chip.selected{background:var(--accent);border-color:var(--accent);color:#fff}
-
-/* SLIDER */
+input[type="text"],input[type="number"],input[type="email"],input[type="password"],textarea,select{width:100%;padding:12px 15px;border:1.5px solid var(--border);border-radius:11px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--ink);background:var(--white);outline:none;transition:border-color 0.2s;appearance:none}
+input:focus,textarea:focus{border-color:var(--accent)}input::placeholder,textarea::placeholder{color:var(--ink-faint)}
+textarea{resize:vertical;min-height:72px}
+.input-row{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.unit-input{position:relative;display:flex;align-items:center}.unit-input input{padding-right:44px}
+.unit-tag{position:absolute;right:13px;font-size:12px;font-weight:500;color:var(--ink-faint);pointer-events:none}
+.tiles{display:grid;gap:8px}.tiles.c2{grid-template-columns:1fr 1fr}.tiles.c3{grid-template-columns:1fr 1fr 1fr}.tiles.c4{grid-template-columns:1fr 1fr 1fr 1fr}
+.tile{border:1.5px solid var(--border);border-radius:11px;padding:11px 13px;cursor:pointer;transition:all 0.16s;display:flex;align-items:center;gap:8px;user-select:none}
+.tile:hover{border-color:var(--accent-mid);background:var(--accent-light)}.tile.sel{border-color:var(--accent);background:var(--accent-light)}.tile.sel .tck{opacity:1}
+.ti{font-size:18px;flex-shrink:0}.tt{flex:1}.tl{font-size:13px;font-weight:600;line-height:1.2}.td{font-size:11px;color:var(--ink-light);margin-top:2px}
+.tck{width:17px;height:17px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:9px;opacity:0;transition:opacity 0.2s;flex-shrink:0}
+.sport-tile{border:1.5px solid var(--border);border-radius:11px;padding:12px 8px;cursor:pointer;transition:all 0.16s;text-align:center;user-select:none}
+.sport-tile:hover{border-color:var(--accent-mid);background:var(--accent-light)}.sport-tile.sel{border-color:var(--accent);background:var(--accent-light)}
+.se{font-size:22px;display:block;margin-bottom:3px}.sn{font-size:11px;font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{padding:5px 12px;border:1.5px solid var(--border);border-radius:100px;font-size:12px;font-weight:500;cursor:pointer;transition:all 0.16s;color:var(--ink);user-select:none}
+.chip:hover{border-color:var(--accent-mid)}.chip.sel{background:var(--warn);border-color:var(--warn);color:#fff}
+.chip.dc.sel,.chip.cc.sel{background:var(--accent);border-color:var(--accent);color:#fff}
 .slider-labels{display:flex;justify-content:space-between;font-size:11px;color:var(--ink-light);margin-bottom:5px}
 input[type="range"]{width:100%;height:4px;-webkit-appearance:none;background:var(--border);border-radius:4px;outline:none;border:none;padding:0}
-input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 2px 8px rgba(45,106,79,.3);border:3px solid #fff}
-.slider-value{text-align:center;font-size:20px;font-weight:600;color:var(--accent);margin-top:6px;font-family:'DM Serif Display',serif}
-
-/* BUTTONS */
-.btn-back{background:none;border:1.5px solid var(--border);color:var(--ink-light);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;padding:11px 18px;border-radius:11px;cursor:pointer;transition:all 0.17s;flex-shrink:0}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:19px;height:19px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 2px 8px rgba(45,106,79,.3);border:3px solid #fff}
+.sv{text-align:center;font-size:19px;font-weight:600;color:var(--accent);margin-top:5px;font-family:'DM Serif Display',serif}
+.btn-back{background:none;border:1.5px solid var(--border);color:var(--ink-light);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;padding:10px 16px;border-radius:10px;cursor:pointer;transition:all 0.16s;flex-shrink:0}
 .btn-back:hover{border-color:var(--ink-light);color:var(--ink)}
-.btn-next{flex:1;background:var(--accent);color:#fff;border:none;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;padding:13px 22px;border-radius:11px;cursor:pointer;transition:all 0.17s;display:flex;align-items:center;justify-content:center;gap:8px}
-.btn-next:hover{background:#235C41;transform:translateY(-1px);box-shadow:0 6px 20px rgba(45,106,79,.25)}
-.btn-google{width:100%;background:var(--white);color:var(--ink);border:1.5px solid var(--border);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;padding:13px 22px;border-radius:11px;cursor:pointer;transition:all 0.17s;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px}
+.btn-next{flex:1;background:var(--accent);color:#fff;border:none;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;padding:12px 20px;border-radius:10px;cursor:pointer;transition:all 0.16s;display:flex;align-items:center;justify-content:center;gap:7px}
+.btn-next:hover{background:#235C41;transform:translateY(-1px);box-shadow:0 5px 18px rgba(45,106,79,.25)}
+.btn-google{width:100%;background:var(--white);color:var(--ink);border:1.5px solid var(--border);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;padding:12px 20px;border-radius:10px;cursor:pointer;transition:all 0.16s;display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:10px}
 .btn-google:hover{border-color:var(--accent-mid);background:var(--accent-light)}
-.btn-secondary{background:var(--accent-light);color:var(--accent);border:1.5px solid var(--accent-mid);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;padding:11px 18px;border-radius:11px;cursor:pointer;transition:all 0.17s;display:flex;align-items:center;justify-content:center;gap:8px}
-.btn-secondary:hover{background:var(--accent);color:#fff}
-.btn-warn{background:var(--warn);color:#fff;border:none;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;padding:11px 18px;border-radius:11px;cursor:pointer}
-.divider{display:flex;align-items:center;gap:12px;margin:14px 0;color:var(--ink-faint);font-size:12px}
+.divider{display:flex;align-items:center;gap:10px;margin:12px 0;color:var(--ink-faint);font-size:12px}
 .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
-
-/* AI BUBBLE */
-.ai-bubble{background:var(--accent-light);border:1px solid #C8E6D4;border-radius:14px 14px 14px 4px;padding:14px 18px;margin-bottom:18px}
-.ai-bubble-label{font-size:10px;font-weight:700;color:var(--accent);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:5px;display:flex;align-items:center;gap:6px}
+.ai-bubble{background:var(--accent-light);border:1px solid #C8E6D4;border-radius:14px 14px 14px 4px;padding:13px 17px;margin-bottom:16px}
+.ai-lbl{font-size:10px;font-weight:700;color:var(--accent);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px;display:flex;align-items:center;gap:5px}
 .ai-dot{width:6px;height:6px;border-radius:50%;background:var(--accent-mid);animation:pulse 1.5s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.ai-bubble p{font-size:14px;line-height:1.65;color:var(--ink)}
-
-/* GOAL CARDS */
-.goal-card{border:1.5px solid var(--border);border-radius:12px;padding:13px 15px;cursor:pointer;transition:all 0.17s;margin-bottom:8px;display:flex;align-items:center;gap:11px}
-.goal-card:hover{border-color:var(--accent-mid);background:var(--accent-light)}.goal-card.selected{border-color:var(--accent);background:var(--accent-light)}.goal-card.selected .goal-radio{background:var(--accent);border-color:var(--accent)}.goal-card.selected .goal-radio::after{opacity:1}
-.goal-emoji{font-size:22px}.goal-info{flex:1}.goal-title{font-size:14px;font-weight:600}.goal-desc{font-size:12px;color:var(--ink-light);margin-top:2px}
-.goal-radio{width:19px;height:19px;border-radius:50%;border:2px solid var(--border);position:relative;transition:all 0.2s;flex-shrink:0}
-.goal-radio::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:7px;height:7px;border-radius:50%;background:#fff;opacity:0;transition:opacity 0.2s}
-
-/* LOADING */
-.loading-wrap{padding:56px 44px;text-align:center}
-.spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 18px}
+.ai-bubble p{font-size:13px;line-height:1.6;color:var(--ink)}
+.goal-card{border:1.5px solid var(--border);border-radius:11px;padding:12px 14px;cursor:pointer;transition:all 0.16s;margin-bottom:7px;display:flex;align-items:center;gap:10px}
+.goal-card:hover{border-color:var(--accent-mid);background:var(--accent-light)}.goal-card.sel{border-color:var(--accent);background:var(--accent-light)}.goal-card.sel .gr{background:var(--accent);border-color:var(--accent)}.goal-card.sel .gr::after{opacity:1}
+.ge{font-size:22px}.gi{flex:1}.gt{font-size:14px;font-weight:600}.gd{font-size:12px;color:var(--ink-light);margin-top:2px}
+.gr{width:18px;height:18px;border-radius:50%;border:2px solid var(--border);position:relative;transition:all 0.2s;flex-shrink:0}
+.gr::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:7px;height:7px;border-radius:50%;background:#fff;opacity:0;transition:opacity 0.2s}
+.loading-wrap{padding:52px 40px;text-align:center}
+.spinner{width:38px;height:38px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
 @keyframes spin{to{transform:rotate(360deg)}}
-.loading-title{font-family:'DM Serif Display',serif;font-size:22px;color:var(--ink);margin-bottom:8px}
-.loading-sub{font-size:14px;color:var(--ink-light)}
-.loading-step{display:flex;align-items:center;gap:11px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;color:var(--ink-faint);transition:color 0.3s}
-.loading-step.done{color:var(--accent)}.loading-step.active{color:var(--ink);font-weight:500}
-
-/* PAYWALL */
+.loading-title{font-family:'DM Serif Display',serif;font-size:21px;color:var(--ink);margin-bottom:7px}
+.loading-sub{font-size:13px;color:var(--ink-light)}
+.ls{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;color:var(--ink-faint);transition:color 0.3s}
+.ls.done{color:var(--accent)}.ls.active{color:var(--ink);font-weight:500}
 .plan-preview{position:relative;margin-bottom:4px}
-.plan-preview-blur{filter:blur(5px);pointer-events:none;user-select:none;border:1px solid var(--border);border-radius:14px;padding:16px;background:var(--bg)}
-.preview-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}.preview-row:last-child{border-bottom:none}
-.preview-label{font-size:12px;color:var(--ink-light)}.preview-val{font-size:14px;font-weight:600}
-.preview-meal{background:var(--white);border-radius:9px;padding:10px 12px;margin-top:6px}
-.preview-meal-name{font-weight:600;font-size:13px}.preview-meal-macro{font-size:11px;color:var(--ink-light);margin-top:2px}
+.ppb{filter:blur(5px);pointer-events:none;user-select:none;border:1px solid var(--border);border-radius:14px;padding:16px;background:var(--bg)}
+.pr{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}.pr:last-child{border-bottom:none}
+.prl{font-size:12px;color:var(--ink-light)}.prv{font-size:14px;font-weight:600}
+.pm{background:var(--white);border-radius:9px;padding:10px 12px;margin-top:6px}
+.pmn{font-weight:600;font-size:13px}.pmc{font-size:11px;color:var(--ink-light);margin-top:2px}
 .paywall-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(249,249,247,0) 0%,rgba(249,249,247,0.92) 30%,rgba(249,249,247,1) 55%);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:18px}
 .lock-icon{font-size:26px;margin-bottom:8px}
-.paywall-title{font-family:'DM Serif Display',serif;font-size:20px;text-align:center;margin-bottom:5px}
-.paywall-sub{font-size:13px;color:var(--ink-light);text-align:center;margin-bottom:16px;line-height:1.5}
-.pricing-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;width:100%}
-.price-card{border:1.5px solid var(--border);border-radius:13px;padding:14px 12px;cursor:pointer;transition:all 0.2s;text-align:center;position:relative}
-.price-card:hover{border-color:var(--accent-mid)}.price-card.selected{border-color:var(--accent);background:var(--accent-light)}
-.popular-badge{position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-size:9px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;padding:2px 9px;border-radius:100px;white-space:nowrap}
-.price-period{font-size:11px;color:var(--ink-light);font-weight:500;margin-bottom:3px}
-.price-amount{font-family:'DM Serif Display',serif;font-size:26px;color:var(--ink)}.price-amount span{font-size:13px;font-family:'DM Sans',sans-serif;font-weight:500;color:var(--ink-light)}
-.price-saving{font-size:10px;color:var(--accent);font-weight:600;margin-top:3px;min-height:14px}
-.trial-badge{background:var(--gold-light);border:1px solid #F0D080;border-radius:9px;padding:9px 13px;display:flex;align-items:center;gap:9px;margin-bottom:12px;width:100%}
-.trial-badge-icon{font-size:18px;flex-shrink:0}.trial-badge-text{font-size:12px;color:var(--ink);line-height:1.4}.trial-badge-text strong{color:var(--gold)}
-.features-mini{list-style:none;margin-bottom:12px;width:100%}
-.features-mini li{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink);padding:3px 0}
-.features-mini li::before{content:'✓';color:var(--accent);font-weight:700;font-size:11px;flex-shrink:0}
-.btn-pay{width:100%;background:var(--accent);color:#fff;border:none;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:700;padding:15px 22px;border-radius:13px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:9px}
-.btn-pay:hover{background:#235C41;transform:translateY(-1px);box-shadow:0 6px 20px rgba(45,106,79,.3)}
+.pw-title{font-family:'DM Serif Display',serif;font-size:20px;text-align:center;margin-bottom:5px}
+.pw-sub{font-size:12px;color:var(--ink-light);text-align:center;margin-bottom:15px;line-height:1.5}
+.pg{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px;width:100%}
+.pc{border:1.5px solid var(--border);border-radius:12px;padding:13px 11px;cursor:pointer;transition:all 0.2s;text-align:center;position:relative}
+.pc:hover{border-color:var(--accent-mid)}.pc.sel{border-color:var(--accent);background:var(--accent-light)}
+.pop-badge{position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-size:9px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;padding:2px 9px;border-radius:100px;white-space:nowrap}
+.pp{font-size:11px;color:var(--ink-light);font-weight:500;margin-bottom:3px}
+.pa{font-family:'DM Serif Display',serif;font-size:24px;color:var(--ink)}.pa span{font-size:12px;font-family:'DM Sans',sans-serif;font-weight:500;color:var(--ink-light)}
+.ps{font-size:10px;color:var(--accent);font-weight:600;margin-top:3px;min-height:13px}
+.trial-badge{background:var(--gold-light);border:1px solid #F0D080;border-radius:9px;padding:9px 12px;display:flex;align-items:center;gap:8px;margin-bottom:12px;width:100%}
+.tb-icon{font-size:17px;flex-shrink:0}.tb-text{font-size:12px;color:var(--ink);line-height:1.4}.tb-text strong{color:var(--gold)}
+.feat-list{list-style:none;margin-bottom:12px;width:100%}
+.feat-list li{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink);padding:3px 0}
+.feat-list li::before{content:'✓';color:var(--accent);font-weight:700;font-size:11px;flex-shrink:0}
+.btn-pay{width:100%;background:var(--accent);color:#fff;border:none;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:700;padding:14px 20px;border-radius:12px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:8px}
+.btn-pay:hover{background:#235C41;transform:translateY(-1px);box-shadow:0 5px 18px rgba(45,106,79,.3)}
 .secure-note{font-size:11px;color:var(--ink-faint);text-align:center}
-.error-box{background:#FEF0EC;border:1px solid #F4C5B5;border-radius:11px;padding:12px 14px;font-size:13px;color:#C0392B;margin-bottom:14px;display:none}
-
+.err-box{background:#FEF0EC;border:1px solid #F4C5B5;border-radius:10px;padding:11px 13px;font-size:13px;color:#C0392B;margin-bottom:13px;display:none}
 /* DASHBOARD */
-.dashboard{padding:0}
-.dash-header{background:var(--accent);padding:28px 28px 22px;color:#fff}
-.dash-greeting{font-family:'DM Serif Display',serif;font-size:24px;margin-bottom:3px}
+.dash{padding:0}
+.dash-head{background:var(--accent);padding:26px 24px 20px;color:#fff}
+.dash-greet{font-family:'DM Serif Display',serif;font-size:23px;margin-bottom:3px}
 .dash-sub{font-size:13px;opacity:0.8}
-.dash-nav{display:flex;gap:4px;padding:12px 20px;background:var(--white);border-bottom:1px solid var(--border);overflow-x:auto}
+.dash-nav{display:flex;gap:3px;padding:10px 16px;background:var(--white);border-bottom:1px solid var(--border);overflow-x:auto}
 .dash-nav::-webkit-scrollbar{display:none}
-.nav-tab{padding:8px 14px;border-radius:9px;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;color:var(--ink-light);transition:all 0.17s;border:none;background:none;font-family:'DM Sans',sans-serif}
-.nav-tab:hover{background:var(--accent-light);color:var(--accent)}
-.nav-tab.active{background:var(--accent);color:#fff}
-.dash-body{padding:22px 24px}
-.dash-section{margin-bottom:22px}
-.dash-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--ink-faint);margin-bottom:10px}
-.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:18px}
-.stat{background:var(--bg);border:1px solid var(--border);border-radius:11px;padding:12px 14px}
-.stat-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--ink-faint);margin-bottom:3px}
-.stat-value{font-size:16px;font-weight:600;color:var(--ink)}
-.meal-card{background:var(--white);border:1px solid var(--border);border-radius:11px;padding:13px 15px;margin-bottom:9px;display:flex;align-items:center;gap:11px}
-.meal-emoji{font-size:22px}.meal-info{flex:1}.meal-name{font-size:13px;font-weight:600}.meal-meta{font-size:11px;color:var(--ink-light);margin-top:2px}
-.meal-kcal{font-size:12px;font-weight:600;color:var(--accent)}
-.rating-row{display:flex;gap:4px;margin-top:6px}
-.star{font-size:16px;cursor:pointer;opacity:0.3;transition:opacity 0.15s}.star.active{opacity:1}
-.workout-card{background:var(--accent-light);border:1px solid #C8E6D4;border-radius:11px;padding:14px 16px;margin-bottom:9px}
-.workout-card-title{font-size:13px;font-weight:600;color:var(--accent);margin-bottom:3px}
-.workout-card-desc{font-size:12px;color:var(--ink);line-height:1.5}
-.recovery-card{background:var(--bg);border:1px solid var(--border);border-radius:11px;padding:14px 16px;margin-bottom:9px}
-.recovery-title{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:3px}
-.recovery-desc{font-size:12px;color:var(--ink-light);line-height:1.5}
-.btn-logout{width:100%;background:none;border:1.5px solid var(--border);color:var(--ink-light);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;padding:11px;border-radius:11px;cursor:pointer;margin-top:6px}
+.nav-tab{padding:7px 13px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;color:var(--ink-light);transition:all 0.16s;border:none;background:none;font-family:'DM Sans',sans-serif}
+.nav-tab:hover{background:var(--accent-light);color:var(--accent)}.nav-tab.active{background:var(--accent);color:#fff}
+.dash-body{padding:20px 22px}
+.dash-sec{margin-bottom:20px}
+.sec-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--ink-faint);margin-bottom:9px}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:16px}
+.stat{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:11px 13px}
+.stat-l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--ink-faint);margin-bottom:2px}
+.stat-v{font-size:15px;font-weight:600;color:var(--ink)}
+.meal-card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
+.me{font-size:21px}.mi{flex:1}.mn{font-size:13px;font-weight:600}.mm{font-size:11px;color:var(--ink-light);margin-top:2px}
+.mk{font-size:12px;font-weight:600;color:var(--accent)}
+.rating-row{display:flex;gap:3px;margin-top:5px}
+.star{font-size:15px;cursor:pointer;opacity:0.3;transition:opacity 0.15s}.star.on{opacity:1}
+.workout-card{background:var(--accent-light);border:1px solid #C8E6D4;border-radius:10px;padding:13px 15px;margin-bottom:8px}
+.wt{font-size:13px;font-weight:600;color:var(--accent);margin-bottom:3px}
+.wd{font-size:12px;color:var(--ink);line-height:1.5}
+.rec-card{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:13px 15px;margin-bottom:8px}
+.rt{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:3px}
+.rd{font-size:12px;color:var(--ink-light);line-height:1.5}
+.macro-wrap{margin-bottom:10px}
+.macro-label{display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px}
+.macro-bar{height:7px;background:var(--border);border-radius:4px;overflow:hidden}
+.macro-fill{height:100%;border-radius:4px;transition:width 0.5s}
+.scanner-box{background:var(--ink);border-radius:14px;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;margin-bottom:14px;cursor:pointer;position:relative;overflow:hidden}
+.scan-frame{border:3px solid var(--accent-mid);width:55%;height:55%;border-radius:7px;position:relative}
+.scan-line{position:absolute;left:0;right:0;height:2px;background:var(--accent-mid);top:0;animation:scanAnim 2s ease-in-out infinite}
+@keyframes scanAnim{0%,100%{top:0}50%{top:100%}}
+.scan-text{color:rgba(255,255,255,0.6);font-size:12px;margin-top:10px;text-align:center}
+.scan-result{background:var(--accent-light);border:1px solid #C8E6D4;border-radius:11px;padding:13px 15px;margin-bottom:13px}
+.sr-name{font-size:14px;font-weight:600;margin-bottom:3px}
+.sr-macro{font-size:12px;color:var(--ink-light)}
+.fit-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:100px;font-size:11px;font-weight:700;margin-top:5px}
+.fit-good{background:#D4EDDA;color:#155724}.fit-bad{background:#F8D7DA;color:#721C24}
+.log-entry{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:11px 13px;margin-bottom:7px;display:flex;align-items:center;gap:9px}
+.le-icon{font-size:19px}.le-info{flex:1}.le-text{font-size:13px;font-weight:500}.le-time{font-size:11px;color:var(--ink-light);margin-top:1px}
+.le-kcal{font-size:12px;font-weight:600;color:var(--accent)}
+.btn-logout{width:100%;background:none;border:1.5px solid var(--border);color:var(--ink-light);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;padding:10px;border-radius:10px;cursor:pointer;margin-top:6px}
 .btn-logout:hover{border-color:var(--warn);color:var(--warn)}
-
-/* SCANNER */
-.scanner-box{background:var(--ink);border-radius:16px;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;margin-bottom:16px;position:relative;overflow:hidden}
-.scanner-frame{border:3px solid var(--accent-mid);width:60%;height:60%;border-radius:8px;position:relative}
-.scanner-frame::before,.scanner-frame::after{content:'';position:absolute;background:var(--accent-mid)}
-.scanner-frame::before{height:3px;width:20%;top:-3px;left:50%;transform:translateX(-50%);animation:scan 2s ease-in-out infinite}
-@keyframes scan{0%,100%{top:-3px}50%{top:calc(100% + 3px)}}
-.scanner-text{color:rgba(255,255,255,0.7);font-size:13px;margin-top:12px;text-align:center}
-.scan-result{background:var(--accent-light);border:1px solid #C8E6D4;border-radius:12px;padding:14px 16px;margin-bottom:14px}
-.scan-result-name{font-size:15px;font-weight:600;margin-bottom:4px}
-.scan-result-macros{font-size:12px;color:var(--ink-light)}
-.scan-fit{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:100px;font-size:11px;font-weight:700;margin-top:6px}
-.scan-fit.good{background:#D4EDDA;color:#155724}
-.scan-fit.bad{background:#F8D7DA;color:#721C24}
-
-/* RECIPE BUILDER */
-.recipe-step{background:var(--bg);border:1px solid var(--border);border-radius:11px;padding:14px 16px;margin-bottom:9px;display:flex;align-items:flex-start;gap:12px}
-.recipe-step-num{width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
-.recipe-step-text{flex:1;font-size:13px;line-height:1.5}
-.ingredient-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.ingredient-row input{flex:1}
-.ingredient-row .qty{width:80px;flex:none}
-.ingredient-row .unit{width:80px;flex:none}
-.remove-btn{background:none;border:none;color:var(--ink-faint);cursor:pointer;font-size:18px;padding:0;line-height:1}
-.remove-btn:hover{color:var(--warn)}
-
-/* LOG */
-.log-entry{background:var(--bg);border:1px solid var(--border);border-radius:11px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
-.log-entry-icon{font-size:20px}.log-entry-info{flex:1}.log-entry-text{font-size:13px;font-weight:500}.log-entry-cal{font-size:11px;color:var(--ink-light);margin-top:2px}
-.log-entry-kcal{font-size:12px;font-weight:600;color:var(--accent)}
-
-/* SUMMARY */
-.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
-.summary-item{background:var(--bg);border-radius:11px;padding:13px 15px;border:1px solid var(--border)}
-.summary-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--ink-faint);margin-bottom:3px}
-.summary-value{font-size:15px;font-weight:600;color:var(--ink)}
-.plan-revealed{background:var(--accent-light);border:1px solid #C8E6D4;border-radius:14px;padding:18px}
-.plan-revealed h4{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--accent);margin-bottom:12px}
-.plan-meal{background:var(--white);border-radius:9px;padding:11px 13px;margin-bottom:7px;display:flex;align-items:center;gap:11px}.plan-meal:last-child{margin-bottom:0}
-.plan-meal-emoji{font-size:20px}.plan-meal-info{flex:1}.plan-meal-name{font-size:13px;font-weight:600}.plan-meal-macro{font-size:11px;color:var(--ink-light);margin-top:2px}
-.plan-meal-kcal{font-size:12px;font-weight:600;color:var(--accent)}
-.milestone-list{list-style:none}
-.milestone-list li{display:flex;align-items:flex-start;gap:11px;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;line-height:1.5}.milestone-list li:last-child{border-bottom:none}
-.milestone-num{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
-
-/* PROGRESS BAR MACRO */
-.macro-bar-wrap{margin-bottom:12px}
-.macro-bar-label{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px}
-.macro-bar{height:8px;background:var(--border);border-radius:4px;overflow:hidden}
-.macro-bar-fill{height:100%;border-radius:4px;transition:width 0.5s ease}
-
-/* NOTIFICATION BADGE */
-.badge{background:var(--warn);color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:100px;margin-left:4px}
-
+.sum-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:18px}
+.sum-item{background:var(--bg);border-radius:10px;padding:12px 14px;border:1px solid var(--border)}
+.sum-l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--ink-faint);margin-bottom:3px}
+.sum-v{font-size:14px;font-weight:600;color:var(--ink)}
+.plan-box{background:var(--accent-light);border:1px solid #C8E6D4;border-radius:13px;padding:17px}
+.plan-box h4{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--accent);margin-bottom:12px}
+.plan-meal{background:var(--white);border-radius:9px;padding:11px 12px;margin-bottom:7px;display:flex;align-items:center;gap:10px}.plan-meal:last-child{margin-bottom:0}
+.pm-e{font-size:20px}.pm-i{flex:1}.pm-n{font-size:13px;font-weight:600}.pm-m{font-size:11px;color:var(--ink-light);margin-top:1px}
+.pm-k{font-size:12px;font-weight:600;color:var(--accent)}
+.mile-list{list-style:none}
+.mile-list li{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px;line-height:1.5}.mile-list li:last-child{border-bottom:none}
+.mile-num{width:21px;height:21px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
 @media(max-width:768px){
-  .topbar{padding:14px 18px}
-  .main{padding:24px 16px}
-  .card-header{padding:28px 24px 0}.card-body{padding:18px 24px}.card-footer{padding:4px 24px 28px;flex-direction:column}
+  .topbar{padding:12px 16px}
+  .main{padding:20px 14px}
+  .card-header{padding:26px 22px 0}.card-body{padding:18px 22px}.card-footer{padding:4px 22px 26px;flex-direction:column}
   .btn-back,.btn-next{width:100%}
-  .input-row,.input-row-3,.tiles.cols-3,.tiles.cols-4{grid-template-columns:1fr 1fr}
-  .summary-grid,.pricing-grid,.stat-grid{grid-template-columns:1fr 1fr}
+  .input-row,.tiles.c3,.tiles.c4{grid-template-columns:1fr 1fr}
+  .sum-grid,.pg,.stat-grid{grid-template-columns:1fr 1fr}
   .dash-body{padding:16px}
-  .stat-grid{grid-template-columns:1fr 1fr}
-}
-@media(max-width:480px){
-  .tiles.cols-3,.tiles.cols-4,.input-row-3{grid-template-columns:1fr 1fr}
 }
 </style>
 </head>
@@ -238,427 +175,355 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;hei
 <div id="app">
   <header class="topbar">
     <div class="logo">PEAK<span>.</span></div>
-    <div class="progress-bar-wrap"><div class="progress-bar-track"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div></div>
+    <div class="progress-bar-wrap"><div class="progress-bar-track"><div class="progress-bar-fill" id="pbar" style="width:0%"></div></div></div>
     <div class="topbar-right">
-      <div class="step-label" id="stepLabel">Step 1 of 8</div>
-      <button class="lang-btn" onclick="toggleLang()" id="langBtn">DE</button>
-      <button class="topbar-login" onclick="showLoginScreen()">Login</button>
+      <span class="step-label" id="slbl">Step 1 of 8</span>
+      <button class="lang-btn" onclick="toggleLang()" id="lbtn">DE</button>
+      <button class="login-btn" onclick="showLogin()">Login</button>
     </div>
   </header>
-  <main class="main"><div class="card" id="mainCard"></div></main>
+  <main class="main"><div class="card" id="mc"></div></main>
 </div>
-
 <script>
 const BACKEND='https://peak-backend-u52q.onrender.com';
-let step=1,TOTAL=8,ud={},aiPlan=null,selectedPlan='annual',lang='en';
-let foodLog=[];let mealRatings={};let workoutRatings={};
+let step=1,TOTAL=8,ud={},plan=null,selPlan='annual',lang='en';
+let foodLog=[],mealRatings={},wkRatings={};
 
 // ── TRANSLATIONS ──────────────────────────────────────────────────────
-const T={
-  en:{
-    step1:'Your Profile',step1_title:"Let's start with",step1_em:"you",step1_sub:'Takes about 4 minutes. The more honest you are, the better your plan.',
-    fname:'First name',age:'Age',gender:'Gender',weight:'Current weight',dreamWeight:'Dream weight',height:'Height',sleep:'Sleep per night',
-    step2:'Lifestyle',step2_title:'How do you',step2_em:'spend your days?',step2_sub:'PEAK factors in your whole life — not just your workouts.',
-    job:'Job type',desk:'Desk job',physical:'Physical job',mixed:'Mixed',shift:'Shift work',
-    commute:'Daily commute',car:'Car',bus:'Bus / Train',walk:'Walking',bike:'Cycling',stress:'Daily stress level',
-    step3:'Fitness',step3_title:"What's your",step3_em:'favourite sport?',step3_sub:'PEAK builds workouts specifically for your chosen activity.',
-    level:'Current level',beg:'Beginner',inter:'Intermediate',adv:'Advanced',sessions:'Sessions/week',duration:'Time/session',equipment:'Where do you train?',gym:'Gym',home:'Home',outdoor:'Outdoors',
-    step4:'Nutrition',step4_title:'Tell me about',step4_em:'food',step4_sub:'PEAK never suggests anything you cannot eat or do not enjoy.',
-    allergies:'Allergies & intolerances',diet:'Dietary preferences',cuisines:'Favourite cuisines',cooking:'Cooking skill',budget:'Weekly grocery budget (optional)',
-    none:'✕ None',beg_cook:'Beginner',inter_cook:'Intermediate',adv_cook:'Advanced chef',
-    step5:'Your Goal',step5_title:'What do you want to',step5_em:'achieve?',
-    loseW:'Lose weight',loseW_d:'Reduce body fat, reach my dream weight',
-    muscle:'Build muscle',muscle_d:'Get stronger and add lean mass',
-    perf:'Improve performance',perf_d:'Get faster or fitter in my sport',
-    clean:'Eat cleaner',clean_d:'Build better nutrition habits long-term',
-    recover:'Recover better',recover_d:'Sleep deeper, stress less, feel amazing',
-    habits:'Build daily habits',habits_d:'Consistency across nutrition and movement',
-    build:'Build my plan',
-    step6:'Plan Ready',unlock:'Unlock your full plan',unlock_sub:'Your meals, workouts and recovery protocol are ready.',
-    free7:'7 days completely free.',remind:'We remind you on Day 5 and Day 6. Cancel anytime.',
-    monthly:'Monthly',annual:'Annual',save:'Save 50% · €119/yr',popular:'Most popular',
-    features:['Full AI meal plan + recipes + shopping list','Personalised workout programme','Recovery guide + smart reminders','Live shopping mode + menu scanner','Real-time adaptation from your ratings','Barcode scanner + recipe builder'],
-    startTrial:'🚀 Start 7-day free trial',secure:'🔒 Secure · No charge today · Cancel anytime',
-    step7:'Start Trial',oneStep:'One step from your',results:'results',
-    emailLabel:'Email address',passLabel:'Choose a password',passHint:'Your PEAK account will be created automatically — login on any device.',
-    notCharged:'You will not be charged today.',reminderNote:'Reminders on Day 5 and Day 6 before any charge.',
-    continue:'Continue to payment',
-    step8:'Welcome!',welcome:'Welcome to PEAK,',trialStarted:'Your 7-day free trial has started.',
-    todayMeals:"Today's Meals",todayWorkout:"Today's Workout",recoveryTip:'Recovery Tip',milestones:'Your milestones',
-    loginTitle:'Login to',loginEm:'PEAK',loginSub:'Your plan is waiting for you.',
-    google:'Continue with Google',email:'Email',password:'Password',loginBtn:'Login',
-    noAccount:'No account yet?',startFree:'Start free trial →',
-    dashboard:'Dashboard',nutrition:'Nutrition',fitness:'Fitness',recovery:'Recovery',scanner:'Scanner',log:'Log',recipes:'Recipes',
-    scanBarcode:'Scan Barcode',scanMenu:'Scan Menu',shopMode:'Shopping Mode',
-    scanInstructions:'Point camera at barcode or menu',scanDemo:'Demo: tap to simulate scan',
-    quickLog:'Quick Log',logPlaceholder:'e.g. 2 beers, bag of peanuts, coffee with milk...',logBtn:'Log it',
-    recipeBuilder:'Recipe Builder',addIngredient:'+ Add ingredient',generateRecipe:'Generate Recipe with AI',
-    ingredient:'Ingredient',qty:'Qty',unit:'Unit',
-    rateLabel:'How was it?',rateTaste:'Taste',rateAfford:'Value',rateDiff:'Difficulty',rateFull:'Fullness',
-    rateEffort:'Effort',rateEnergy:'Energy',rateEnjoy:'Enjoyment',submitRating:'Submit Rating',
-    dailyTarget:'Daily Target',proteinGoal:'Protein Goal',timeline:'Timeline',sport:'Sport',
-    daysLeft:'days left in trial',active:'Active',logout:'← Logout',
-    goodDay:'Good day,',
-  },
-  de:{
-    step1:'Dein Profil',step1_title:'Fangen wir an mit',step1_em:'dir',step1_sub:'Dauert ca. 4 Minuten. Je ehrlicher du bist, desto besser dein Plan.',
-    fname:'Vorname',age:'Alter',gender:'Geschlecht',weight:'Aktuelles Gewicht',dreamWeight:'Traumgewicht',height:'Größe',sleep:'Schlaf pro Nacht',
-    step2:'Lebensstil',step2_title:'Wie verbringst du',step2_em:'deinen Alltag?',step2_sub:'PEAK berücksichtigt dein ganzes Leben — nicht nur das Training.',
-    job:'Berufsart',desk:'Bürojob',physical:'Körperliche Arbeit',mixed:'Gemischt',shift:'Schichtarbeit',
-    commute:'Täglicher Arbeitsweg',car:'Auto',bus:'Bus / Zug',walk:'Zu Fuß',bike:'Fahrrad',stress:'Tägliches Stresslevel',
-    step3:'Fitness',step3_title:'Was ist deine',step3_em:'Lieblingssportart?',step3_sub:'PEAK erstellt Workouts speziell für deine gewählte Aktivität.',
-    level:'Aktuelles Level',beg:'Anfänger',inter:'Fortgeschritten',adv:'Profi',sessions:'Einheiten/Woche',duration:'Zeit/Einheit',equipment:'Wo trainierst du?',gym:'Fitnessstudio',home:'Zuhause',outdoor:'Draußen',
-    step4:'Ernährung',step4_title:'Erzähl mir von',step4_em:'Essen',step4_sub:'PEAK schlägt dir nie etwas vor, das du nicht essen kannst oder willst.',
-    allergies:'Allergien & Unverträglichkeiten',diet:'Ernährungsweise',cuisines:'Lieblingsküchen',cooking:'Kochkenntnisse',budget:'Wöchentliches Lebensmittelbudget (optional)',
-    none:'✕ Keine',beg_cook:'Anfänger',inter_cook:'Mittelmäßig',adv_cook:'Fortgeschrittener Koch',
-    step5:'Dein Ziel',step5_title:'Was möchtest du',step5_em:'erreichen?',
-    loseW:'Abnehmen',loseW_d:'Körperfett reduzieren, Traumgewicht erreichen',
-    muscle:'Muskeln aufbauen',muscle_d:'Stärker werden und Muskelmasse aufbauen',
-    perf:'Performance verbessern',perf_d:'Schneller oder fitter in meiner Sportart',
-    clean:'Gesünder essen',clean_d:'Bessere Ernährungsgewohnheiten aufbauen',
-    recover:'Besser regenerieren',recover_d:'Tiefer schlafen, weniger Stress, besser fühlen',
-    habits:'Tägliche Gewohnheiten',habits_d:'Konsistenz bei Ernährung und Bewegung',
-    build:'Meinen Plan erstellen',
-    step6:'Plan bereit',unlock:'Deinen vollen Plan freischalten',unlock_sub:'Deine Mahlzeiten, Workouts und Regenerationsprotokoll sind bereit.',
-    free7:'7 Tage komplett kostenlos.',remind:'Wir erinnern dich an Tag 5 und Tag 6. Jederzeit kündbar.',
-    monthly:'Monatlich',annual:'Jährlich',save:'50% sparen · €119/Jahr',popular:'Am beliebtesten',
-    features:['Vollständiger KI-Ernährungsplan + Rezepte + Einkaufsliste','Personalisiertes Trainingsprogramm','Regenerationsguide + smarte Erinnerungen','Live-Shopping-Modus + Menükarten-Scanner','Echtzeit-Anpassung basierend auf deinen Bewertungen','Barcode-Scanner + Rezept-Builder'],
-    startTrial:'🚀 7-tägige kostenlose Testphase starten',secure:'🔒 Sicher · Heute keine Zahlung · Jederzeit kündbar',
-    step7:'Testphase starten',oneStep:'Einen Schritt von deinen',results:'Ergebnissen',
-    emailLabel:'E-Mail-Adresse',passLabel:'Passwort wählen',passHint:'Dein PEAK-Konto wird automatisch erstellt — auf jedem Gerät einloggen.',
-    notCharged:'Du wirst heute nicht belastet.',reminderNote:'Erinnerungen an Tag 5 und Tag 6 vor jeder Abbuchung.',
-    continue:'Weiter zur Zahlung',
-    step8:'Willkommen!',welcome:'Willkommen bei PEAK,',trialStarted:'Deine 7-tägige kostenlose Testphase hat begonnen.',
-    todayMeals:'Heutige Mahlzeiten',todayWorkout:'Heutiges Workout',recoveryTip:'Regenerationstipp',milestones:'Deine Meilensteine',
-    loginTitle:'Anmelden bei',loginEm:'PEAK',loginSub:'Dein Plan wartet auf dich.',
-    google:'Mit Google fortfahren',email:'E-Mail',password:'Passwort',loginBtn:'Anmelden',
-    noAccount:'Noch kein Konto?',startFree:'Kostenlose Testphase starten →',
-    dashboard:'Übersicht',nutrition:'Ernährung',fitness:'Fitness',recovery:'Regeneration',scanner:'Scanner',log:'Protokoll',recipes:'Rezepte',
-    scanBarcode:'Barcode scannen',scanMenu:'Menükarte scannen',shopMode:'Einkaufsmodus',
-    scanInstructions:'Kamera auf Barcode oder Menükarte richten',scanDemo:'Demo: Tippen zum Simulieren',
-    quickLog:'Schnell-Protokoll',logPlaceholder:'z.B. 2 Bier, Tüte Erdnüsse, Kaffee mit Milch...',logBtn:'Eintragen',
-    recipeBuilder:'Rezept-Builder',addIngredient:'+ Zutat hinzufügen',generateRecipe:'Rezept mit KI generieren',
-    ingredient:'Zutat',qty:'Menge',unit:'Einheit',
-    rateLabel:'Wie war es?',rateTaste:'Geschmack',rateAfford:'Preis-Leistung',rateDiff:'Schwierigkeit',rateFull:'Sättigung',
-    rateEffort:'Anstrengung',rateEnergy:'Energie',rateEnjoy:'Spaß',submitRating:'Bewertung abgeben',
-    dailyTarget:'Tagesziel',proteinGoal:'Proteinziel',timeline:'Zeitplan',sport:'Sportart',
-    daysLeft:'Tage Testphase verbleibend',active:'Aktiv',logout:'← Abmelden',
-    goodDay:'Guten Tag,',
-  }
-};
+const T={en:{
+  s1:'Your Profile',s1t:"Let's start with",s1e:'you',s1s:'Takes 4 minutes. The more honest you are, the better your plan.',
+  fname:'First name',age:'Age',gender:'Gender',weight:'Current weight',dweight:'Dream weight',height:'Height',sleep:'Sleep/night',
+  s2:'Lifestyle',s2t:'How do you',s2e:'spend your days?',s2s:'PEAK factors in your whole life — not just your workouts.',
+  job:'Job type',desk:'Desk job',phys:'Physical job',mixed:'Mixed',shift:'Shift work',
+  commute:'Daily commute',car:'Car',bus:'Bus/Train',walk:'Walking',bike:'Cycling',stress:'Daily stress',
+  s3:'Fitness',s3t:"What's your",s3e:'favourite sport?',s3s:'PEAK builds workouts for your specific activity and level.',
+  level:'Current level',beg:'Beginner',inter:'Intermediate',adv:'Advanced',sessions:'Sessions/week',dur:'Time/session',equip:'Where do you train?',gym:'Gym',home:'Home',outdoor:'Outdoors',
+  s4:'Nutrition',s4t:'Tell me about',s4e:'food',s4s:"PEAK never suggests anything you can't eat or don't enjoy.",
+  allergies:'Allergies & intolerances',diet:'Dietary preferences',cuisines:'Favourite cuisines',cooking:'Cooking skill',budget:'Weekly budget (optional)',none:'✕ None',
+  bc:'Beginner',ic:'Intermediate',ac:'Advanced chef',
+  s5:'Your Goal',s5t:'What do you want to',s5e:'achieve?',
+  g1:'Lose weight',g1d:'Reduce body fat, reach my dream weight',g2:'Build muscle',g2d:'Get stronger and add lean mass',
+  g3:'Improve performance',g3d:'Get faster or fitter in my sport',g4:'Eat cleaner',g4d:'Build better nutrition habits',
+  g5:'Recover better',g5d:'Sleep deeper, stress less, feel amazing',g6:'Build daily habits',g6d:'Consistency across nutrition and movement',
+  build:'Build my plan',
+  s6:'Plan Ready',unlock:'Unlock your full plan',unlockS:'Your meals, workouts and recovery are ready.',
+  free7:'7 days completely free.',remind:'Reminders on Day 5 and Day 6. Cancel anytime.',
+  monthly:'Monthly',annual:'Annual',save:'Save 50% · €119/yr',popular:'Most popular',
+  feats:['Full AI meal plan + recipes + shopping list','Personalised workout programme','Recovery guide + smart reminders','Live shopping mode + menu scanner','Real-time adaptation from ratings','Barcode scanner + recipe builder'],
+  startTrial:'🚀 Start 7-day free trial',secure:'🔒 Secure · No charge today · Cancel anytime',
+  s7:'Start Trial',oneStep:'One step from your',results:'results',
+  emailL:'Email address',passL:'Choose a password',passH:'Your account is created automatically — login on any device.',
+  noCharge:'You will not be charged today.',remNote:'Reminders on Day 5 and Day 6.',
+  toPayment:'Continue to payment',
+  s8:'Welcome!',welcome:'Welcome to PEAK,',trialS:'Your 7-day free trial has started.',
+  meals:"Today's Meals",workout:"Today's Workout",recovery:'Recovery',miles:'Your milestones',
+  loginT:'Login to',loginE:'PEAK',loginS:'Your plan is waiting.',
+  google:'Continue with Google',emailF:'Email',passF:'Password',loginB:'Login',
+  noAcc:'No account yet?',startF:'Start free trial →',
+  dash:'Dashboard',nutr:'Nutrition',fit:'Fitness',rec:'Recovery',scan:'Scanner',log:'Log',recipes:'Recipes',
+  scanB:'Scan Barcode',scanM:'Scan Menu',shopM:'Shopping Mode',scanDemo:'Tap to simulate scan',
+  qLog:'Quick Log',logP:'e.g. 2 beers, peanuts, coffee with milk...',logB:'Log it',
+  recB:'Recipe Builder',addIng:'+ Add ingredient',genRec:'Generate with AI',
+  rTaste:'Taste',rVal:'Value',rDiff:'Difficulty',rFull:'Fullness',rEff:'Effort',rEn:'Energy',rEnj:'Enjoyment',
+  dTarget:'Daily Target',pGoal:'Protein Goal',timeline:'Timeline',sport:'Sport',
+  dLeft:'days left',active:'Active',logout:'← Logout',
+  good:'Good day,',
+},de:{
+  s1:'Dein Profil',s1t:'Fangen wir an mit',s1e:'dir',s1s:'Dauert ca. 4 Minuten. Je ehrlicher, desto besser dein Plan.',
+  fname:'Vorname',age:'Alter',gender:'Geschlecht',weight:'Aktuelles Gewicht',dweight:'Traumgewicht',height:'Größe',sleep:'Schlaf/Nacht',
+  s2:'Lebensstil',s2t:'Wie verbringst du',s2e:'deinen Alltag?',s2s:'PEAK berücksichtigt dein ganzes Leben — nicht nur das Training.',
+  job:'Berufsart',desk:'Bürojob',phys:'Körperliche Arbeit',mixed:'Gemischt',shift:'Schichtarbeit',
+  commute:'Arbeitsweg',car:'Auto',bus:'Bus/Zug',walk:'Zu Fuß',bike:'Fahrrad',stress:'Stresslevel',
+  s3:'Fitness',s3t:'Was ist deine',s3e:'Lieblingssportart?',s3s:'PEAK erstellt Workouts speziell für deine Aktivität.',
+  level:'Aktuelles Level',beg:'Anfänger',inter:'Fortgeschritten',adv:'Profi',sessions:'Einheiten/Woche',dur:'Zeit/Einheit',equip:'Wo trainierst du?',gym:'Fitnessstudio',home:'Zuhause',outdoor:'Draußen',
+  s4:'Ernährung',s4t:'Erzähl mir von',s4e:'Essen',s4s:'PEAK schlägt dir nie etwas vor, das du nicht essen kannst.',
+  allergies:'Allergien & Unverträglichkeiten',diet:'Ernährungsweise',cuisines:'Lieblingsküchen',cooking:'Kochkenntnisse',budget:'Wöchentliches Budget (optional)',none:'✕ Keine',
+  bc:'Anfänger',ic:'Mittelmäßig',ac:'Fortgeschrittener Koch',
+  s5:'Dein Ziel',s5t:'Was möchtest du',s5e:'erreichen?',
+  g1:'Abnehmen',g1d:'Körperfett reduzieren, Traumgewicht erreichen',g2:'Muskeln aufbauen',g2d:'Stärker werden, Muskelmasse aufbauen',
+  g3:'Performance verbessern',g3d:'Schneller oder fitter in meiner Sportart',g4:'Gesünder essen',g4d:'Bessere Ernährungsgewohnheiten aufbauen',
+  g5:'Besser regenerieren',g5d:'Tiefer schlafen, weniger Stress, besser fühlen',g6:'Tägliche Gewohnheiten',g6d:'Konsistenz bei Ernährung und Bewegung',
+  build:'Meinen Plan erstellen',
+  s6:'Plan bereit',unlock:'Deinen vollen Plan freischalten',unlockS:'Deine Mahlzeiten, Workouts und Regeneration sind bereit.',
+  free7:'7 Tage komplett kostenlos.',remind:'Erinnerungen an Tag 5 und Tag 6. Jederzeit kündbar.',
+  monthly:'Monatlich',annual:'Jährlich',save:'50% sparen · €119/Jahr',popular:'Am beliebtesten',
+  feats:['Vollständiger KI-Ernährungsplan + Rezepte','Personalisiertes Trainingsprogramm','Regenerationsguide + smarte Erinnerungen','Live-Shopping-Modus + Menükarten-Scanner','Echtzeit-Anpassung basierend auf Bewertungen','Barcode-Scanner + Rezept-Builder'],
+  startTrial:'🚀 7-tägige Testphase starten',secure:'🔒 Sicher · Heute keine Zahlung · Jederzeit kündbar',
+  s7:'Testphase starten',oneStep:'Einen Schritt von deinen',results:'Ergebnissen',
+  emailL:'E-Mail-Adresse',passL:'Passwort wählen',passH:'Dein Konto wird automatisch erstellt — auf jedem Gerät einloggen.',
+  noCharge:'Du wirst heute nicht belastet.',remNote:'Erinnerungen an Tag 5 und Tag 6.',
+  toPayment:'Weiter zur Zahlung',
+  s8:'Willkommen!',welcome:'Willkommen bei PEAK,',trialS:'Deine 7-tägige Testphase hat begonnen.',
+  meals:'Heutige Mahlzeiten',workout:'Heutiges Workout',recovery:'Regeneration',miles:'Deine Meilensteine',
+  loginT:'Anmelden bei',loginE:'PEAK',loginS:'Dein Plan wartet auf dich.',
+  google:'Mit Google fortfahren',emailF:'E-Mail',passF:'Passwort',loginB:'Anmelden',
+  noAcc:'Noch kein Konto?',startF:'Kostenlose Testphase →',
+  dash:'Übersicht',nutr:'Ernährung',fit:'Fitness',rec:'Regeneration',scan:'Scanner',log:'Protokoll',recipes:'Rezepte',
+  scanB:'Barcode scannen',scanM:'Menükarte scannen',shopM:'Einkaufsmodus',scanDemo:'Tippen zum Simulieren',
+  qLog:'Schnell-Protokoll',logP:'z.B. 2 Bier, Erdnüsse, Kaffee mit Milch...',logB:'Eintragen',
+  recB:'Rezept-Builder',addIng:'+ Zutat hinzufügen',genRec:'Mit KI generieren',
+  rTaste:'Geschmack',rVal:'Preis-Leistung',rDiff:'Schwierigkeit',rFull:'Sättigung',rEff:'Anstrengung',rEn:'Energie',rEnj:'Spaß',
+  dTarget:'Tagesziel',pGoal:'Proteinziel',timeline:'Zeitplan',sport:'Sportart',
+  dLeft:'Tage verbleibend',active:'Aktiv',logout:'← Abmelden',
+  good:'Guten Tag,',
+}};
 function t(k){return T[lang][k]||T.en[k]||k;}
-function toggleLang(){lang=lang==='en'?'de':'en';document.getElementById('langBtn').textContent=lang==='en'?'DE':'EN';render();}
+function toggleLang(){lang=lang==='en'?'de':'en';document.getElementById('lbtn').textContent=lang==='en'?'DE':'EN';render();}
 
-function setProgress(s,total){document.getElementById('progressFill').style.width=((s-1)/(total-1)*100)+'%';document.getElementById('stepLabel').textContent=s<=total?'Step '+s+' of '+total:'Almost there!';}
-function render(){setProgress(step,TOTAL);var c=document.getElementById('mainCard');c.style.animation='none';c.offsetHeight;c.style.animation='slideUp 0.38s ease';({1:s1,2:s2,3:s3,4:s4,5:s5,6:s6,7:s7,8:s8})[step]();}
-function card(h){document.getElementById('mainCard').innerHTML=h;}
-function footer(label,fn,back){back=back===undefined?true:back;return '<div class="card-footer">'+(back&&step>1?'<button class="btn-back" onclick="step--;render()">← Back</button>':'')+'<button class="btn-next" onclick="('+fn.toString()+')()">'+label+' →</button></div>';}
+// ── PROGRESS ──────────────────────────────────────────────────────────
+function setP(s,tot){document.getElementById('pbar').style.width=((s-1)/(tot-1)*100)+'%';document.getElementById('slbl').textContent=s<=tot?'Step '+s+' of '+tot:'Almost there!';}
+function render(){setP(step,TOTAL);const c=document.getElementById('mc');c.style.animation='none';c.offsetHeight;c.style.animation='slideUp 0.36s ease';({1:s1,2:s2,3:s3,4:s4,5:s5,6:s6,7:s7,8:s8})[step]();}
+function card(h){document.getElementById('mc').innerHTML=h;}
+function foot(lbl,fn,back){back=back===undefined?true:back;return '<div class="card-footer">'+(back&&step>1?'<button class="btn-back" onclick="step--;render()">← Back</button>':'')+'<button class="btn-next" onclick="('+fn.toString()+')()">'+lbl+' →</button></div>';}
 
-// ── STEP 1: PROFILE ───────────────────────────────────────────────────
-function s1(){card('<div class="card-header"><div class="step-chip">✦ '+t('step1')+'</div><h2 class="card-title">'+t('step1_title')+' <em>'+t('step1_em')+'</em></h2><p class="card-sub">'+t('step1_sub')+'</p></div><div class="card-body"><div class="input-row"><div class="field"><label>'+t('fname')+'</label><input id="fname" placeholder="Alex" value="'+(ud.name||'')+'"></div><div class="field"><label>'+t('age')+'</label><input type="number" id="age" placeholder="28" value="'+(ud.age||'')+'"></div></div><div class="field"><label>'+t('gender')+'</label><div class="tiles cols-3">'+['Male ♂','Female ♀','Other ⚥'].map(function(g){var gk=g.split(' ')[0];return '<div class="tile '+(ud.gender===gk?'selected':'')+'" onclick="sel(this,\'gender\',\''+gk+'\')"><span class="tile-label">'+g+'</span><span class="tile-check">✓</span></div>';}).join('')+'</div></div><div class="input-row"><div class="field"><label>'+t('weight')+'</label><div class="unit-input"><input type="number" id="weight" placeholder="78" value="'+(ud.weight||'')+'"><span class="unit-tag">kg</span></div></div><div class="field"><label>'+t('dreamWeight')+'</label><div class="unit-input"><input type="number" id="dreamWeight" placeholder="70" value="'+(ud.dreamWeight||'')+'"><span class="unit-tag">kg</span></div></div></div><div class="input-row"><div class="field"><label>'+t('height')+'</label><div class="unit-input"><input type="number" id="height" placeholder="175" value="'+(ud.height||'')+'"><span class="unit-tag">cm</span></div></div><div class="field"><label>'+t('sleep')+'</label><div class="unit-input"><input type="number" id="sleep" placeholder="7" value="'+(ud.sleep||'')+'"><span class="unit-tag">hrs</span></div></div></div></div>'+footer(t('continue')||'Continue',function(){ud.name=document.getElementById('fname').value;ud.age=document.getElementById('age').value;ud.weight=document.getElementById('weight').value;ud.dreamWeight=document.getElementById('dreamWeight').value;ud.height=document.getElementById('height').value;ud.sleep=document.getElementById('sleep').value;if(!ud.name||!ud.age||!ud.weight){alert('Please fill in name, age and weight.');return;}step++;render();},false));}
+// ── STEPS ─────────────────────────────────────────────────────────────
+function s1(){card('<div class="card-header"><div class="step-chip">✦ '+t('s1')+'</div><h2 class="card-title">'+t('s1t')+' <em>'+t('s1e')+'</em></h2><p class="card-sub">'+t('s1s')+'</p></div><div class="card-body"><div class="input-row"><div class="field"><label>'+t('fname')+'</label><input id="fn" placeholder="Alex" value="'+(ud.name||'')+'"></div><div class="field"><label>'+t('age')+'</label><input type="number" id="ag" placeholder="28" value="'+(ud.age||'')+'"></div></div><div class="field"><label>'+t('gender')+'</label><div class="tiles c3">'+['Male ♂','Female ♀','Other'].map(function(g){var gk=g.split(' ')[0];return '<div class="tile '+(ud.gender===gk?'sel':'')+'" onclick="sel(this,\'gender\',\''+gk+'\')"><span class="tl">'+g+'</span><span class="tck">✓</span></div>';}).join('')+'</div></div><div class="input-row"><div class="field"><label>'+t('weight')+'</label><div class="unit-input"><input type="number" id="wt" placeholder="78" value="'+(ud.weight||'')+'"><span class="unit-tag">kg</span></div></div><div class="field"><label>'+t('dweight')+'</label><div class="unit-input"><input type="number" id="dw" placeholder="70" value="'+(ud.dweight||'')+'"><span class="unit-tag">kg</span></div></div></div><div class="input-row"><div class="field"><label>'+t('height')+'</label><div class="unit-input"><input type="number" id="ht" placeholder="175" value="'+(ud.height||'')+'"><span class="unit-tag">cm</span></div></div><div class="field"><label>'+t('sleep')+'</label><div class="unit-input"><input type="number" id="sl" placeholder="7" value="'+(ud.sleep||'')+'"><span class="unit-tag">hrs</span></div></div></div></div>'+foot('Continue',function(){ud.name=document.getElementById('fn').value;ud.age=document.getElementById('ag').value;ud.weight=document.getElementById('wt').value;ud.dweight=document.getElementById('dw').value;ud.height=document.getElementById('ht').value;ud.sleep=document.getElementById('sl').value;if(!ud.name||!ud.age||!ud.weight){alert('Please fill in name, age and weight.');return;}step++;render();},false));}
 
-// ── STEP 2: LIFESTYLE ─────────────────────────────────────────────────
-function s2(){card('<div class="card-header"><div class="step-chip">✦ '+t('step2')+'</div><h2 class="card-title">'+t('step2_title')+' <em>'+t('step2_em')+'</em></h2><p class="card-sub">'+t('step2_sub')+'</p></div><div class="card-body"><div class="field"><label>'+t('job')+'</label><div class="tiles">'+[{i:'💻',l:t('desk'),d:'Mostly sitting'},{i:'🔧',l:t('physical'),d:'On feet all day'},{i:'🔄',l:t('mixed'),d:'Varies day to day'},{i:'🌙',l:t('shift'),d:'Irregular hours'}].map(function(j){return '<div class="tile '+(ud.job===j.l?'selected':'')+'" onclick="sel(this,\'job\',\''+j.l+'\')"><span class="tile-icon">'+j.i+'</span><span class="tile-text"><span class="tile-label">'+j.l+'</span><span class="tile-desc">'+j.d+'</span></span><span class="tile-check">✓</span></div>';}).join('')+'</div></div><div class="field"><label>'+t('commute')+'</label><div class="tiles cols-2">'+[{i:'🚗',l:t('car')},{i:'🚌',l:t('bus')},{i:'🚶',l:t('walk')},{i:'🚲',l:t('bike')}].map(function(c){return '<div class="tile '+(ud.commute===c.l?'selected':'')+'" onclick="sel(this,\'commute\',\''+c.l+'\')"><span class="tile-icon">'+c.i+'</span><span class="tile-label">'+c.l+'</span><span class="tile-check">✓</span></div>';}).join('')+'</div></div><div class="field"><label>'+t('stress')+'</label><div class="slider-labels"><span>😌</span><span>😐</span><span>😰</span></div><input type="range" id="stress" min="1" max="10" value="'+(ud.stress||5)+'" oninput="document.getElementById(\'sv\').textContent=this.value"><div class="slider-value" id="sv">'+(ud.stress||5)+'<span style="font-size:13px;color:var(--ink-light);font-family:\'DM Sans\'">/10</span></div></div></div>'+footer('Continue',function(){ud.stress=document.getElementById('stress').value;if(!ud.job){alert('Please select job type.');return;}step++;render();}));}
+function s2(){card('<div class="card-header"><div class="step-chip">✦ '+t('s2')+'</div><h2 class="card-title">'+t('s2t')+' <em>'+t('s2e')+'</em></h2><p class="card-sub">'+t('s2s')+'</p></div><div class="card-body"><div class="field"><label>'+t('job')+'</label><div class="tiles">'+[{i:'💻',l:t('desk'),d:'Mostly sitting'},{i:'🔧',l:t('phys'),d:'On feet all day'},{i:'🔄',l:t('mixed'),d:'Varies'},{i:'🌙',l:t('shift'),d:'Irregular'}].map(function(j){return '<div class="tile '+(ud.job===j.l?'sel':'')+'" onclick="sel(this,\'job\',\''+j.l+'\')"><span class="ti">'+j.i+'</span><span class="tt"><span class="tl">'+j.l+'</span><span class="td">'+j.d+'</span></span><span class="tck">✓</span></div>';}).join('')+'</div></div><div class="field"><label>'+t('commute')+'</label><div class="tiles c2">'+[{i:'🚗',l:t('car')},{i:'🚌',l:t('bus')},{i:'🚶',l:t('walk')},{i:'🚲',l:t('bike')}].map(function(c){return '<div class="tile '+(ud.commute===c.l?'sel':'')+'" onclick="sel(this,\'commute\',\''+c.l+'\')"><span class="ti">'+c.i+'</span><span class="tl">'+c.l+'</span><span class="tck">✓</span></div>';}).join('')+'</div></div><div class="field"><label>'+t('stress')+'</label><div class="slider-labels"><span>😌</span><span>😐</span><span>😰</span></div><input type="range" id="str" min="1" max="10" value="'+(ud.stress||5)+'" oninput="document.getElementById(\'sv\').textContent=this.value"><div class="sv" id="sv">'+(ud.stress||5)+'<span style="font-size:12px;color:var(--ink-light);font-family:\'DM Sans\'">/10</span></div></div></div>'+foot('Continue',function(){ud.stress=document.getElementById('str').value;if(!ud.job){alert('Select job type.');return;}step++;render();}));}
 
-// ── STEP 3: FITNESS ───────────────────────────────────────────────────
-function s3(){var sports=[{e:'🏃',n:'Running'},{e:'🏋️',n:'Weights'},{e:'⚽',n:'Football'},{e:'🚴',n:'Cycling'},{e:'🏊',n:'Swimming'},{e:'🧘',n:'Yoga'},{e:'🥊',n:'Martial Arts'},{e:'🏀',n:'Basketball'},{e:'🎾',n:'Tennis'},{e:'🏐',n:'Volleyball'},{e:'⛷️',n:'Skiing'},{e:'🏌️',n:'Golf'},{e:'🤸',n:'Gymnastics'},{e:'🚣',n:'Rowing'},{e:'🏇',n:'Equestrian'},{e:'🎯',n:'Other'}];card('<div class="card-header"><div class="step-chip">✦ '+t('step3')+'</div><h2 class="card-title">'+t('step3_title')+' <em>'+t('step3_em')+'</em></h2><p class="card-sub">'+t('step3_sub')+'</p></div><div class="card-body"><div class="field"><div class="tiles cols-4">'+sports.map(function(s){return '<div class="sport-tile '+(ud.sport===s.n?'selected':'')+'" onclick="selSport(this,\''+s.n+'\')"><span class="sport-emoji">'+s.e+'</span><span class="sport-name">'+s.n+'</span></div>';}).join('')+'</div></div><div class="field"><label>'+t('level')+'</label><div class="tiles cols-3">'+[t('beg'),t('inter'),t('adv')].map(function(l){return '<div class="tile '+(ud.level===l?'selected':'')+'" onclick="sel(this,\'level\',\''+l+'\')"><span class="tile-label">'+l+'</span><span class="tile-check">✓</span></div>';}).join('')+'</div></div><div class="input-row"><div class="field"><label>'+t('sessions')+'</label><div class="unit-input"><input type="number" id="sessions" placeholder="3" value="'+(ud.sessions||'')+'"><span class="unit-tag">×</span></div></div><div class="field"><label>'+t('duration')+'</label><div class="unit-input"><input type="number" id="duration" placeholder="60" value="'+(ud.duration||'')+'"><span class="unit-tag">min</span></div></div></div><div class="field"><label>'+t('equipment')+'</label><div class="tiles cols-3">'+[{i:'🏋️',l:t('gym')},{i:'🏠',l:t('home')},{i:'🌳',l:t('outdoor')}].map(function(e){return '<div class="tile '+(ud.equipment===e.l?'selected':'')+'" onclick="sel(this,\'equipment\',\''+e.l+'\')"><span class="tile-icon">'+e.i+'</span><span class="tile-label">'+e.l+'</span><span class="tile-check">✓</span></div>';}).join('')+'</div></div></div>'+footer('Continue',function(){ud.sessions=document.getElementById('sessions').value;ud.duration=document.getElementById('duration').value;if(!ud.sport||!ud.level){alert('Please pick a sport and level.');return;}step++;render();}));}
+function s3(){var sports=[{e:'🏃',n:'Running'},{e:'🏋️',n:'Weights'},{e:'⚽',n:'Football'},{e:'🚴',n:'Cycling'},{e:'🏊',n:'Swimming'},{e:'🧘',n:'Yoga'},{e:'🥊',n:'Martial Arts'},{e:'🏀',n:'Basketball'},{e:'🎾',n:'Tennis'},{e:'🏐',n:'Volleyball'},{e:'⛷️',n:'Skiing'},{e:'🏌️',n:'Golf'},{e:'🤸',n:'Gymnastics'},{e:'🚣',n:'Rowing'},{e:'🏇',n:'Equestrian'},{e:'🎯',n:'Other'}];card('<div class="card-header"><div class="step-chip">✦ '+t('s3')+'</div><h2 class="card-title">'+t('s3t')+' <em>'+t('s3e')+'</em></h2><p class="card-sub">'+t('s3s')+'</p></div><div class="card-body"><div class="field"><div class="tiles c4">'+sports.map(function(s){return '<div class="sport-tile '+(ud.sport===s.n?'sel':'')+'" onclick="selSport(this,\''+s.n+'\')"><span class="se">'+s.e+'</span><span class="sn">'+s.n+'</span></div>';}).join('')+'</div></div><div class="field"><label>'+t('level')+'</label><div class="tiles c3">'+[t('beg'),t('inter'),t('adv')].map(function(l){return '<div class="tile '+(ud.level===l?'sel':'')+'" onclick="sel(this,\'level\',\''+l+'\')"><span class="tl">'+l+'</span><span class="tck">✓</span></div>';}).join('')+'</div></div><div class="input-row"><div class="field"><label>'+t('sessions')+'</label><div class="unit-input"><input type="number" id="ss" placeholder="3" value="'+(ud.sessions||'')+'"><span class="unit-tag">×</span></div></div><div class="field"><label>'+t('dur')+'</label><div class="unit-input"><input type="number" id="dur" placeholder="60" value="'+(ud.dur||'')+'"><span class="unit-tag">min</span></div></div></div><div class="field"><label>'+t('equip')+'</label><div class="tiles c3">'+[{i:'🏋️',l:t('gym')},{i:'🏠',l:t('home')},{i:'🌳',l:t('outdoor')}].map(function(e){return '<div class="tile '+(ud.equip===e.l?'sel':'')+'" onclick="sel(this,\'equip\',\''+e.l+'\')"><span class="ti">'+e.i+'</span><span class="tl">'+e.l+'</span><span class="tck">✓</span></div>';}).join('')+'</div></div></div>'+foot('Continue',function(){ud.sessions=document.getElementById('ss').value;ud.dur=document.getElementById('dur').value;if(!ud.sport||!ud.level){alert('Pick a sport and level.');return;}step++;render();}));}
 
-// ── STEP 4: NUTRITION ─────────────────────────────────────────────────
-function s4(){
-  var allergies=['Gluten','Dairy','Nuts','Peanuts','Shellfish','Eggs','Soy','Fish','Pork','Sesame','Mustard','Celery','Lupin','Molluscs','Sulphites','Fructose','Lactose','Histamine'];
-  var diets=['🥩 Keto','🌱 Vegan','🥗 Vegetarian','🐟 Pescatarian','🫙 Paleo','🍖 Carnivore','🫙 Gluten-free','🧘 Mediterranean','⚡ Intermittent Fasting','🌾 Whole Food','💊 Diabetic-friendly','❤️ Heart-healthy'];
-  var cuisines=['🇲🇽 Mexican','🍝 Italian','🍜 Asian','🥗 Mediterranean','🍔 American','🍛 Indian','🇯🇵 Japanese','🥙 Middle Eastern','🇹🇭 Thai','🇬🇷 Greek','🇪🇸 Spanish','🇫🇷 French'];
-  card('<div class="card-header"><div class="step-chip">✦ '+t('step4')+'</div><h2 class="card-title">'+t('step4_title')+' <em>'+t('step4_em')+'</em></h2><p class="card-sub">'+t('step4_sub')+'</p></div><div class="card-body"><div class="field"><label>'+t('allergies')+' <span style="font-weight:400;color:var(--ink-faint)">(select all)</span></label><div class="chips">'+allergies.map(function(a){return '<div class="chip '+((ud.allergies||[]).includes(a)?'selected':'')+'" onclick="toggleChip(this,\'allergies\',\''+a+'\')">'+a+'</div>';}).join('')+'<div class="chip" onclick="ud.allergies=[];document.querySelectorAll(\'.chip:not(.diet-chip):not(.cuisine-chip)\').forEach(function(c){c.classList.remove(\'selected\')})">'+t('none')+'</div></div></div><div class="field"><label>'+t('diet')+'</label><div class="chips">'+diets.map(function(d){return '<div class="chip diet-chip '+((ud.diets||[]).includes(d)?'selected':'')+'" onclick="toggleChip(this,\'diets\',\''+d+'\')">'+d+'</div>';}).join('')+'</div></div><div class="field"><label>'+t('cuisines')+'</label><div class="chips">'+cuisines.map(function(c){return '<div class="chip cuisine-chip '+((ud.cuisines||[]).includes(c)?'selected':'')+'" onclick="toggleChip(this,\'cuisines\',\''+c+'\')">'+c+'</div>';}).join('')+'</div></div><div class="field"><label>'+t('cooking')+'</label><div class="tiles cols-3">'+[{i:'🔰',l:t('beg_cook'),d:'Simple & quick'},{i:'🍳',l:t('inter_cook'),d:'Comfortable'},{i:'👨‍🍳',l:t('adv_cook'),d:'I love cooking'}].map(function(s){return '<div class="tile '+(ud.cook===s.l?'selected':'')+'" onclick="sel(this,\'cook\',\''+s.l+'\')"><span class="tile-icon">'+s.i+'</span><span class="tile-text"><span class="tile-label">'+s.l+'</span><span class="tile-desc">'+s.d+'</span></span><span class="tile-check">✓</span></div>';}).join('')+'</div></div><div class="field"><label>'+t('budget')+'</label><div class="unit-input"><input type="number" id="budget" placeholder="80" value="'+(ud.budget||'')+'"><span class="unit-tag">€/wk</span></div></div></div>'+footer('Continue',function(){ud.budget=document.getElementById('budget').value;if(!ud.cook){alert('Please select cooking level.');return;}step++;render();}));}
+function s4(){var al=['Gluten','Dairy','Nuts','Peanuts','Shellfish','Eggs','Soy','Fish','Pork','Sesame','Mustard','Celery','Lactose','Fructose','Histamine','Sulphites'];var di=['🥩 Keto','🌱 Vegan','🥗 Vegetarian','🐟 Pescatarian','🫙 Paleo','🍖 Carnivore','🌾 Gluten-free','🧘 Mediterranean','⚡ Intermittent Fasting','💊 Diabetic-friendly'];var cu=['🇲🇽 Mexican','🍝 Italian','🍜 Asian','🥗 Mediterranean','🍔 American','🍛 Indian','🇯🇵 Japanese','🥙 Middle Eastern','🇹🇭 Thai','🇬🇷 Greek','🇪🇸 Spanish','🇫🇷 French'];card('<div class="card-header"><div class="step-chip">✦ '+t('s4')+'</div><h2 class="card-title">'+t('s4t')+' <em>'+t('s4e')+'</em></h2><p class="card-sub">'+t('s4s')+'</p></div><div class="card-body"><div class="field"><label>'+t('allergies')+'</label><div class="chips">'+al.map(function(a){return '<div class="chip '+((ud.al||[]).includes(a)?'sel':'')+'" onclick="toggleChip(this,\'al\',\''+a+'\')">'+a+'</div>';}).join('')+'<div class="chip" onclick="ud.al=[]">'+t('none')+'</div></div></div><div class="field"><label>'+t('diet')+'</label><div class="chips">'+di.map(function(d){return '<div class="chip dc '+((ud.di||[]).includes(d)?'sel':'')+'" onclick="toggleChip(this,\'di\',\''+d+'\')">'+d+'</div>';}).join('')+'</div></div><div class="field"><label>'+t('cuisines')+'</label><div class="chips">'+cu.map(function(c){return '<div class="chip cc '+((ud.cu||[]).includes(c)?'sel':'')+'" onclick="toggleChip(this,\'cu\',\''+c+'\')">'+c+'</div>';}).join('')+'</div></div><div class="field"><label>'+t('cooking')+'</label><div class="tiles c3">'+[{i:'🔰',l:t('bc'),d:'Simple & quick'},{i:'🍳',l:t('ic'),d:'Comfortable'},{i:'👨‍🍳',l:t('ac'),d:'I love cooking'}].map(function(s){return '<div class="tile '+(ud.cook===s.l?'sel':'')+'" onclick="sel(this,\'cook\',\''+s.l+'\')"><span class="ti">'+s.i+'</span><span class="tt"><span class="tl">'+s.l+'</span><span class="td">'+s.d+'</span></span><span class="tck">✓</span></div>';}).join('')+'</div></div><div class="field"><label>'+t('budget')+'</label><div class="unit-input"><input type="number" id="bud" placeholder="80" value="'+(ud.budget||'')+'"><span class="unit-tag">€/wk</span></div></div></div>'+foot('Continue',function(){ud.budget=document.getElementById('bud').value;if(!ud.cook){alert('Select cooking level.');return;}step++;render();}));}
 
-// ── STEP 5: GOAL ──────────────────────────────────────────────────────
-function s5(){var goals=[{e:'⚖️',t_:t('loseW'),d:t('loseW_d')},{e:'💪',t_:t('muscle'),d:t('muscle_d')},{e:'🏃',t_:t('perf'),d:t('perf_d')},{e:'🥗',t_:t('clean'),d:t('clean_d')},{e:'🔋',t_:t('recover'),d:t('recover_d')},{e:'🧘',t_:t('habits'),d:t('habits_d')}];var diff=ud.weight&&ud.dreamWeight?(parseFloat(ud.weight)-parseFloat(ud.dreamWeight)).toFixed(1):null;card('<div class="card-header"><div class="step-chip">✦ '+t('step5')+'</div><h2 class="card-title">'+t('step5_title')+' <em>'+t('step5_em')+'</em></h2></div><div class="card-body"><div class="ai-bubble"><div class="ai-bubble-label"><div class="ai-dot"></div>PEAK AI</div><p>Hi '+(ud.name||'there')+'! I\'ve analysed your profile'+(diff>0?' — including your goal to lose '+diff+'kg':'')+'  and I\'m ready to build your personalised plan. What matters most to you right now?</p></div>'+goals.map(function(g){return '<div class="goal-card '+(ud.goal===g.t_?'selected':'')+'" onclick="selGoal(this,\''+g.t_+'\')"><span class="goal-emoji">'+g.e+'</span><div class="goal-info"><div class="goal-title">'+g.t_+'</div><div class="goal-desc">'+g.d+'</div></div><div class="goal-radio"></div></div>';}).join('')+'</div>'+footer(t('build'),function(){if(!ud.goal){alert('Please select a goal.');return;}showAILoading();}));}
+function s5(){var goals=[{e:'⚖️',k:'g1',kd:'g1d'},{e:'💪',k:'g2',kd:'g2d'},{e:'🏃',k:'g3',kd:'g3d'},{e:'🥗',k:'g4',kd:'g4d'},{e:'🔋',k:'g5',kd:'g5d'},{e:'🧘',k:'g6',kd:'g6d'}];var diff=ud.weight&&ud.dweight?(parseFloat(ud.weight)-parseFloat(ud.dweight)).toFixed(1):null;card('<div class="card-header"><div class="step-chip">✦ '+t('s5')+'</div><h2 class="card-title">'+t('s5t')+' <em>'+t('s5e')+'</em></h2></div><div class="card-body"><div class="ai-bubble"><div class="ai-lbl"><div class="ai-dot"></div>PEAK AI</div><p>Hi '+(ud.name||'there')+'! I\'ve analysed your profile'+(diff>0?' — including your goal to lose '+diff+'kg':'')+'  and I\'m ready to build your plan. What matters most to you right now?</p></div>'+goals.map(function(g){return '<div class="goal-card '+(ud.goal===t(g.k)?'sel':'')+'" onclick="selGoal(this,\''+g.k+'\')"><span class="ge">'+g.e+'</span><div class="gi"><div class="gt">'+t(g.k)+'</div><div class="gd">'+t(g.kd)+'</div></div><div class="gr"></div></div>';}).join('')+'</div>'+foot(t('build'),function(){if(!ud.goal){alert('Select a goal.');return;}saveUdToSession();showAILoad();}));}
 
-// ── AI LOADING ────────────────────────────────────────────────────────
-function showAILoading(){card('<div class="loading-wrap"><div class="spinner"></div><div class="loading-title">Building your personal plan...</div><div class="loading-sub">This is unique to you — nobody else gets this exact plan.</div><div style="margin-top:24px;text-align:left">'+[['🧬','Calculating calorie targets & macros'],['🥗','Selecting recipes for your taste & diet'],['💪','Building your '+ud.sport+' programme'],['🔋','Designing your recovery protocol'],['🛒','Preparing your shopping suggestions'],['✨','Finalising your roadmap']].map(function(l,i){return '<div class="loading-step" id="ls'+i+'"><span style="width:20px;text-align:center">'+l[0]+'</span> '+l[1]+'</div>';}).join('')+'</div></div>');var i=0;var ti=setInterval(function(){if(i>0)document.getElementById('ls'+(i-1)).className='loading-step done';if(i<6){document.getElementById('ls'+i).className='loading-step active';i++;}else{clearInterval(ti);fetchAIPlan().then(function(){step=6;render();});}},700);}
+// Save user data before redirect
+function saveUdToSession(){try{sessionStorage.setItem('peak_ud',JSON.stringify(ud));}catch(e){}}
+function loadUdFromSession(){try{var d=sessionStorage.getItem('peak_ud');if(d){ud=JSON.parse(d);}}catch(e){}}
 
-// ── AI PLAN FETCH ─────────────────────────────────────────────────────
-async function fetchAIPlan(){
+function showAILoad(){card('<div class="loading-wrap"><div class="spinner"></div><div class="loading-title">Building your personal plan...</div><div class="loading-sub">This is unique to you — nobody else gets this exact plan.</div><div style="margin-top:22px;text-align:left">'+[['🧬','Calculating calorie targets & macros'],['🥗','Selecting recipes for your taste & diet'],['💪','Building your '+ud.sport+' programme'],['🔋','Designing your recovery protocol'],['🛒','Preparing shopping suggestions'],['✨','Finalising your roadmap']].map(function(l,i){return '<div class="ls" id="ls'+i+'"><span style="width:19px;text-align:center">'+l[0]+'</span> '+l[1]+'</div>';}).join('')+'</div></div>');var i=0;var ti=setInterval(function(){if(i>0)document.getElementById('ls'+(i-1)).className='ls done';if(i<6){document.getElementById('ls'+i).className='ls active';i++;}else{clearInterval(ti);fetchPlan().then(function(){step=6;render();});}},650);}
+
+async function fetchPlan(){
   var bmr=ud.weight&&ud.height&&ud.age?Math.round(88.362+13.397*parseFloat(ud.weight)+4.799*parseFloat(ud.height)-5.677*parseFloat(ud.age)):1800;
-  var mult=ud.job==='Physical job'||ud.job===T.de.physical?1.725:parseFloat(ud.sessions||3)>=5?1.55:1.375;
+  var mult=1.375;
+  if(ud.job===t('phys')||ud.job===T.de.phys)mult=1.725;
+  else if(parseFloat(ud.sessions||3)>=5)mult=1.55;
   var tdee=Math.round(bmr*mult);
-  var kcal=ud.goal===T.en.loseW||ud.goal===T.de.loseW?tdee-400:ud.goal===T.en.muscle||ud.goal===T.de.muscle?tdee+250:tdee;
-  var prompt='You are PEAK AI. Language: '+lang+'. Generate a personalised health plan.\nUser: Name:'+ud.name+', Age:'+ud.age+', Weight:'+ud.weight+'kg→'+ud.dreamWeight+'kg, Height:'+ud.height+'cm, Sleep:'+ud.sleep+'hrs\nJob:'+ud.job+', Stress:'+ud.stress+'/10, Sport:'+ud.sport+'('+ud.level+'), '+ud.sessions+'x/week, '+ud.duration+'min, '+ud.equipment+'\nAllergies:'+(ud.allergies||[]).join(',')+', Diet:'+(ud.diets||[]).join(',')+', Cuisines:'+(ud.cuisines||[]).join(',')+', Cooking:'+ud.cook+', Budget:'+ud.budget+'€/wk\nGoal:'+ud.goal+', Calories:'+kcal+'\nRespond ONLY with JSON no markdown:\n{"headline":"<12 words in '+lang+'>","calories":'+kcal+',"protein":<g>,"carbs":<g>,"fat":<g>,"timeline":"<weeks>","todayMeals":[{"emoji":"🍳","name":"<meal>","time":"Breakfast","kcal":<n>,"protein":<g>,"macro":"<summary>"},{"emoji":"🥗","name":"<meal>","time":"Lunch","kcal":<n>,"protein":<g>,"macro":"<summary>"},{"emoji":"🍽️","name":"<meal>","time":"Dinner","kcal":<n>,"protein":<g>,"macro":"<summary>"},{"emoji":"🍎","name":"<snack>","time":"Snack","kcal":<n>,"protein":<g>,"macro":"<summary>"}],"workout":{"title":"<title>","desc":"<2 sentences>","duration":<min>,"exercises":["<ex1>","<ex2>","<ex3>"]},"recovery":{"tip":"<main tip>","sleep":"<sleep advice>","hydration":"<water target>"},"shopping":["<item1>","<item2>","<item3>","<item4>","<item5>"],"milestones":["<wk2-3>","<wk5-7>","<final>"]}';
+  var kcal=ud.goal===t('g1')||ud.goal===T.de.g1?tdee-400:ud.goal===t('g2')||ud.goal===T.de.g2?tdee+250:tdee;
+  var prompt='You are PEAK AI coaching assistant. Language for response: '+lang+'. Create a personalised health plan.\nUser: Name:'+ud.name+', Age:'+ud.age+', Weight:'+ud.weight+'kg→'+ud.dweight+'kg, Height:'+ud.height+'cm, Sleep:'+ud.sleep+'hrs\nJob:'+ud.job+', Stress:'+ud.stress+'/10, Sport:'+ud.sport+' ('+ud.level+'), '+ud.sessions+'x/wk, '+ud.dur+'min, trains at:'+ud.equip+'\nAllergies:'+(ud.al||[]).join(',')+', Diet:'+(ud.di||[]).join(',')+', Cuisines:'+(ud.cu||[]).join(',')+', Cooking:'+ud.cook+', Budget:'+ud.budget+'€/wk\nGoal:'+ud.goal+', Daily calories:'+kcal+'\nRespond ONLY with JSON, no markdown:\n{"headline":"<12 words in '+lang+'>","calories":'+kcal+',"protein":<g>,"carbs":<g>,"fat":<g>,"timeline":"<e.g. 12 weeks>","todayMeals":[{"emoji":"🍳","name":"<meal>","time":"Breakfast","kcal":<n>,"macro":"<e.g. 28g protein>"},{"emoji":"🥗","name":"<meal>","time":"Lunch","kcal":<n>,"macro":"<e.g. 42g protein>"},{"emoji":"🍽️","name":"<meal>","time":"Dinner","kcal":<n>,"macro":"<e.g. 38g protein>"},{"emoji":"🍎","name":"<snack>","time":"Snack","kcal":<n>,"macro":"<e.g. 15g protein>"}],"workout":{"title":"<title>","desc":"<2 sentences specific to '+ud.sport+'>","duration":<min>,"exercises":["<ex1>","<ex2>","<ex3>"]},"recovery":{"tip":"<main tip>","sleep":"<sleep advice>","hydration":"<water target>"},"shopping":["<item1>","<item2>","<item3>","<item4>","<item5>"],"milestones":["<wk2-3 milestone>","<wk5-7 milestone>","<final goal milestone>"]}';
   try{
     var r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,messages:[{role:'user',content:prompt}]})});
     var d=await r.json();
-    aiPlan=JSON.parse((d.content[0].text||'{}').replace(/```json|```/g,'').trim());
+    plan=JSON.parse((d.content[0].text||'{}').replace(/```json|```/g,'').trim());
+    sessionStorage.setItem('peak_plan',JSON.stringify(plan));
   }catch(e){
-    var k=ud.goal===T.en.loseW||ud.goal===T.de.loseW?1800:ud.goal===T.en.muscle||ud.goal===T.de.muscle?2400:2100;
-    aiPlan={headline:'Your '+ud.sport+' transformation starts today',calories:k,protein:Math.round(parseFloat(ud.weight||75)*1.8),carbs:Math.round(k*0.4/4),fat:Math.round(k*0.3/9),timeline:'12 weeks',todayMeals:[{emoji:'🍳',name:'Scrambled eggs with avocado toast',time:'Breakfast',kcal:420,protein:28,macro:'28g protein · 32g carbs'},{emoji:'🥗',name:'Grilled chicken & quinoa bowl',time:'Lunch',kcal:550,protein:45,macro:'45g protein · 48g carbs'},{emoji:'🍽️',name:'Salmon with roasted vegetables',time:'Dinner',kcal:580,protein:40,macro:'40g protein · 35g carbs'},{emoji:'🍎',name:'Greek yoghurt with berries',time:'Snack',kcal:180,protein:15,macro:'15g protein · 20g carbs'}],workout:{title:'Today\'s '+ud.sport+' session',desc:'Starting with a progressive '+ud.level+' session. Focus on form and consistency.',duration:parseInt(ud.duration||60),exercises:['Warm-up 10 min','Main set 35 min','Cool-down 10 min']},recovery:{tip:'Prioritise 7-8hrs sleep for best recovery and fat loss.',sleep:'Go to bed at the same time every night.',hydration:'Target 2.5-3L water today.'},shopping:['Chicken breast','Salmon fillet','Quinoa','Mixed vegetables','Greek yoghurt'],milestones:['Week 3 — Habits forming. Energy noticeably improving.','Week 7 — Visible progress. Ratings consistently rising.','Week 12 — Goal reached. Maintenance plan activates.']};
+    var k=kcal||2000;
+    plan={headline:'Your '+ud.sport+' transformation starts today',calories:k,protein:Math.round(parseFloat(ud.weight||75)*1.8),carbs:Math.round(k*0.4/4),fat:Math.round(k*0.3/9),timeline:'12 weeks',todayMeals:[{emoji:'🍳',name:'Scrambled eggs with avocado toast',time:'Breakfast',kcal:420,macro:'28g protein'},{emoji:'🥗',name:'Grilled chicken & quinoa bowl',time:'Lunch',kcal:550,macro:'45g protein'},{emoji:'🍽️',name:'Salmon with roasted vegetables',time:'Dinner',kcal:580,macro:'40g protein'},{emoji:'🍎',name:'Greek yoghurt with berries',time:'Snack',kcal:180,macro:'15g protein'}],workout:{title:"Today's "+ud.sport+" session",desc:'Starting with a progressive '+ud.level+' session. Focus on form and consistency throughout.',duration:parseInt(ud.dur||60),exercises:['Warm-up 10 min','Main set 35 min','Cool-down 10 min']},recovery:{tip:'Prioritise 7-8hrs sleep tonight.',sleep:'Go to bed at the same time every night.',hydration:'Target 2.5-3L water today.'},shopping:['Chicken breast','Salmon fillet','Quinoa','Greek yoghurt','Mixed vegetables'],milestones:['Week 3 — Habits forming, energy improving.','Week 7 — Visible progress, ratings rising.','Week 12 — Goal reached, maintenance begins.']};
+    sessionStorage.setItem('peak_plan',JSON.stringify(plan));
   }
 }
 
-// ── STEP 6: PAYWALL ───────────────────────────────────────────────────
-function s6(){setProgress(7,TOTAL);document.getElementById('stepLabel').textContent='Almost there!';var p=aiPlan;
-card('<div class="card-header"><div class="step-chip">✦ '+t('step6')+'</div><h2 class="card-title">Your plan is ready, <em>'+(ud.name||'there')+'</em></h2><p class="card-sub">'+p.headline+'</p></div><div class="card-body"><div class="plan-preview"><div class="plan-preview-blur"><div class="preview-row"><span class="preview-label">'+t('dailyTarget')+'</span><span class="preview-val">'+p.calories+' kcal</span></div><div class="preview-row"><span class="preview-label">'+t('proteinGoal')+'</span><span class="preview-val">'+p.protein+'g</span></div><div class="preview-row"><span class="preview-label">'+t('timeline')+'</span><span class="preview-val">'+p.timeline+'</span></div><div style="margin-top:8px">'+p.todayMeals.slice(0,3).map(function(m){return '<div class="preview-meal"><div class="preview-meal-name">'+m.emoji+' '+m.name+'</div><div class="preview-meal-macro">'+m.time+' · '+m.kcal+' kcal · '+m.macro+'</div></div>';}).join('')+'</div></div><div class="paywall-overlay"><div class="lock-icon">🔒</div><div class="paywall-title">'+t('unlock')+'</div><div class="paywall-sub">'+t('unlock_sub')+'<br>'+t('free7')+' '+t('remind')+'</div><div class="pricing-grid"><div class="price-card '+(selectedPlan==='monthly'?'selected':'')+'" onclick="selPlan(\'monthly\',this)"><div class="price-period">'+t('monthly')+'</div><div class="price-amount">€19<span>.99/mo</span></div><div class="price-saving" style="visibility:hidden">—</div></div><div class="price-card '+(selectedPlan==='annual'?'selected':'')+'" onclick="selPlan(\'annual\',this)"><div class="popular-badge">'+t('popular')+'</div><div class="price-period">'+t('annual')+'</div><div class="price-amount">€9<span>.99/mo</span></div><div class="price-saving">'+t('save')+'</div></div></div><ul class="features-mini">'+t('features').map(function(f){return '<li>'+f+'</li>';}).join('')+'</ul><button class="btn-pay" onclick="showPayment()">'+t('startTrial')+'</button><div class="secure-note">'+t('secure')+'</div></div></div></div>');}
+// ── PAYWALL ───────────────────────────────────────────────────────────
+function s6(){setP(7,TOTAL);document.getElementById('slbl').textContent='Almost there!';var p=plan;
+card('<div class="card-header"><div class="step-chip">✦ '+t('s6')+'</div><h2 class="card-title">Your plan is ready, <em>'+(ud.name||'there')+'</em></h2><p class="card-sub">'+p.headline+'</p></div><div class="card-body"><div class="plan-preview"><div class="ppb"><div class="pr"><span class="prl">'+t('dTarget')+'</span><span class="prv">'+p.calories+' kcal</span></div><div class="pr"><span class="prl">'+t('pGoal')+'</span><span class="prv">'+p.protein+'g protein</span></div><div class="pr"><span class="prl">'+t('timeline')+'</span><span class="prv">'+p.timeline+'</span></div><div style="margin-top:7px">'+p.todayMeals.slice(0,3).map(function(m){return '<div class="pm"><div class="pmn">'+m.emoji+' '+m.name+'</div><div class="pmc">'+m.time+' · '+m.kcal+' kcal · '+m.macro+'</div></div>';}).join('')+'</div></div><div class="paywall-overlay"><div class="lock-icon">🔒</div><div class="pw-title">'+t('unlock')+'</div><div class="pw-sub">'+t('unlockS')+'<br>'+t('free7')+' '+t('remind')+'</div><div class="pg"><div class="pc '+(selPlan==='monthly'?'sel':'')+'" onclick="spln(\'monthly\',this)"><div class="pp">'+t('monthly')+'</div><div class="pa">€19<span>.99/mo</span></div><div class="ps"> </div></div><div class="pc '+(selPlan==='annual'?'sel':'')+'" onclick="spln(\'annual\',this)"><div class="pop-badge">'+t('popular')+'</div><div class="pp">'+t('annual')+'</div><div class="pa">€9<span>.99/mo</span></div><div class="ps">'+t('save')+'</div></div></div><ul class="feat-list">'+t('feats').map(function(f){return '<li>'+f+'</li>';}).join('')+'</ul><button class="btn-pay" onclick="step=7;render()">'+t('startTrial')+'</button><div class="secure-note">'+t('secure')+'</div></div></div></div>');}
 
-function selPlan(plan,el){selectedPlan=plan;document.querySelectorAll('.price-card').forEach(function(c){c.classList.remove('selected');});el.classList.add('selected');}
+function spln(p,el){selPlan=p;document.querySelectorAll('.pc').forEach(function(c){c.classList.remove('sel');});el.classList.add('sel');}
 
-// ── STEP 7: PAYMENT ───────────────────────────────────────────────────
-function s7(){card('<div class="card-header"><div class="step-chip">✦ '+t('step7')+'</div><h2 class="card-title">'+t('oneStep')+' <em>'+t('results')+'</em></h2><p class="card-sub">7 days free. '+(selectedPlan==='annual'?'Then €119/year.':'Then €19.99/month.')+'</p></div><div class="card-body"><div class="trial-badge" style="margin-bottom:18px"><div class="trial-badge-icon">✅</div><div class="trial-badge-text"><strong>'+t('notCharged')+'</strong> '+t('reminderNote')+'</div></div><div id="errPay" class="error-box"></div><div class="field"><label>'+t('emailLabel')+'</label><input type="email" id="email" placeholder="alex@example.com" value="'+(ud.email||'')+'"></div><div class="field"><label>'+t('passLabel')+'</label><input type="password" id="newPass" placeholder="Min. 8 characters"></div><p style="font-size:12px;color:var(--ink-light);margin-top:-12px;margin-bottom:14px">'+t('passHint')+'</p></div><div class="card-footer"><button class="btn-back" onclick="step=6;render()">← Back</button><button class="btn-next" id="payBtn" onclick="processPayment()">🔒 '+t('continue')+' →</button></div>');}
+// ── PAYMENT ───────────────────────────────────────────────────────────
+function s7(){card('<div class="card-header"><div class="step-chip">✦ '+t('s7')+'</div><h2 class="card-title">'+t('oneStep')+' <em>'+t('results')+'</em></h2><p class="card-sub">7 days free. '+(selPlan==='annual'?'Then €119/year.':'Then €19.99/month.')+'</p></div><div class="card-body"><div class="trial-badge" style="margin-bottom:16px"><div class="tb-icon">✅</div><div class="tb-text"><strong>'+t('noCharge')+'</strong> '+t('remNote')+'</div></div><div id="errPay" class="err-box"></div><div class="field"><label>'+t('emailL')+'</label><input type="email" id="em" placeholder="alex@example.com" value="'+(ud.email||'')+'"></div><div class="field"><label>'+t('passL')+'</label><input type="password" id="pw" placeholder="Min. 8 characters"></div><p style="font-size:11px;color:var(--ink-light);margin-top:-10px;margin-bottom:12px">'+t('passH')+'</p></div><div class="card-footer"><button class="btn-back" onclick="step=6;render()">← Back</button><button class="btn-next" id="payBtn" onclick="doPay()">🔒 '+t('toPayment')+' →</button></div>');}
 
-async function processPayment(){
-  var email=document.getElementById('email').value;
-  var pass=document.getElementById('newPass').value;
+async function doPay(){
+  var em=document.getElementById('em').value;
+  var pw=document.getElementById('pw').value;
   var btn=document.getElementById('payBtn');
-  if(!email){showErr('errPay','Please enter your email.');return;}
-  if(!pass||pass.length<8){showErr('errPay','Password must be at least 8 characters.');return;}
-  ud.email=email;ud.password=pass;
+  if(!em){showErr('errPay','Please enter your email.');return;}
+  if(!pw||pw.length<8){showErr('errPay','Password must be at least 8 characters.');return;}
+  ud.email=em;ud.password=pw;
+  saveUdToSession();
   btn.textContent='Loading...';btn.style.opacity='0.7';btn.onclick=null;
   document.getElementById('errPay').style.display='none';
   try{
-    var res=await fetch(BACKEND+'/create-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,plan:selectedPlan,userData:{name:ud.name,goal:ud.goal,sport:ud.sport,password:pass}})});
+    var res=await fetch(BACKEND+'/create-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,plan:selPlan,userData:{name:ud.name,goal:ud.goal,sport:ud.sport,password:pw}})});
     var data=await res.json();
     if(data.url){window.location.href=data.url;}
-    else{throw new Error(data.error||'Something went wrong');}
+    else throw new Error(data.error||'Something went wrong');
   }catch(err){
     showErr('errPay',err.message);
-    btn.textContent='🔒 '+t('continue')+' →';btn.style.opacity='1';btn.onclick=processPayment;
+    btn.textContent='🔒 '+t('toPayment')+' →';btn.style.opacity='1';btn.onclick=doPay;
   }
 }
 
-// ── STEP 8: SUCCESS ───────────────────────────────────────────────────
+// ── STEP 8: SUCCESS → DASHBOARD ───────────────────────────────────────
 function s8(){
-  document.getElementById('progressFill').style.width='100%';
-  document.getElementById('stepLabel').textContent='🎉 Plan unlocked!';
-  var p=aiPlan||{calories:2000,protein:150,carbs:200,fat:70,timeline:'12 weeks',todayMeals:[{emoji:'🍳',name:'Scrambled eggs with avocado',time:'Breakfast',kcal:420,protein:28,macro:'28g protein'},{emoji:'🥗',name:'Chicken & quinoa bowl',time:'Lunch',kcal:550,protein:45,macro:'45g protein'},{emoji:'🍽️',name:'Salmon with vegetables',time:'Dinner',kcal:580,protein:40,macro:'40g protein'},{emoji:'🍎',name:'Greek yoghurt',time:'Snack',kcal:180,protein:15,macro:'15g protein'}],workout:{title:"Today's session",desc:'Starting strong.',duration:60,exercises:['Warm-up','Main set','Cool-down']},recovery:{tip:'Sleep 7-8hrs.',sleep:'Consistent bedtime.',hydration:'2.5L water.'},shopping:['Chicken','Salmon','Quinoa','Vegetables','Yoghurt'],milestones:['Week 3 — Progress visible.','Week 7 — Consistent results.','Week 12 — Goal achieved.']};
-  showDashboard(p);
+  document.getElementById('pbar').style.width='100%';
+  document.getElementById('slbl').textContent='🎉 Plan unlocked!';
+  // Restore user data & plan from session storage
+  loadUdFromSession();
+  try{var sp=sessionStorage.getItem('peak_plan');if(sp)plan=JSON.parse(sp);}catch(e){}
+  if(!plan){fetchPlan().then(function(){showDash(plan);});}
+  else showDash(plan);
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────
-function showDashboard(p){
-  p=p||aiPlan||{calories:2000,protein:150,carbs:200,fat:70,timeline:'12 weeks',todayMeals:[{emoji:'🍳',name:'Scrambled eggs with avocado',time:'Breakfast',kcal:420,protein:28,macro:'28g protein'},{emoji:'🥗',name:'Chicken & quinoa bowl',time:'Lunch',kcal:550,protein:45,macro:'45g protein'},{emoji:'🍽️',name:'Salmon with vegetables',time:'Dinner',kcal:580,protein:40,macro:'40g protein'},{emoji:'🍎',name:'Greek yoghurt',time:'Snack',kcal:180,protein:15,macro:'15g protein'}],workout:{title:"Today's session",desc:'Starting strong.',duration:60,exercises:['Warm-up','Main set','Cool-down']},recovery:{tip:'Sleep 7-8hrs.',sleep:'Consistent bedtime.',hydration:'2.5L water.'},shopping:['Chicken','Salmon','Quinoa','Vegetables','Yoghurt'],milestones:['Week 3','Week 7','Week 12']};
-  document.getElementById('progressFill').style.width='100%';
-  document.getElementById('stepLabel').textContent=t('dashboard');
+function showDash(p){
+  p=p||plan||fallbackPlan();
+  document.getElementById('pbar').style.width='100%';
+  document.getElementById('slbl').textContent=t('dash');
   showTab('nutrition',p);
 }
 
-function dashShell(activeTab,content,p){
-  p=p||aiPlan;
-  var name=ud.name||'there';
-  var tabs=[{k:'nutrition',l:t('nutrition')},{k:'fitness',l:t('fitness')},{k:'recovery',l:t('recovery')},{k:'scanner',l:t('scanner')},{k:'log',l:t('log')},{k:'recipes',l:t('recipes')}];
-  card('<div class="dashboard"><div class="dash-header"><div class="dash-greeting">'+t('goodDay')+' '+name+' 👋</div><div class="dash-sub">'+ud.goal+' · '+(p?p.timeline:'12 weeks')+'</div></div><div class="dash-nav">'+tabs.map(function(tab){return '<button class="nav-tab '+(activeTab===tab.k?'active':'')+'" onclick="showTab(\''+tab.k+'\')">'+tab.l+'</button>';}).join('')+'</div><div class="dash-body" id="dashBody">'+content+'</div></div>');
+function fallbackPlan(){return {calories:2000,protein:150,carbs:200,fat:70,timeline:'12 weeks',headline:'Your transformation starts today',todayMeals:[{emoji:'🍳',name:'Scrambled eggs with avocado',time:'Breakfast',kcal:420,macro:'28g protein'},{emoji:'🥗',name:'Chicken & quinoa bowl',time:'Lunch',kcal:550,macro:'45g protein'},{emoji:'🍽️',name:'Salmon with vegetables',time:'Dinner',kcal:580,macro:'40g protein'},{emoji:'🍎',name:'Greek yoghurt',time:'Snack',kcal:180,macro:'15g protein'}],workout:{title:"Today's session",desc:'Starting strong with a progressive session.',duration:60,exercises:['Warm-up 10 min','Main set 35 min','Cool-down 10 min']},recovery:{tip:'Sleep 7-8hrs tonight.',sleep:'Consistent bedtime.',hydration:'2.5L water today.'},shopping:['Chicken','Salmon','Quinoa','Yoghurt','Vegetables'],milestones:['Week 3 — Progress forming.','Week 7 — Visible results.','Week 12 — Goal reached.']};}
+
+function dashShell(tab,content,p){
+  p=p||plan||fallbackPlan();
+  var tabs=[{k:'nutrition',l:t('nutr')},{k:'fitness',l:t('fit')},{k:'recovery',l:t('rec')},{k:'scanner',l:t('scan')},{k:'log',l:t('log')},{k:'recipes',l:t('recipes')}];
+  card('<div class="dash"><div class="dash-head"><div class="dash-greet">'+t('good')+' '+(ud.name||'there')+' 👋</div><div class="dash-sub">'+(ud.goal||'PEAK')+(plan?' · '+plan.timeline:'')+' · '+(p.headline||'')+'</div></div><div class="dash-nav">'+tabs.map(function(tb){return '<button class="nav-tab '+(tab===tb.k?'active':'')+'" onclick="showTab(\''+tb.k+'\')">'+tb.l+'</button>';}).join('')+'</div><div class="dash-body" id="db">'+content+'</div></div>');
 }
 
-function showTab(tab,p){
-  p=p||aiPlan;
-  if(tab==='nutrition') renderNutrition(p);
-  else if(tab==='fitness') renderFitness(p);
-  else if(tab==='recovery') renderRecovery(p);
-  else if(tab==='scanner') renderScanner();
-  else if(tab==='log') renderLog();
-  else if(tab==='recipes') renderRecipes();
+function showTab(tab,p){p=p||plan||fallbackPlan();if(tab==='nutrition')tabNutr(p);else if(tab==='fitness')tabFit(p);else if(tab==='recovery')tabRec(p);else if(tab==='scanner')tabScan();else if(tab==='log')tabLog();else if(tab==='recipes')tabRec2();}
+
+function tabNutr(p){
+  var logged=foodLog.reduce(function(a,e){return a+(e.kcal||0);},0);
+  var rem=p.calories-logged;
+  var c='<div class="stat-grid"><div class="stat"><div class="stat-l">'+t('dTarget')+'</div><div class="stat-v">'+p.calories+' kcal</div></div><div class="stat"><div class="stat-l">Logged</div><div class="stat-v">'+logged+' kcal</div></div><div class="stat"><div class="stat-l">Remaining</div><div class="stat-v" style="color:var(--accent)">'+rem+' kcal</div></div><div class="stat"><div class="stat-l">'+t('pGoal')+'</div><div class="stat-v">'+p.protein+'g</div></div></div>';
+  c+='<div class="macro-wrap"><div class="macro-label"><span>Protein</span><span>'+p.protein+'g</span></div><div class="macro-bar"><div class="macro-fill" style="width:75%;background:#52B788"></div></div></div>';
+  c+='<div class="macro-wrap"><div class="macro-label"><span>Carbs</span><span>'+p.carbs+'g</span></div><div class="macro-bar"><div class="macro-fill" style="width:60%;background:#4A90D9"></div></div></div>';
+  c+='<div class="macro-wrap"><div class="macro-label"><span>Fat</span><span>'+p.fat+'g</span></div><div class="macro-bar"><div class="macro-fill" style="width:50%;background:#F39C12"></div></div></div>';
+  c+='<div class="sec-title" style="margin-top:14px">'+t('meals')+'</div>';
+  c+=p.todayMeals.map(function(m,i){var r=mealRatings[i];return '<div class="meal-card"><span class="me">'+m.emoji+'</span><div class="mi"><div class="mn">'+m.name+'</div><div class="mm">'+m.time+' · '+m.macro+'</div>'+(!r?'<div class="rating-row">'+[1,2,3,4,5].map(function(s){return '<span class="star" onclick="rateMeal('+i+','+s+',this)">⭐</span>';}).join('')+'</div>':'<div style="font-size:11px;color:var(--accent);margin-top:3px">Rated '+r+'/5 ✓</div>')+'</div><span class="mk">'+m.kcal+' kcal</span></div>';}).join('');
+  c+='<div class="ai-bubble" style="margin-top:12px"><div class="ai-lbl"><div class="ai-dot"></div>PEAK AI</div><p>Not feeling the plan today? <span style="color:var(--accent);cursor:pointer;font-weight:600" onclick="showMoodPicker()">Pick a cuisine mood →</span></p></div>';
+  c+='<div id="moodArea"></div>';
+  c+='<button class="btn-logout" onclick="logout()">'+t('logout')+'</button>';
+  dashShell('nutrition',c,p);
 }
 
-function renderNutrition(p){
-  p=p||aiPlan;
-  var totalLogged=foodLog.reduce(function(a,e){return a+(e.kcal||0);},0);
-  var remaining=(p?p.calories:2000)-totalLogged;
-  var content='<div class="stat-grid"><div class="stat"><div class="stat-label">'+t('dailyTarget')+'</div><div class="stat-value">'+(p?p.calories:2000)+' kcal</div></div><div class="stat"><div class="stat-label">Logged</div><div class="stat-value">'+totalLogged+' kcal</div></div><div class="stat"><div class="stat-label">Remaining</div><div class="stat-value" style="color:var(--accent)">'+remaining+' kcal</div></div><div class="stat"><div class="stat-label">'+t('proteinGoal')+'</div><div class="stat-value">'+(p?p.protein:150)+'g</div></div></div>';
-  if(p){
-    content+='<div class="macro-bar-wrap"><div class="macro-bar-label"><span>Protein</span><span>'+p.protein+'g</span></div><div class="macro-bar"><div class="macro-bar-fill" style="width:70%;background:#52B788"></div></div></div>';
-    content+='<div class="macro-bar-wrap"><div class="macro-bar-label"><span>Carbs</span><span>'+p.carbs+'g</span></div><div class="macro-bar"><div class="macro-bar-fill" style="width:60%;background:#4A90D9"></div></div></div>';
-    content+='<div class="macro-bar-wrap"><div class="macro-bar-label"><span>Fat</span><span>'+p.fat+'g</span></div><div class="macro-bar"><div class="macro-bar-fill" style="width:50%;background:#F39C12"></div></div></div>';
-  }
-  content+='<div class="dash-section-title" style="margin-top:18px">'+t('todayMeals')+'</div>';
-  if(p){content+=p.todayMeals.map(function(m,i){var rated=mealRatings[i];return '<div class="meal-card"><span class="meal-emoji">'+m.emoji+'</span><div class="meal-info"><div class="meal-name">'+m.name+'</div><div class="meal-meta">'+m.time+' · '+m.macro+'</div>'+(!rated?'<div class="rating-row">'+[1,2,3,4,5].map(function(s){return '<span class="star" onclick="rateMeal('+i+','+s+')">⭐</span>';}).join('')+'</div>':'<div style="font-size:11px;color:var(--accent);margin-top:4px">Rated '+rated+'/5 ✓</div>')+'</div><span class="meal-kcal">'+m.kcal+' kcal</span></div>';}).join('');}
-  content+='<div class="ai-bubble" style="margin-top:14px"><div class="ai-bubble-label"><div class="ai-dot"></div>Mood-based meal</div><p>Not feeling the plan today? Tell me what cuisine you want and I\'ll build around it. <span style="color:var(--accent);cursor:pointer;font-weight:600" onclick="showMoodMeal()">Pick a cuisine →</span></p></div>';
-  content+='<button class="btn-logout" onclick="logout()">'+t('logout')+'</button>';
-  dashShell('nutrition',content,p);
+function showMoodPicker(){var cu=['🇲🇽 Mexican','🍝 Italian','🍜 Asian','🥗 Mediterranean','🍔 American','🍛 Indian','🇯🇵 Japanese','🥙 Middle Eastern'];var html='<div style="margin-top:10px;background:var(--bg);border-radius:11px;padding:14px;border:1px solid var(--border)"><p style="font-size:13px;font-weight:600;margin-bottom:9px">What are you in the mood for?</p><div class="chips">'+cu.map(function(c){return '<div class="chip cc" onclick="pickMood(\''+c+'\')">'+c+'</div>';}).join('')+'</div></div>';var a=document.getElementById('moodArea');if(a)a.innerHTML=html;}
+
+async function pickMood(cuisine){
+  var a=document.getElementById('moodArea');if(a)a.innerHTML='<div class="ai-bubble" style="margin-top:10px"><div class="ai-lbl"><div class="ai-dot"></div>PEAK AI</div><p>Building a '+cuisine+' meal for your macros...</p></div>';
+  try{
+    var p=plan||fallbackPlan();
+    var res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:300,messages:[{role:'user',content:'Suggest one '+cuisine+' recipe for goal:'+ud.goal+', ~'+Math.round(p.calories/3)+' kcal, ~'+Math.round(p.protein/3)+'g protein, allergies:'+(ud.al||[]).join(',')+', cooking:'+ud.cook+'. JSON only: {"name":"<n>","kcal":<n>,"protein":<g>,"macro":"<summary>","time":<min>,"tip":"<tip>"}'}]})});
+    var d=await res.json();
+    var meal=JSON.parse((d.content[0].text||'{}').replace(/```json|```/g,'').trim());
+    if(a)a.innerHTML='<div class="scan-result" style="margin-top:10px"><div class="sr-name">'+meal.name+'</div><div class="sr-macro">'+meal.kcal+' kcal · '+meal.macro+' · '+meal.time+' min</div><div class="sr-macro" style="margin-top:4px;font-style:italic">'+meal.tip+'</div></div>';
+  }catch(e){if(a)a.innerHTML='';}
 }
 
-function renderFitness(p){
-  p=p||aiPlan;
-  var content='<div class="stat-grid"><div class="stat"><div class="stat-label">'+t('sport')+'</div><div class="stat-value">'+(ud.sport||'—')+'</div></div><div class="stat"><div class="stat-label">Level</div><div class="stat-value">'+(ud.level||'—')+'</div></div><div class="stat"><div class="stat-label">Sessions</div><div class="stat-value">'+(ud.sessions||'—')+'×/wk</div></div><div class="stat"><div class="stat-label">Duration</div><div class="stat-value">'+(ud.duration||'—')+' min</div></div></div>';
+function tabFit(p){
+  var c='<div class="stat-grid"><div class="stat"><div class="stat-l">'+t('sport')+'</div><div class="stat-v">'+(ud.sport||'—')+'</div></div><div class="stat"><div class="stat-l">Level</div><div class="stat-v">'+(ud.level||'—')+'</div></div><div class="stat"><div class="stat-l">Sessions</div><div class="stat-v">'+(ud.sessions||'—')+'×/wk</div></div><div class="stat"><div class="stat-l">Duration</div><div class="stat-v">'+(ud.dur||'—')+' min</div></div></div>';
   if(p&&p.workout){
-    content+='<div class="dash-section-title">'+t('todayWorkout')+'</div>';
-    content+='<div class="workout-card"><div class="workout-card-title">'+p.workout.title+' · '+p.workout.duration+' min</div><div class="workout-card-desc">'+p.workout.desc+'</div></div>';
-    content+='<div style="margin-bottom:14px">'+p.workout.exercises.map(function(e,i){return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)"><div style="width:22px;height:22px;border-radius:50%;background:var(--accent-light);color:var(--accent);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+(i+1)+'</div><span style="font-size:13px">'+e+'</span></div>';}).join('')+'</div>';
-    var wr=workoutRatings;
-    content+='<div class="ai-bubble"><div class="ai-bubble-label"><div class="ai-dot"></div>Rate your workout</div>';
-    content+=['Effort','Energy','Enjoyment'].map(function(cat,ci){var rated=wr[cat];return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><span style="font-size:12px;font-weight:600;width:80px;flex-shrink:0">'+cat+'</span><div style="display:flex;gap:3px">'+[1,2,3,4,5].map(function(s){return '<span style="font-size:18px;cursor:pointer;opacity:'+(rated&&s<=rated?1:0.3)+'" onclick="rateWorkout(\''+cat+'\','+s+')">⭐</span>';}).join('')+'</div></div>';}).join('');
-    content+='</div>';
+    c+='<div class="sec-title">'+t('workout')+'</div>';
+    c+='<div class="workout-card"><div class="wt">'+p.workout.title+' · '+p.workout.duration+' min</div><div class="wd">'+p.workout.desc+'</div></div>';
+    c+=p.workout.exercises.map(function(e,i){return '<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--border)"><div style="width:20px;height:20px;border-radius:50%;background:var(--accent-light);color:var(--accent);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+(i+1)+'</div><span style="font-size:12px">'+e+'</span></div>';}).join('');
+    c+='<div class="ai-bubble" style="margin-top:14px"><div class="ai-lbl"><div class="ai-dot"></div>Rate your workout</div>'+['Effort','Energy','Enjoyment'].map(function(cat){var r=wkRatings[cat];return '<div style="display:flex;align-items:center;gap:9px;margin-bottom:7px"><span style="font-size:12px;font-weight:600;width:76px;flex-shrink:0">'+cat+'</span>'+[1,2,3,4,5].map(function(s){return '<span style="font-size:17px;cursor:pointer;opacity:'+(r&&s<=r?1:0.3)+'" onclick="rateWk(\''+cat+'\','+s+',this)">⭐</span>';}).join('')+'</div>';}).join('')+'</div>';
   }
-  dashShell('fitness',content,p);
+  dashShell('fitness',c,p);
 }
 
-function renderRecovery(p){
-  p=p||aiPlan;
-  var content='<div class="dash-section-title">'+t('recoveryTip')+'</div>';
+function tabRec(p){
+  var c='<div class="sec-title">'+t('recovery')+'</div>';
   if(p&&p.recovery){
-    content+='<div class="recovery-card"><div class="recovery-title">💤 Sleep</div><div class="recovery-desc">'+p.recovery.sleep+'</div></div>';
-    content+='<div class="recovery-card"><div class="recovery-title">💧 Hydration</div><div class="recovery-desc">'+p.recovery.hydration+'</div></div>';
-    content+='<div class="recovery-card"><div class="recovery-title">⚡ Today\'s Tip</div><div class="recovery-desc">'+p.recovery.tip+'</div></div>';
+    c+='<div class="rec-card"><div class="rt">💤 Sleep</div><div class="rd">'+p.recovery.sleep+'</div></div>';
+    c+='<div class="rec-card"><div class="rt">💧 Hydration</div><div class="rd">'+p.recovery.hydration+'</div></div>';
+    c+='<div class="rec-card"><div class="rt">⚡ Today\'s Tip</div><div class="rd">'+p.recovery.tip+'</div></div>';
   }
-  content+='<div class="dash-section-title" style="margin-top:16px">Recovery Tools</div>';
-  content+=[{e:'🧊',t:'Cold Plunge',d:'8-12°C · 2-3 min · 1hr after training'},{e:'🧖',t:'Sauna',d:'15-20 min · ideal 60-90min before bed'},{e:'🧘',t:'Stretching',d:'10-15 min post-workout · focus trained muscles'},{e:'😴',t:'Sleep Hygiene',d:'No screens 90min before bed · consistent schedule'}].map(function(r){return '<div class="recovery-card"><div class="recovery-title">'+r.e+' '+r.t+'</div><div class="recovery-desc">'+r.d+'</div></div>';}).join('');
-  content+='<div class="ai-bubble"><div class="ai-bubble-label"><div class="ai-dot"></div>Shopping List</div><p style="margin-bottom:8px">Based on your plan, pick up these items:</p>'+(p&&p.shopping?p.shopping.map(function(s){return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px"><span>🛒</span><span>'+s+'</span></div>';}).join(''):'')+'</div>';
-  dashShell('recovery',content,p);
+  c+='<div class="sec-title" style="margin-top:14px">Recovery Tools</div>';
+  [{e:'🧊',t:'Cold Plunge',d:'8-12°C · 2-3 min · 1hr after training'},{e:'🧖',t:'Sauna',d:'15-20 min · 60-90min before bed'},{e:'🧘',t:'Stretching',d:'10-15 min post-workout · focus trained muscles'},{e:'😴',t:'Sleep Hygiene',d:'No screens 90min before bed'}].forEach(function(r){c+='<div class="rec-card"><div class="rt">'+r.e+' '+r.t+'</div><div class="rd">'+r.d+'</div></div>';});
+  if(p&&p.shopping){c+='<div class="ai-bubble" style="margin-top:12px"><div class="ai-lbl"><div class="ai-dot"></div>Shopping List</div>'+p.shopping.map(function(s){return '<div style="font-size:12px;padding:3px 0">🛒 '+s+'</div>';}).join('')+'</div>';}
+  dashShell('recovery',c,p);
 }
 
-function renderScanner(){
-  var content='<div class="tiles cols-3" style="margin-bottom:18px">'+[{i:'📷',l:t('scanBarcode'),f:'scanBarcode'},{i:'🍽️',l:t('scanMenu'),f:'scanMenuDemo'},{i:'🛒',l:t('shopMode'),f:'shopMode'}].map(function(b){return '<div class="tile" onclick="'+b.f+'()" style="flex-direction:column;text-align:center;padding:16px 8px"><span style="font-size:24px;margin-bottom:6px">'+b.i+'</span><span class="tile-label" style="font-size:12px">'+b.l+'</span></div>';}).join('')+'</div>';
-  content+='<div id="scannerResult"></div>';
-  content+='<div class="scanner-box" onclick="simulateScan()" style="cursor:pointer"><div><div class="scanner-frame"></div><div class="scanner-text">'+t('scanDemo')+'</div></div></div>';
-  dashShell('scanner',content);
+function tabScan(){
+  var c='<div class="tiles c3" style="margin-bottom:14px">'+[{i:'📷',l:t('scanB'),f:'simScan'},{i:'🍽️',l:t('scanM'),f:'simMenu'},{i:'🛒',l:t('shopM'),f:'simShop'}].map(function(b){return '<div class="tile" onclick="'+b.f+'()" style="flex-direction:column;text-align:center;padding:14px 7px"><span style="font-size:22px;margin-bottom:5px">'+b.i+'</span><span class="tl" style="font-size:11px">'+b.l+'</span></div>';}).join('')+'</div>';
+  c+='<div id="scanRes"></div>';
+  c+='<div class="scanner-box" onclick="simScan()"><div><div class="scan-frame"><div class="scan-line"></div></div><div class="scan-text">'+t('scanDemo')+'</div></div></div>';
+  dashShell('scanner',c);
 }
 
-function simulateScan(){
-  var foods=[{name:'Oat milk 250ml',kcal:45,protein:1.5,carbs:6.5,fat:1.2,brand:'Oatly',fit:true},{name:'Protein Bar',kcal:210,protein:20,carbs:22,fat:7,brand:'Grenade',fit:true},{name:'Cola 330ml',kcal:139,protein:0,carbs:35,fat:0,brand:'Coca-Cola',fit:false},{name:'Greek Yoghurt 150g',kcal:88,protein:10,carbs:3.6,fat:3.8,brand:'Fage',fit:true}];
-  var food=foods[Math.floor(Math.random()*foods.length)];
-  document.getElementById('scannerResult').innerHTML='<div class="scan-result"><div class="scan-result-name">'+food.brand+' — '+food.name+'</div><div class="scan-result-macros">'+food.kcal+' kcal · '+food.protein+'g protein · '+food.carbs+'g carbs · '+food.fat+'g fat</div><div class="scan-fit '+(food.fit?'good':'bad')+'">'+(food.fit?'✓ Fits your plan today':'⚠ High in sugar/calories')+'</div><div style="margin-top:10px;display:flex;gap:8px"><button class="btn-secondary" style="flex:1;font-size:12px;padding:8px" onclick="logFood(\''+food.name+'\','+food.kcal+')">Log it</button><button class="btn-secondary" style="flex:1;font-size:12px;padding:8px" onclick="showRecipeSuggestion(\''+food.name+'\')">Find recipes →</button></div></div>';
+function simScan(){var foods=[{name:'Oat milk 250ml',kcal:45,p:1.5,c:6.5,f:1.2,brand:'Oatly',fit:true},{name:'Protein Bar 60g',kcal:210,p:20,c:22,f:7,brand:'Grenade',fit:true},{name:'Cola 330ml',kcal:139,p:0,c:35,f:0,brand:'Coca-Cola',fit:false},{name:'Greek Yoghurt 150g',kcal:88,p:10,c:3.6,f:3.8,brand:'Fage',fit:true}];var food=foods[Math.floor(Math.random()*foods.length)];var el=document.getElementById('scanRes');if(el)el.innerHTML='<div class="scan-result"><div class="sr-name">'+food.brand+' — '+food.name+'</div><div class="sr-macro">'+food.kcal+' kcal · '+food.p+'g protein · '+food.c+'g carbs · '+food.f+'g fat</div><div class="fit-badge '+(food.fit?'fit-good':'fit-bad')+'">'+(food.fit?'✓ Fits your plan':'⚠ High calories/sugar')+'</div><div style="margin-top:9px;display:flex;gap:7px"><button class="btn-next" style="flex:1;font-size:12px;padding:7px" onclick="logFood(\''+food.name+'\','+food.kcal+')">Log it</button><button class="btn-next" style="flex:1;font-size:12px;padding:7px;background:var(--accent-light);color:var(--accent)" onclick="recipeFromScan(\''+food.name+'\')">Find recipes →</button></div></div>';}
+
+function simMenu(){var el=document.getElementById('scanRes');if(el)el.innerHTML='<div class="ai-bubble"><div class="ai-lbl"><div class="ai-dot"></div>Menu Analysis</div><p><strong>Best choices for your goal tonight:</strong></p>'+[{r:1,n:'Grilled salmon',d:'~580 kcal · 45g protein · Best fit'},{r:2,n:'Chicken salad',d:'~420 kcal · 38g protein · Great choice'},{r:3,n:'Vegetable risotto',d:'~520 kcal · 12g protein · Good option'}].map(function(i){return '<div style="display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--border)"><div style="width:19px;height:19px;border-radius:50%;background:var(--accent);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center">'+i.r+'</div><div><div style="font-size:13px;font-weight:600">'+i.n+'</div><div style="font-size:11px;color:var(--ink-light)">'+i.d+'</div></div></div>';}).join('')+'</div>';}
+
+function simShop(){var el=document.getElementById('scanRes');if(el)el.innerHTML='<div class="ai-bubble"><div class="ai-lbl"><div class="ai-dot"></div>Live Shopping Mode</div><p>Scan any product in the store. I\'ll tell you if it fits your plan and suggest recipes you can complete with it.</p></div>';}
+
+async function recipeFromScan(ing){var el=document.getElementById('scanRes');if(el){el.innerHTML+='<div class="ai-bubble" style="margin-top:10px"><div class="ai-lbl"><div class="ai-dot"></div>Finding recipes...</div></div>';try{var res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:300,messages:[{role:'user',content:'Suggest 2 quick recipes using '+ing+' for goal:'+ud.goal+', cooking:'+ud.cook+'. JSON only: [{"name":"<n>","time":<min>,"kcal":<n>,"tip":"<tip>"},{"name":"<n>","time":<min>,"kcal":<n>,"tip":"<tip>"}]'}]})});var d=await res.json();var recipes=JSON.parse((d.content[0].text||'[]').replace(/```json|```/g,'').trim());el.querySelector('.ai-bubble:last-child').innerHTML='<div class="ai-lbl"><div class="ai-dot"></div>Recipes with '+ing+'</div>'+recipes.map(function(r){return '<div style="padding:6px 0;border-bottom:1px solid var(--border)"><div style="font-size:13px;font-weight:600">🍳 '+r.name+'</div><div style="font-size:11px;color:var(--ink-light)">'+r.kcal+' kcal · '+r.time+' min · '+r.tip+'</div></div>';}).join('');}catch(e){}}}
+
+function tabLog(){
+  var c='<div class="field"><label>'+t('qLog')+'</label><textarea id="li" placeholder="'+t('logP')+'" style="margin-bottom:7px"></textarea><button class="btn-next" style="width:100%;margin-bottom:14px" onclick="addLog()">'+t('logB')+'</button></div>';
+  if(foodLog.length){c+='<div class="sec-title">Today\'s Log</div>';c+=foodLog.map(function(e){return '<div class="log-entry"><span class="le-icon">'+e.emoji+'</span><div class="le-info"><div class="le-text">'+e.text+'</div><div class="le-time">'+e.time+'</div></div><span class="le-kcal">~'+e.kcal+' kcal</span></div>';}).join('');var tot=foodLog.reduce(function(a,e){return a+e.kcal;},0);c+='<div style="text-align:right;font-size:12px;font-weight:600;color:var(--accent);margin-top:7px">Total: ~'+tot+' kcal</div>';}
+  else c+='<div style="text-align:center;padding:20px;color:var(--ink-faint);font-size:13px">Nothing logged yet.<br>Be honest — even the beers count! 🍺</div>';
+  dashShell('log',c);
 }
 
-function scanMenuDemo(){
-  document.getElementById('scannerResult').innerHTML='<div class="ai-bubble"><div class="ai-bubble-label"><div class="ai-dot"></div>Menu Analysis</div><p><strong>Best choices for your goal tonight:</strong></p><div style="margin-top:8px">'+[{r:1,n:'Grilled salmon',d:'~580 kcal · 45g protein · Best fit'},{r:2,n:'Chicken salad',d:'~420 kcal · 38g protein · Great choice'},{r:3,n:'Vegetable risotto',d:'~520 kcal · 12g protein · Good option'}].map(function(i){return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)"><div style="width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center">'+i.r+'</div><div><div style="font-size:13px;font-weight:600">'+i.n+'</div><div style="font-size:11px;color:var(--ink-light)">'+i.d+'</div></div></div>';}).join('')+'</div></div>';
-}
-
-function shopMode(){
-  document.getElementById('scannerResult').innerHTML='<div class="ai-bubble"><div class="ai-bubble-label"><div class="ai-dot"></div>Live Shopping Mode</div><p>Scan any item in the store. I\'ll tell you if it fits your plan and suggest recipes you can complete with it.</p></div><div style="text-align:center;padding:16px;background:var(--bg);border-radius:12px;border:1px dashed var(--border)"><div style="font-size:32px;margin-bottom:8px">🛒</div><div style="font-size:13px;color:var(--ink-light)">Tap the scanner below to simulate scanning a product in-store</div></div>';
-}
-
-function showRecipeSuggestion(ingredient){
-  document.getElementById('scannerResult').innerHTML='<div class="ai-bubble"><div class="ai-bubble-label"><div class="ai-dot"></div>Recipe Suggestions</div><p><strong>Recipes using '+ingredient+':</strong></p><div style="margin-top:8px">'+['Quick stir-fry bowl (20 min)','Protein smoothie (5 min)','Overnight oats with '+ingredient+' (5 min prep)'].map(function(r){return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="font-size:13px">🍳 '+r+'</span><button class="btn-secondary" style="font-size:11px;padding:5px 10px">View</button></div>';}).join('')+'</div></div>';
-}
-
-function renderLog(){
-  var content='<div class="field"><label>'+t('quickLog')+'</label><textarea id="logInput" placeholder="'+t('logPlaceholder')+'" style="margin-bottom:8px"></textarea><button class="btn-next" style="width:100%" onclick="addLogEntry()">'+t('logBtn')+'</button></div>';
-  if(foodLog.length>0){
-    content+='<div class="dash-section-title" style="margin-top:16px">Today\'s Log</div>';
-    content+=foodLog.map(function(e,i){return '<div class="log-entry"><span class="log-entry-icon">'+e.emoji+'</span><div class="log-entry-info"><div class="log-entry-text">'+e.text+'</div><div class="log-entry-cal">'+e.time+'</div></div><span class="log-entry-kcal">~'+e.kcal+' kcal</span></div>';}).join('');
-    var total=foodLog.reduce(function(a,e){return a+e.kcal;},0);
-    content+='<div style="text-align:right;font-size:13px;font-weight:600;color:var(--accent);margin-top:8px">Total logged: ~'+total+' kcal</div>';
-  } else {
-    content+='<div style="text-align:center;padding:24px;color:var(--ink-faint);font-size:13px">Nothing logged yet today.<br>Be honest — even the beers count! 🍺</div>';
-  }
-  dashShell('log',content);
-}
-
-function addLogEntry(){
-  var input=document.getElementById('logInput').value;
-  if(!input.trim()) return;
-  var emojis={'beer':'🍺','bier':'🍺','wine':'🍷','coffee':'☕','kaffee':'☕','pizza':'🍕','burger':'🍔','salad':'🥗','water':'💧','wasser':'💧','snack':'🍿','chocolate':'🍫','schokolade':'🍫'};
-  var emoji='🍽️';
-  var lwr=input.toLowerCase();
-  for(var k in emojis){if(lwr.includes(k)){emoji=emojis[k];break;}}
-  var kcal=Math.floor(Math.random()*300)+100;
-  foodLog.push({text:input,emoji:emoji,kcal:kcal,time:new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})});
-  renderLog();
-}
+function addLog(){var inp=document.getElementById('li');if(!inp||!inp.value.trim())return;var v=inp.value;var emojis={beer:'🍺',bier:'🍺',wine:'🍷',wein:'🍷',coffee:'☕',kaffee:'☕',pizza:'🍕',burger:'🍔',salad:'🥗',water:'💧',wasser:'💧',chocolate:'🍫',schokolade:'🍫',chips:'🍟',cookie:'🍪'};var emoji='🍽️';var lw=v.toLowerCase();Object.keys(emojis).forEach(function(k){if(lw.includes(k))emoji=emojis[k];});foodLog.push({text:v,emoji:emoji,kcal:Math.floor(Math.random()*250)+80,time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})});tabLog();}
 
 function logFood(name,kcal){foodLog.push({text:name,emoji:'📦',kcal:kcal,time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})});}
 
-function renderRecipes(){
-  var content='<div class="ai-bubble" style="margin-bottom:16px"><div class="ai-bubble-label"><div class="ai-dot"></div>'+t('recipeBuilder')+'</div><p>Tell me what you\'re in the mood for and I\'ll build a recipe that fits your macros and taste.</p></div>';
-  content+='<div class="field"><label>What are you in the mood for?</label><input id="moodInput" placeholder="e.g. Mexican, something with chicken, quick pasta..."></div>';
-  content+='<button class="btn-next" style="width:100%;margin-bottom:16px" onclick="generateMoodRecipe()">'+t('generateRecipe')+'</button>';
-  content+='<div id="recipeResult"></div>';
-  content+='<div class="dash-section-title" style="margin-top:4px">Quick Recipe Builder</div>';
-  content+='<div id="ingredients">';
-  content+='<div class="ingredient-row"><input class="ingredient-name" placeholder="'+t('ingredient')+'"><input class="qty" type="number" placeholder="'+t('qty')+'"><input class="unit" placeholder="'+t('unit')+'"><button class="remove-btn" onclick="removeIngredient(this)">×</button></div>';
-  content+='</div>';
-  content+='<button class="btn-secondary" style="width:100%;margin-top:8px;margin-bottom:12px" onclick="addIngredient()">'+t('addIngredient')+'</button>';
-  content+='<button class="btn-next" style="width:100%" onclick="buildRecipe()">🍳 Build Recipe</button>';
-  content+='<div id="builtRecipe" style="margin-top:14px"></div>';
-  dashShell('recipes',content);
+function tabRec2(){
+  var c='<div class="ai-bubble" style="margin-bottom:14px"><div class="ai-lbl"><div class="ai-dot"></div>'+t('recB')+'</div><p>Tell me what you\'re craving and I\'ll build a recipe that fits your macros.</p></div>';
+  c+='<div class="field"><label>What are you in the mood for?</label><input id="mood" placeholder="e.g. Mexican, chicken pasta, quick breakfast..."></div>';
+  c+='<button class="btn-next" style="width:100%;margin-bottom:14px" onclick="genMoodRec()">'+t('genRec')+'</button>';
+  c+='<div id="recRes"></div>';
+  dashShell('recipes',c);
 }
 
-function addIngredient(){var row=document.createElement('div');row.className='ingredient-row';row.innerHTML='<input class="ingredient-name" placeholder="'+t('ingredient')+'"><input class="qty" type="number" placeholder="'+t('qty')+'"><input class="unit" placeholder="'+t('unit')+'"><button class="remove-btn" onclick="removeIngredient(this)">×</button>';document.getElementById('ingredients').appendChild(row);}
-function removeIngredient(btn){if(document.querySelectorAll('.ingredient-row').length>1)btn.parentElement.remove();}
-
-async function generateMoodRecipe(){
-  var mood=document.getElementById('moodInput').value;
-  if(!mood.trim()){alert('Please enter a mood or craving.');return;}
-  var result=document.getElementById('recipeResult');
-  result.innerHTML='<div class="ai-bubble"><div class="ai-bubble-label"><div class="ai-dot"></div>Generating...</div><p>Creating a recipe for "'+mood+'" that fits your macros...</p></div>';
+async function genMoodRec(){
+  var mood=document.getElementById('mood')?.value;if(!mood?.trim()){alert('Enter a mood or craving.');return;}
+  var el=document.getElementById('recRes');if(el)el.innerHTML='<div class="ai-bubble"><div class="ai-lbl"><div class="ai-dot"></div>Generating...</div><p>Building a "'+mood+'" recipe for your macros...</p></div>';
   try{
-    var p=aiPlan||{calories:2000,protein:150};
-    var res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,messages:[{role:'user',content:'Create a recipe matching: "'+mood+'" for someone with goal: '+ud.goal+', needs: '+p.protein+'g protein, '+p.calories+' kcal/day, allergies: '+(ud.allergies||[]).join(',')+', cooking level: '+ud.cook+'. Respond ONLY with JSON: {"name":"<n>","time":<min>,"kcal":<n>,"protein":<g>,"ingredients":["<i1>","<i2>","<i3>","<i4>","<i5>"],"steps":["<s1>","<s2>","<s3>"]}'}]})});
+    var p=plan||fallbackPlan();
+    var res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,messages:[{role:'user',content:'Create a recipe matching: "'+mood+'" for goal:'+ud.goal+', ~'+Math.round(p.calories/3)+' kcal, ~'+Math.round(p.protein/3)+'g protein, allergies:'+(ud.al||[]).join(',')+', cooking:'+ud.cook+'. JSON only: {"name":"<n>","time":<min>,"kcal":<n>,"protein":<g>,"ingredients":["<i1>","<i2>","<i3>","<i4>","<i5>"],"steps":["<s1>","<s2>","<s3>"]}'}]})});
     var d=await res.json();
-    var recipe=JSON.parse((d.content[0].text||'{}').replace(/```json|```/g,'').trim());
-    result.innerHTML='<div class="scan-result"><div class="scan-result-name">'+recipe.name+'</div><div class="scan-result-macros">'+recipe.kcal+' kcal · '+recipe.protein+'g protein · '+recipe.time+' min</div><div style="margin-top:10px"><strong style="font-size:12px">Ingredients:</strong>'+recipe.ingredients.map(function(i){return '<div style="font-size:12px;padding:3px 0">• '+i+'</div>';}).join('')+'</div><div style="margin-top:8px"><strong style="font-size:12px">Steps:</strong>'+recipe.steps.map(function(s,i){return '<div style="display:flex;gap:8px;padding:4px 0;font-size:12px"><span style="color:var(--accent);font-weight:700;flex-shrink:0">'+(i+1)+'.</span><span>'+s+'</span></div>';}).join('')+'</div></div>';
-  }catch(e){result.innerHTML='<div class="error-box" style="display:block">Could not generate recipe. Try again.</div>';}
-}
-
-async function buildRecipe(){
-  var ingredients=Array.from(document.querySelectorAll('.ingredient-row')).map(function(r){var n=r.querySelector('.ingredient-name').value;var q=r.querySelector('.qty').value;var u=r.querySelector('.unit').value;return n?q+' '+u+' '+n:'';}).filter(Boolean);
-  if(!ingredients.length){alert('Please add at least one ingredient.');return;}
-  var result=document.getElementById('builtRecipe');
-  result.innerHTML='<div class="loading-wrap" style="padding:24px"><div class="spinner"></div><p style="font-size:13px;color:var(--ink-light)">Building recipe...</p></div>';
-  try{
-    var res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:500,messages:[{role:'user',content:'Create a recipe using: '+ingredients.join(', ')+'. User goal: '+ud.goal+', cooking level: '+ud.cook+'. Respond ONLY with JSON: {"name":"<n>","time":<min>,"kcal":<n>,"protein":<g>,"steps":["<s1>","<s2>","<s3>"]}'}]})});
-    var d=await res.json();
-    var recipe=JSON.parse((d.content[0].text||'{}').replace(/```json|```/g,'').trim());
-    result.innerHTML='<div class="plan-revealed"><h4>🍳 '+recipe.name+'</h4><div style="font-size:12px;color:var(--accent);margin-bottom:10px">'+recipe.kcal+' kcal · '+recipe.protein+'g protein · '+recipe.time+' min</div>'+recipe.steps.map(function(s,i){return '<div class="recipe-step"><div class="recipe-step-num">'+(i+1)+'</div><div class="recipe-step-text">'+s+'</div></div>';}).join('')+'</div>';
-  }catch(e){result.innerHTML='<div class="error-box" style="display:block">Could not build recipe. Try again.</div>';}
-}
-
-function showMoodMeal(){
-  var cuisines=['🇲🇽 Mexican','🍝 Italian','🍜 Asian','🥗 Mediterranean','🍔 American','🍛 Indian','🇯🇵 Japanese'];
-  var html='<div style="padding:16px;background:var(--bg);border-radius:12px;border:1px solid var(--border);margin-top:12px"><p style="font-size:13px;font-weight:600;margin-bottom:10px">What are you in the mood for?</p><div class="chips">'+cuisines.map(function(c){return '<div class="chip cuisine-chip" onclick="selectMoodCuisine(\''+c+'\')">'+c+'</div>';}).join('')+'</div></div>';
-  var dashBody=document.getElementById('dashBody');
-  if(dashBody){var extra=document.createElement('div');extra.innerHTML=html;dashBody.appendChild(extra);}
-}
-
-async function selectMoodCuisine(cuisine){
-  var p=aiPlan||{calories:2000,protein:150};
-  var el=document.querySelector('[onclick="showMoodMeal()"]');
-  if(el)el.closest('.ai-bubble').innerHTML='<div class="ai-bubble-label"><div class="ai-dot"></div>PEAK AI</div><p>Building a '+cuisine+' meal that fits your macros today...</p>';
-  try{
-    var res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,messages:[{role:'user',content:'Suggest one '+cuisine+' recipe for: goal '+ud.goal+', needs ~'+Math.round(p.calories/3)+' kcal and ~'+Math.round(p.protein/3)+'g protein for this meal, allergies: '+(ud.allergies||[]).join(',')+', cooking: '+ud.cook+'. Respond ONLY with JSON: {"name":"<n>","kcal":<n>,"protein":<g>,"macro":"<summary>","time":<min>,"tip":"<one cooking tip>"}'}]})});
-    var d=await res.json();
-    var meal=JSON.parse((d.content[0].text||'{}').replace(/```json|```/g,'').trim());
-    var el2=document.querySelector('[onclick="showMoodMeal()"]');
-    if(el2)el2.closest('.ai-bubble').innerHTML='<div class="ai-bubble-label"><div class="ai-dot"></div>PEAK AI</div><p><strong>'+meal.name+'</strong> — '+meal.kcal+' kcal · '+meal.macro+'<br><span style="font-size:12px;color:var(--ink-light)">'+meal.tip+'</span></p>';
-  }catch(e){}
+    var rec=JSON.parse((d.content[0].text||'{}').replace(/```json|```/g,'').trim());
+    if(el)el.innerHTML='<div class="scan-result"><div class="sr-name">'+rec.name+'</div><div class="sr-macro">'+rec.kcal+' kcal · '+rec.protein+'g protein · '+rec.time+' min</div><div style="margin-top:8px"><strong style="font-size:11px">Ingredients:</strong>'+rec.ingredients.map(function(i){return '<div style="font-size:12px;padding:2px 0">• '+i+'</div>';}).join('')+'</div><div style="margin-top:7px"><strong style="font-size:11px">Steps:</strong>'+rec.steps.map(function(s,i){return '<div style="display:flex;gap:7px;padding:3px 0;font-size:12px"><span style="color:var(--accent);font-weight:700;flex-shrink:0">'+(i+1)+'.</span><span>'+s+'</span></div>';}).join('')+'</div></div>';
+  }catch(e){if(el)el.innerHTML='<div class="err-box" style="display:block">Could not generate recipe. Try again.</div>';}
 }
 
 // ── RATINGS ───────────────────────────────────────────────────────────
-function rateMeal(idx,score){
+function rateMeal(idx,score,el){
   mealRatings[idx]=score;
-  var stars=document.querySelectorAll('.rating-row')[idx];
-  if(stars){stars.querySelectorAll('.star').forEach(function(s,i){s.style.opacity=i<score?1:0.3;});}
-  if(score<=1&&aiPlan){setTimeout(function(){var bubble=document.createElement('div');bubble.className='ai-bubble';bubble.style.marginTop='8px';bubble.innerHTML='<div class="ai-bubble-label"><div class="ai-dot"></div>PEAK AI</div><p>Noted — I\'ve removed this from future suggestions and found alternatives that might work better for you.</p>';var body=document.getElementById('dashBody');if(body)body.appendChild(bubble);},300);}
+  var row=el.closest('.rating-row');
+  if(row)row.querySelectorAll('.star').forEach(function(s,i){s.style.opacity=i<score?1:0.3;});
+  if(score<=1){setTimeout(function(){var b=document.createElement('div');b.className='ai-bubble';b.style.marginTop='8px';b.innerHTML='<div class="ai-lbl"><div class="ai-dot"></div>PEAK AI</div><p>Noted — I\'ve removed this from future suggestions and found better alternatives.</p>';var db=document.getElementById('db');if(db)db.appendChild(b);},300);}
+  if(score>=4){setTimeout(function(){var b=document.createElement('div');b.className='ai-bubble';b.style.marginTop='8px';b.innerHTML='<div class="ai-lbl"><div class="ai-dot"></div>PEAK AI</div><p>Great choice! Added to your favourites — I\'ll include more like this in your plan.</p>';var db=document.getElementById('db');if(db)db.appendChild(b);},300);}
 }
 
-function rateWorkout(cat,score){
-  workoutRatings[cat]=score;
-  document.querySelectorAll('[onclick^="rateWorkout(\''+cat+'\'"]').forEach(function(s,i){s.style.opacity=i<score?1:0.3;});
-  if(score>=4&&cat==='Effort'){setTimeout(function(){alert('Great effort! I\'ll increase the intensity next session. 💪');},200);}
-  if(score<=2&&cat==='Effort'){setTimeout(function(){alert('Noted — I\'ll adjust the difficulty down for your next session.');},200);}
+function rateWk(cat,score,el){
+  wkRatings[cat]=score;
+  var row=el.parentElement;if(row)row.querySelectorAll('span').forEach(function(s,i){s.style.opacity=i<score?1:0.3;});
+  if(score>=4&&cat==='Effort')setTimeout(function(){alert('Great effort! I\'ll increase intensity next session. 💪');},200);
+  if(score<=2&&cat==='Effort')setTimeout(function(){alert('Noted — I\'ll adjust difficulty for your next session.');},200);
 }
 
 // ── LOGIN ─────────────────────────────────────────────────────────────
-function showLoginScreen(){
-  document.getElementById('progressFill').style.width='0%';
-  document.getElementById('stepLabel').textContent='Login';
-  card('<div class="card-header"><div class="step-chip">✦ '+t('loginTitle')+' <em>'+t('loginEm')+'</em></div><h2 class="card-title">'+t('loginTitle')+' <em>'+t('loginEm')+'</em></h2><p class="card-sub">'+t('loginSub')+'</p></div><div class="card-body"><div id="errLogin" class="error-box"></div><button class="btn-google"><svg width="16" height="16" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>'+t('google')+'</button><div class="divider">or</div><div class="field"><label>'+t('email')+'</label><input type="email" id="loginEmail" placeholder="alex@example.com"></div><div class="field"><label>'+t('password')+'</label><input type="password" id="loginPass" placeholder="••••••••"></div></div><div class="card-footer"><button class="btn-next" onclick="loginDemo()" style="flex:1">'+t('loginBtn')+' →</button></div><div style="padding:0 44px 24px;text-align:center;font-size:12px;color:var(--ink-light)">'+t('noAccount')+' <span style="color:var(--accent);cursor:pointer;font-weight:600" onclick="step=1;render()">'+t('startFree')+'</span></div>');
+function showLogin(){
+  document.getElementById('pbar').style.width='0%';
+  document.getElementById('slbl').textContent='Login';
+  card('<div class="card-header"><div class="step-chip">✦ '+t('loginT')+' '+t('loginE')+'</div><h2 class="card-title">'+t('loginT')+' <em>'+t('loginE')+'</em></h2><p class="card-sub">'+t('loginS')+'</p></div><div class="card-body"><div id="errL" class="err-box"></div><button class="btn-google"><svg width="15" height="15" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>'+t('google')+'</button><div class="divider">or</div><div class="field"><label>'+t('emailF')+'</label><input type="email" id="lem" placeholder="alex@example.com"></div><div class="field"><label>'+t('passF')+'</label><input type="password" id="lpw" placeholder="••••••••"></div></div><div class="card-footer"><button class="btn-next" onclick="doLogin()" style="flex:1">'+t('loginB')+' →</button></div><div style="padding:0 40px 22px;text-align:center;font-size:12px;color:var(--ink-light)">'+t('noAcc')+' <span style="color:var(--accent);cursor:pointer;font-weight:600" onclick="step=1;render()">'+t('startF')+'</span></div>');
 }
 
-function loginDemo(){
-  var email=document.getElementById('loginEmail').value;
-  if(!email){showErr('errLogin','Please enter your email.');return;}
-  ud.email=email;
-  if(aiPlan){showDashboard(aiPlan);}else{
-    fetchAIPlan().then(function(){showDashboard(aiPlan);});
-  }
+function doLogin(){
+  var em=document.getElementById('lem').value;
+  if(!em){showErr('errL','Please enter your email.');return;}
+  ud.email=em;
+  loadUdFromSession();
+  try{var sp=sessionStorage.getItem('peak_plan');if(sp)plan=JSON.parse(sp);}catch(e){}
+  if(plan){showDash(plan);}
+  else{fetchPlan().then(function(){showDash(plan);});}
 }
 
-function logout(){step=1;render();}
+function logout(){
+  plan=null;ud={};foodLog=[];mealRatings={};wkRatings={};
+  try{sessionStorage.removeItem('peak_ud');sessionStorage.removeItem('peak_plan');}catch(e){}
+  step=1;render();
+}
+
 function showErr(id,msg){var el=document.getElementById(id);if(el){el.textContent='❌ '+msg;el.style.display='block';}}
 
 // ── HELPERS ───────────────────────────────────────────────────────────
-function sel(el,key,val){el.closest('.tiles').querySelectorAll('.tile').forEach(function(t){t.classList.remove('selected');});el.classList.add('selected');ud[key]=val;}
-function selSport(el,n){el.closest('.tiles').querySelectorAll('.sport-tile').forEach(function(t){t.classList.remove('selected');});el.classList.add('selected');ud.sport=n;}
-function selGoal(el,title){document.querySelectorAll('.goal-card').forEach(function(c){c.classList.remove('selected');});el.classList.add('selected');ud.goal=title;}
-function toggleChip(el,key,val){if(!ud[key])ud[key]=[];if(ud[key].includes(val)){ud[key]=ud[key].filter(function(v){return v!==val;});el.classList.remove('selected');}else{ud[key].push(val);el.classList.add('selected');}}
+function sel(el,key,val){el.closest('.tiles').querySelectorAll('.tile').forEach(function(t){t.classList.remove('sel');});el.classList.add('sel');ud[key]=val;}
+function selSport(el,n){el.closest('.tiles').querySelectorAll('.sport-tile').forEach(function(t){t.classList.remove('sel');});el.classList.add('sel');ud.sport=n;}
+function selGoal(el,k){document.querySelectorAll('.goal-card').forEach(function(c){c.classList.remove('sel');});el.classList.add('sel');ud.goal=t(k);}
+function toggleChip(el,key,val){if(!ud[key])ud[key]=[];if(ud[key].includes(val)){ud[key]=ud[key].filter(function(v){return v!==val;});el.classList.remove('sel');}else{ud[key].push(val);el.classList.add('sel');}}
 
-if(window.location.search.includes('session_id')){step=8;}
+// ── INIT ──────────────────────────────────────────────────────────────
+// After Stripe redirect — restore data and show dashboard
+if(window.location.search.includes('session_id')){
+  loadUdFromSession();
+  try{var sp=sessionStorage.getItem('peak_plan');if(sp)plan=JSON.parse(sp);}catch(e){}
+  step=8;
+}
 render();
 </script>
 <link rel="manifest" href="/manifest.json">
