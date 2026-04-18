@@ -254,14 +254,23 @@ var T={en:{
 function t(k){return T[lang][k]||T.en[k]||k;}
 
 // ── HELPERS ───────────────────────────────────────────────────────────
-function toggleLang(){lang=lang==='en'?'de':'en';document.getElementById('lb').textContent=lang==='en'?'DE':'EN';rerenderCurrent();}
+function toggleLang(){
+  lang=lang==='en'?'de':'en';
+  document.getElementById('lb').textContent=lang==='en'?'DE':'EN';
+  rerenderCurrent();
+}
 function rerenderCurrent(){
-  var db=document.getElementById('db');
+  // Check if we're in dashboard
   var nav=document.querySelector('.ntab.act');
-  if(db&&nav){
+  if(nav){
     var tabKey=nav.getAttribute('data-tab');
-    if(tabKey)showTab(tabKey);
-  } else if(step>=1&&step<=8){
+    if(tabKey){showTab(tabKey);return;}
+  }
+  // Check if we're in login screen
+  var loginBtn=document.getElementById('lem');
+  if(loginBtn){showLogin();return;}
+  // Check if we're in onboarding
+  if(step>=1&&step<=8){
     ({1:s1,2:s2,3:s3,4:s4,5:s5,6:s6,7:s7,8:s8})[step]();
   }
 }
@@ -605,12 +614,18 @@ function doLogin(){
   loadSession();
   ud.email=em;
   if(!ud.name)ud.name=em.split('@')[0];
-  if(!plan&&ud.sport){
-    showLoad();
-  } else if(plan){
+  // Always show dashboard after login — generate plan if needed
+  if(plan){
     showDash();
+  } else if(ud.sport&&ud.goal){
+    // Has onboarding data — generate plan then show dashboard
+    document.getElementById('pb').style.width='100%';
+    document.getElementById('sl').textContent='Building plan...';
+    card('<div class="lw"><div class="spin"></div><div class="lt">Building your plan...</div></div>');
+    fetchPlan().then(function(){showDash();});
   } else {
-    step=1;render();
+    // No data at all — show dashboard with fallback plan
+    showDash();
   }
 }
 function logout(){plan=null;ud={name:'',age:'',gender:'',weight:'',dweight:'',height:'',sleep:'',job:'',commute:'',stress:'5',sport:'',level:'',sessions:'',dur:'',equip:'',al:[],di:[],cu:[],cook:'',budget:'',goal:''};flog=[];mrat={};wrat={};try{sessionStorage.clear();}catch(e){}step=1;render();}
