@@ -4,16 +4,38 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PEAK — by MJ Performance</title>
+<script>
+// Theme init — runs before CSS to prevent flash of wrong theme
+(function(){
+  try{
+    var saved=localStorage.getItem('peak-theme');
+    var t=saved||(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');
+    document.documentElement.setAttribute('data-theme',t);
+  }catch(e){document.documentElement.setAttribute('data-theme','dark');}
+})();
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
+/* ── DARK THEME (default) ── */
+:root,
+:root[data-theme="dark"]{
   --bg:#0E0E0E;--s1:#161616;--s2:#1E1E1E;--s3:#282828;
   --white:#FFF;--ink:#FFF;--ink2:#CCC;--dim:#888;--faint:#444;
   --red:#E8001A;--rdk:#A50013;--rbg:#1C0005;--rbd:#3D000D;
   --border:#2C2C2C;--b2:#383838;
   --cbg:#1A1A1A;--ibg:#212121;--ibd:#333;
 }
+/* ── LIGHT THEME ── */
+:root[data-theme="light"]{
+  --bg:#F5F5F5;--s1:#FFFFFF;--s2:#FAFAFA;--s3:#EEEEEE;
+  --white:#0E0E0E;--ink:#0E0E0E;--ink2:#333333;--dim:#666666;--faint:#AAAAAA;
+  --red:#E8001A;--rdk:#A50013;--rbg:#FEECEE;--rbd:#F5C4C9;
+  --border:#E0E0E0;--b2:#D0D0D0;
+  --cbg:#FFFFFF;--ibg:#F7F7F7;--ibd:#DDDDDD;
+}
+/* Smooth transition when toggling */
+html,body,.topbar,.card,.tile,input,textarea,button{transition:background-color .25s ease,color .25s ease,border-color .25s ease}
 html,body{height:100%;background:var(--bg);font-family:'Barlow',sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
 .topbar{display:flex;align-items:center;gap:12px;padding:0 22px;height:58px;background:var(--s1);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
 .logo{flex-shrink:0;cursor:pointer}.logo-n{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:23px;letter-spacing:5px;color:var(--white);display:block}.logo-l{height:2px;background:var(--red);margin:1px 0}.logo-b{font-size:7px;font-weight:700;letter-spacing:2.5px;color:var(--dim);text-transform:uppercase;display:block}
@@ -186,6 +208,7 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;hei
     <div class="pbw"><div class="pbt"><div class="pbf" id="pb" style="width:0%"></div></div></div>
     <div class="tr">
       <span class="slbl" id="sl">Step 1 of 8</span>
+      <button class="lbtn" onclick="toggleTheme()" id="tb" title="Toggle light/dark">DARK</button>
       <button class="lbtn" onclick="toggleLang()" id="lb">DE</button>
       <button class="loginbtn" onclick="showLogin()">Login</button>
     </div>
@@ -259,6 +282,21 @@ function toggleLang(){
   lang=lang==='en'?'de':'en';
   document.getElementById('lb').textContent=lang==='en'?'DE':'EN';
   rerenderCurrent();
+}
+function toggleTheme(){
+  var cur=document.documentElement.getAttribute('data-theme')||'dark';
+  var next=cur==='dark'?'light':'dark';
+  document.documentElement.setAttribute('data-theme',next);
+  try{localStorage.setItem('peak-theme',next);}catch(e){}
+  var btn=document.getElementById('tb');
+  if(btn)btn.textContent=next==='dark'?'DARK':'LIGHT';
+}
+function syncThemeButton(){
+  var btn=document.getElementById('tb');
+  if(btn){
+    var cur=document.documentElement.getAttribute('data-theme')||'dark';
+    btn.textContent=cur==='dark'?'DARK':'LIGHT';
+  }
 }
 function rerenderCurrent(){
   // Check if we're in dashboard
@@ -388,7 +426,7 @@ function tNu(p){
   var c='<div class="sg"><div class="stat"><div class="stl">'+t('dt')+'</div><div class="stv">'+p.calories+' kcal</div></div><div class="stat"><div class="stl">'+(de?'Protokolliert':'Logged')+'</div><div class="stv">'+lg+'</div></div><div class="stat"><div class="stl">'+(de?'Verbleibend':'Remaining')+'</div><div class="stv" style="color:var(--red)">'+rm+'</div></div><div class="stat"><div class="stl">'+t('pg')+'</div><div class="stv">'+p.protein+'g</div></div></div>';
   c+='<div class="mbw"><div class="mbl"><span>'+(de?'Eiweiß':'Protein')+'</span><span>'+p.protein+'g</span></div><div class="mb"><div class="mf" style="width:72%;background:var(--red)"></div></div></div>';
   c+='<div class="mbw"><div class="mbl"><span>'+(de?'Kohlenhydrate':'Carbs')+'</span><span>'+p.carbs+'g</span></div><div class="mb"><div class="mf" style="width:58%;background:#4A90D9"></div></div></div>';
-  c+='<div class="mbw"><div class="mbl"><span>'+(de?'Fette':'Fat')+'</span><span>'+p.fat+'g</span></div><div class="mb"><div class="mf" style="width:48%;background:#888"></div></div></div>';
+  c+='<div class="mbw"><div class="mbl"><span>'+(de?'Fette':'Fat')+'</span><span>'+p.fat+'g</span></div><div class="mb"><div class="mf" style="width:48%;background:var(--dim)"></div></div></div>';
   c+='<div class="dst">'+t('tm')+'</div>';
   c+=p.todayMeals.map(function(m,i){var r=mrat[i];return '<div class="mc" onclick="showMealDetail('+i+')"><span class="me">'+m.emoji+'</span><div class="mi"><div class="mn">'+m.name+'</div><div class="mm">'+m.time+' · '+m.macro+'</div>'+(!r?'<div class="rrow" onclick="event.stopPropagation()">'+[1,2,3,4,5].map(function(s){return '<span class="star" onclick="rateMeal('+i+','+s+',this)">⭐</span>';}).join('')+'</div>':'<div style="font-size:10px;color:var(--red);margin-top:3px">'+(de?'BEWERTET':'RATED')+' '+r+'/5 ✓</div>')+'</div><span class="mk">'+m.kcal+' kcal</span><span style="color:var(--faint);font-size:10px;margin-left:5px">→</span></div>';}).join('');
   c+='<div class="aib" style="margin-top:11px"><div class="ailbl"><div class="aidot"></div>PEAK AI</div><p>'+(de?'Nicht nach Plan? ':'Not feeling the plan? ')+'<span style="color:var(--red);cursor:pointer;font-weight:700" onclick="showMoodPicker()">'+(de?'Küche wählen →':'Pick a cuisine →')+'</span></p></div><div id="moodA"></div>';
@@ -648,6 +686,7 @@ function logout(){plan=null;ud={name:'',age:'',gender:'',weight:'',dweight:'',he
 // ── INIT ──────────────────────────────────────────────────────────────
 if(window.location.search.includes('session_id')){loadSession();step=8;}
 render();
+syncThemeButton();
 </script>
 <link rel="manifest" href="/manifest.json">
 <script>if('serviceWorker' in navigator)navigator.serviceWorker.register('/service-worker.js');</script>
