@@ -55,6 +55,31 @@ html,body{height:100%;background:var(--bg);font-family:'Barlow',sans-serif;color
 .lbtn:hover{border-color:var(--red);color:var(--red)}
 .loginbtn{font-size:11px;font-weight:900;cursor:pointer;padding:6px 13px;border:none;background:var(--red);color:var(--white);font-family:'Barlow Condensed',sans-serif;letter-spacing:3px;text-transform:uppercase}
 .loginbtn:hover{background:var(--rdk)}
+.profbtn{width:32px;height:32px;border:1.5px solid var(--red);background:var(--bg);color:var(--red);font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:900;letter-spacing:.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:all .15s}
+.profbtn:hover{background:var(--red);color:var(--white)}
+/* Profile screen sections */
+.prf-sec{margin-bottom:18px}
+.prf-sec-t{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:11px;color:var(--red);letter-spacing:2.5px;text-transform:uppercase;padding-bottom:6px;border-bottom:1px solid var(--border);margin-bottom:10px}
+.prf-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.prf-row:last-child{border-bottom:none}
+.prf-lbl{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;font-weight:600}
+.prf-val{font-size:13px;color:var(--white);font-weight:600;max-width:60%;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prf-edit{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.prf-edit input,.prf-edit select,.prf-edit textarea{background:var(--s2);border:1px solid var(--border);color:var(--white);padding:8px 10px;font-family:inherit;font-size:13px;width:100%}
+.prf-edit-btns{display:flex;gap:6px;margin-top:8px}
+.prf-edit-btns button{flex:1;padding:9px;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:11px;letter-spacing:2px;cursor:pointer;border:none;text-transform:uppercase}
+.prf-save{background:var(--red);color:var(--white)}
+.prf-save:hover{background:var(--rdk)}
+.prf-cancel{background:var(--s3);color:var(--dim);border:1px solid var(--border)}
+.prf-edit-btn{background:none;border:none;color:var(--red);font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;padding:4px 8px;border:1px solid transparent}
+.prf-edit-btn:hover{border-color:var(--red)}
+.prf-chips{display:flex;flex-wrap:wrap;gap:5px;max-width:60%;justify-content:flex-end}
+.prf-chip{font-size:10px;padding:3px 8px;background:var(--s2);border:1px solid var(--border);color:var(--ink2)}
+.prf-logout{width:100%;background:var(--s2);color:var(--red);border:1px solid var(--red);padding:13px;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:13px;letter-spacing:3px;text-transform:uppercase;cursor:pointer;margin-top:12px}
+.prf-logout:hover{background:var(--red);color:var(--white)}
+.prf-regen{width:100%;background:var(--red);color:var(--white);border:none;padding:13px;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:13px;letter-spacing:3px;text-transform:uppercase;cursor:pointer;margin-bottom:8px}
+.prf-regen:hover{background:var(--rdk)}
+.prf-regen-info{font-size:11px;color:var(--faint);margin-top:-4px;margin-bottom:14px;text-align:center}
 .main{display:flex;align-items:flex-start;justify-content:center;padding:26px 14px;min-height:calc(100vh - 58px)}
 .card{background:var(--cbg);border:1px solid var(--border);width:100%;max-width:600px;animation:up .32s ease}
 @keyframes up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
@@ -287,7 +312,8 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;hei
       <span class="slbl" id="sl">Step 1 of 8</span>
       <button class="lbtn" onclick="toggleTheme()" id="tb" title="Toggle light/dark">DARK</button>
       <button class="lbtn" onclick="toggleLang()" id="lb">DE</button>
-      <button class="loginbtn" onclick="showLogin()">Login</button>
+      <button class="loginbtn" id="loginBtn" onclick="showLogin()">Login</button>
+      <button class="profbtn" id="profBtn" onclick="showProfile()" style="display:none" title="Profile"><span id="profInit">U</span></button>
     </div>
   </header>
   <main class="main"><div class="card" id="mc"></div></main>
@@ -440,6 +466,28 @@ function toggleLang(){
   document.getElementById('lb').textContent=lang==='en'?'DE':'EN';
   rerenderCurrent();
 }
+// Show/hide Login button vs. Profile icon based on auth state.
+// Called after login, logout, and on every profile load.
+function updateAuthUI(){
+  var loginBtn=document.getElementById('loginBtn');
+  var profBtn=document.getElementById('profBtn');
+  var profInit=document.getElementById('profInit');
+  if(!loginBtn||!profBtn)return;
+  if(ud.email){
+    loginBtn.style.display='none';
+    profBtn.style.display='flex';
+    // Calculate initials: first letter of name + last name (or just first if single name)
+    var name=(ud.name||ud.email||'U').trim();
+    var parts=name.split(/\s+/);
+    var init=parts[0].charAt(0).toUpperCase();
+    if(parts.length>1)init+=parts[parts.length-1].charAt(0).toUpperCase();
+    if(profInit)profInit.textContent=init||'U';
+  }else{
+    loginBtn.style.display='';
+    profBtn.style.display='none';
+  }
+}
+
 function toggleTheme(){
   var cur=document.documentElement.getAttribute('data-theme')||'dark';
   var next=cur==='dark'?'light':'dark';
@@ -685,6 +733,7 @@ function s8(){
 function showDash(){
   document.getElementById('pb').style.width='100%';
   document.getElementById('sl').textContent=t('db');
+  updateAuthUI();
   showTab(dashTab);
 }
 
@@ -1148,12 +1197,31 @@ async function loadAuthProfile(){
     var json=await res.json();
     var p=json.profile||{};
 
-    // Hydrate app state from profile
+    // Hydrate app state from profile — all editable fields
     ud.email=p.email||'';
     ud.name=p.name||ud.name||'';
     if(p.goal)ud.goal=p.goal;
     if(p.sport)ud.sport=p.sport;
+    if(p.age!==undefined&&p.age!==null)ud.age=p.age;
+    if(p.gender)ud.gender=p.gender;
+    if(p.weight!==undefined&&p.weight!==null)ud.weight=p.weight;
+    if(p.dweight!==undefined&&p.dweight!==null)ud.dweight=p.dweight;
+    if(p.height!==undefined&&p.height!==null)ud.height=p.height;
+    if(p.sleep!==undefined&&p.sleep!==null)ud.sleep=p.sleep;
+    if(p.job)ud.job=p.job;
+    if(p.commute)ud.commute=p.commute;
+    if(p.stress!==undefined&&p.stress!==null)ud.stress=p.stress;
+    if(p.level)ud.level=p.level;
+    if(p.sessions!==undefined&&p.sessions!==null)ud.sessions=p.sessions;
+    if(p.dur!==undefined&&p.dur!==null)ud.dur=p.dur;
+    if(p.equip)ud.equip=p.equip;
+    if(Array.isArray(p.al))ud.al=p.al;
+    if(Array.isArray(p.di))ud.di=p.di;
+    if(Array.isArray(p.cu))ud.cu=p.cu;
+    if(p.cook)ud.cook=p.cook;
+    if(p.budget!==undefined&&p.budget!==null)ud.budget=p.budget;
     ud.tier=p.tier||'premium';
+    updateAuthUI();
 
     // Merge any saved onboarding data from sessionStorage (full profile)
     try{
@@ -1259,13 +1327,214 @@ window.sb.auth.onAuthStateChange(function(event,session){
   }
 });
 
+// ── PROFILE SCREEN ────────────────────────────────────────────────────
+var profEditing=null; // welches Feld gerade im Edit-Modus ist
+
+function profLabel(key){
+  var de=lang==='de';
+  var labels={
+    name:de?'Name':'Name',age:de?'Alter':'Age',gender:de?'Geschlecht':'Gender',
+    weight:de?'Gewicht':'Weight',dweight:de?'Wunschgewicht':'Target weight',
+    height:de?'Größe':'Height',sleep:de?'Schlaf/Nacht':'Sleep/night',
+    job:de?'Arbeit':'Job',commute:de?'Pendeln':'Commute',stress:de?'Stress':'Stress',
+    sport:de?'Sportart':'Sport',level:de?'Level':'Level',sessions:de?'Sessions/Woche':'Sessions/week',
+    dur:de?'Dauer':'Duration',equip:de?'Equipment':'Equipment',
+    al:de?'Allergien':'Allergies',di:de?'Diät':'Diet',cu:de?'Küchen':'Cuisines',
+    cook:de?'Kochlevel':'Cooking',budget:de?'Budget':'Budget',goal:de?'Ziel':'Goal',
+    email:de?'E-Mail':'Email'
+  };
+  return labels[key]||key;
+}
+
+function profValue(key){
+  var v=ud[key];
+  if(Array.isArray(v))return v.length?v.join(', '):'—';
+  if(v===''||v===null||v===undefined)return '—';
+  // Unit suffixes
+  if(key==='weight'||key==='dweight')return v+' kg';
+  if(key==='height')return v+' cm';
+  if(key==='sleep')return v+' h';
+  if(key==='dur')return v+' min';
+  if(key==='sessions')return v+(lang==='de'?'× / Woche':'× / week');
+  if(key==='stress')return v+'/10';
+  if(key==='budget')return v?'€'+v+(lang==='de'?' / Woche':' / week'):'—';
+  return String(v);
+}
+
+function showProfile(){
+  if(!ud.email){peakToast(lang==='de'?'Bitte erst einloggen.':'Please log in first.');return;}
+  var de=lang==='de';
+  var p=fp();
+  // Clear progress bar, set header label
+  document.getElementById('pb').style.width='0%';
+  document.getElementById('sl').textContent=de?'Profil':'Profile';
+
+  var tabs=[{k:'nutrition',l:t('nu')},{k:'fitness',l:t('fi')},{k:'recovery',l:t('re')},{k:'scanner',l:t('sc')},{k:'log',l:t('lg')},{k:'recipes',l:t('rp')}];
+
+  function row(key,editable){
+    editable=editable!==false;
+    if(profEditing===key){
+      // Edit mode
+      var current=ud[key];
+      var inputHtml='';
+      // Select fields
+      if(key==='gender'){
+        var opts=['Male','Female','Other'];
+        inputHtml='<select id="pe_'+key+'">'+opts.map(function(o){return '<option value="'+o+'"'+(current===o?' selected':'')+'>'+o+'</option>';}).join('')+'</select>';
+      }else if(key==='level'){
+        var opts2=[t('beg'),t('int'),t('adv')];
+        inputHtml='<select id="pe_'+key+'">'+opts2.map(function(o){return '<option value="'+o+'"'+(current===o?' selected':'')+'>'+o+'</option>';}).join('')+'</select>';
+      }else if(key==='job'){
+        var opts3=[t('desk'),t('phys'),t('mix'),t('shift')];
+        inputHtml='<select id="pe_'+key+'">'+opts3.map(function(o){return '<option value="'+o+'"'+(current===o?' selected':'')+'>'+o+'</option>';}).join('')+'</select>';
+      }else if(key==='commute'){
+        var opts4=[t('car'),t('bus'),t('walk'),t('bike')];
+        inputHtml='<select id="pe_'+key+'">'+opts4.map(function(o){return '<option value="'+o+'"'+(current===o?' selected':'')+'>'+o+'</option>';}).join('')+'</select>';
+      }else if(key==='cook'){
+        var opts5=[t('bc'),t('ic'),t('ac')];
+        inputHtml='<select id="pe_'+key+'">'+opts5.map(function(o){return '<option value="'+o+'"'+(current===o?' selected':'')+'>'+o+'</option>';}).join('')+'</select>';
+      }else if(key==='equip'){
+        var opts6=[t('gym'),t('hm'),t('out')];
+        inputHtml='<select id="pe_'+key+'">'+opts6.map(function(o){return '<option value="'+o+'"'+(current===o?' selected':'')+'>'+o+'</option>';}).join('')+'</select>';
+      }else if(key==='sport'){
+        var opts7=['Running','Weights','Football','Cycling','Swimming','Yoga','Martial Arts','Basketball','Tennis','Volleyball','Skiing','Golf','Gymnastics','Rowing','Equestrian','Other'];
+        inputHtml='<select id="pe_'+key+'">'+opts7.map(function(o){return '<option value="'+o+'"'+(current===o?' selected':'')+'>'+o+'</option>';}).join('')+'</select>';
+      }else if(key==='goal'){
+        var gkeys=['g1','g2','g3','g4','g5','g6'];
+        inputHtml='<select id="pe_'+key+'">'+gkeys.map(function(k){var v=t(k);return '<option value="'+v+'"'+(current===v?' selected':'')+'>'+v+'</option>';}).join('')+'</select>';
+      }else if(key==='al'||key==='di'||key==='cu'){
+        // Multi-value: allow comma-separated text input
+        var arr=Array.isArray(current)?current.join(', '):'';
+        inputHtml='<input type="text" id="pe_'+key+'" value="'+arr.replace(/"/g,'&quot;')+'" placeholder="'+(de?'z.B. Italian, Asian':'e.g. Italian, Asian')+'">';
+      }else if(['age','weight','dweight','height','sleep','sessions','dur','stress','budget'].indexOf(key)>=0){
+        inputHtml='<input type="number" id="pe_'+key+'" value="'+(current||'')+'">';
+      }else{
+        inputHtml='<input type="text" id="pe_'+key+'" value="'+(current||'').toString().replace(/"/g,'&quot;')+'">';
+      }
+      return '<div class="prf-row" style="flex-direction:column;align-items:stretch"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span class="prf-lbl">'+profLabel(key)+'</span></div><div class="prf-edit">'+inputHtml+'<div class="prf-edit-btns"><button class="prf-save" onclick="saveProfile(\''+key+'\')">'+(de?'Speichern':'Save')+'</button><button class="prf-cancel" onclick="cancelProfileEdit()">'+(de?'Abbrechen':'Cancel')+'</button></div></div></div>';
+    }
+    // Normal row
+    var val=profValue(key);
+    var valHtml;
+    if((key==='al'||key==='di'||key==='cu')&&Array.isArray(ud[key])&&ud[key].length){
+      valHtml='<div class="prf-chips">'+ud[key].map(function(v){return '<span class="prf-chip">'+v+'</span>';}).join('')+'</div>';
+    }else{
+      valHtml='<span class="prf-val">'+val+'</span>';
+    }
+    var editBtn=editable?'<button class="prf-edit-btn" onclick="editProfileField(\''+key+'\')">'+(de?'Ändern':'Edit')+'</button>':'';
+    return '<div class="prf-row"><span class="prf-lbl">'+profLabel(key)+'</span><div style="display:flex;align-items:center;gap:8px;max-width:65%">'+valHtml+editBtn+'</div></div>';
+  }
+
+  var c='';
+  // Persönliche Daten
+  c+='<div class="prf-sec"><div class="prf-sec-t">'+(de?'Persönliche Daten':'Personal')+'</div>';
+  c+=row('name')+row('age')+row('gender')+row('weight')+row('dweight')+row('height')+row('sleep');
+  c+='</div>';
+  // Training
+  c+='<div class="prf-sec"><div class="prf-sec-t">'+(de?'Training':'Training')+'</div>';
+  c+=row('sport')+row('level')+row('sessions')+row('dur')+row('equip')+row('goal');
+  c+='</div>';
+  // Ernährung
+  c+='<div class="prf-sec"><div class="prf-sec-t">'+(de?'Ernährung':'Nutrition')+'</div>';
+  c+=row('al')+row('di')+row('cu')+row('cook')+row('budget');
+  c+='</div>';
+  // Plan regen
+  c+='<div class="prf-sec"><div class="prf-sec-t">'+(de?'Plan':'Plan')+'</div>';
+  c+='<button class="prf-regen" onclick="regenPlan()">'+(de?'Plan neu generieren':'Rebuild plan')+'</button>';
+  c+='<div class="prf-regen-info">'+(de?'Aktualisiert Ernährungs- und Trainingsplan mit deinen neuen Daten.':'Updates meal + training plan with your updated data.')+'</div>';
+  c+='</div>';
+  // Account
+  c+='<div class="prf-sec"><div class="prf-sec-t">'+(de?'Konto':'Account')+'</div>';
+  c+=row('email',false);
+  c+='<div class="prf-row"><span class="prf-lbl">'+(de?'Abo':'Subscription')+'</span><button class="prf-edit-btn" onclick="doOpenPortal()">'+(de?'Verwalten →':'Manage →')+'</button></div>';
+  c+='<button class="prf-logout" onclick="logout()">'+(de?'Abmelden':'Sign out')+'</button>';
+  c+='</div>';
+
+  card('<div class="dhead"><div class="dgreet">'+(ud.name||'PROFILE').toUpperCase()+'</div><div class="dsub">'+(ud.email||'')+'</div></div>'+
+    '<div class="dnav">'+tabs.map(function(tb){return '<button class="ntab" data-tab="'+tb.k+'" onclick="showTab(\''+tb.k+'\')">'+tb.l+'</button>';}).join('')+'</div>'+
+    '<div class="dbody">'+c+'</div>');
+}
+
+function editProfileField(key){
+  profEditing=key;
+  showProfile();
+}
+
+function cancelProfileEdit(){
+  profEditing=null;
+  showProfile();
+}
+
+async function saveProfile(key){
+  var inp=document.getElementById('pe_'+key);
+  if(!inp)return;
+  var raw=inp.value;
+  var newVal;
+  if(['age','weight','dweight','height','sleep','sessions','dur','stress','budget'].indexOf(key)>=0){
+    newVal=raw===''?null:parseFloat(raw);
+    if(newVal!==null&&(isNaN(newVal)||newVal<0)){
+      peakToast(lang==='de'?'Bitte gültige Zahl eingeben.':'Please enter a valid number.');
+      return;
+    }
+  }else if(key==='al'||key==='di'||key==='cu'){
+    newVal=raw.split(',').map(function(s){return s.trim();}).filter(Boolean);
+  }else{
+    newVal=raw.trim();
+  }
+
+  try{
+    var sess=await window.sb.auth.getSession();
+    var tok=sess?.data?.session?.access_token;
+    if(!tok){peakToast(lang==='de'?'Nicht eingeloggt.':'Not logged in.');return;}
+    var body={};
+    body[key]=newVal;
+    var res=await fetch(BACKEND+'/user/update-profile',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+tok},
+      body:JSON.stringify(body)
+    });
+    if(!res.ok){
+      var err=await res.json().catch(function(){return {};});
+      throw new Error(err.error||'Save failed');
+    }
+    // Update local state
+    ud[key]=newVal;
+    saveSession();
+    if(key==='name')updateAuthUI(); // Initials might change
+    profEditing=null;
+    peakToast(lang==='de'?'Gespeichert ✓':'Saved ✓',{kind:'success',duration:1800});
+    showProfile();
+  }catch(e){
+    console.error('saveProfile error:',e);
+    peakToast(lang==='de'?'Fehler beim Speichern.':'Could not save.');
+  }
+}
+
+async function regenPlan(){
+  var de=lang==='de';
+  var ok=await peakConfirm(de?'Plan mit deinen aktuellen Daten neu generieren?':'Rebuild plan using your current data?');
+  if(!ok)return;
+  // Reset ratings, clear old plan
+  mrat={};wrat={};
+  peakToast(de?'Baue neuen Plan...':'Building new plan...',{duration:2500});
+  try{
+    await fetchPlan();
+    peakToast(de?'Neuer Plan bereit ✓':'New plan ready ✓',{kind:'success'});
+    showTab('nutrition');
+  }catch(e){
+    console.error('regenPlan error:',e);
+    peakToast(de?'Fehler. Bitte später erneut versuchen.':'Could not rebuild. Try again later.');
+  }
+}
+
 async function logout(){
   try{await window.sb.auth.signOut();}catch(e){}
   plan=null;ud={name:'',age:'',gender:'',weight:'',dweight:'',height:'',sleep:'',job:'',commute:'',stress:'5',sport:'',level:'',sessions:'',dur:'',equip:'',al:[],di:[],cu:[],cook:'',budget:'',goal:''};
   flog=[];mrat={};wrat={};
   try{sessionStorage.clear();}catch(e){}
-  step=1;
-  showLogin();
+  step=0;
+  updateAuthUI();
+  render();
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────
