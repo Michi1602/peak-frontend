@@ -143,6 +143,35 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;hei
 .cbx input[type=checkbox]{flex-shrink:0;width:16px;height:16px;margin-top:1px;cursor:pointer;accent-color:var(--red)}
 .cbx a{color:var(--red);text-decoration:underline}
 .cbx a:hover{color:var(--rdk)}
+/* Tier selection (Basic/Premium) */
+.tsec-t{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:14px;color:var(--white);letter-spacing:2px;text-transform:uppercase;text-align:center;margin:14px 0 10px}
+.tier-grid{display:flex;flex-direction:column;gap:10px;margin-bottom:10px}
+.tier{border:1.5px solid var(--ibd);background:var(--ibg);padding:14px;cursor:pointer;transition:all .15s;position:relative}
+.tier:hover,.tier.sel{border-color:var(--red);background:var(--rbg)}
+.tier.sel{border-width:2px;padding:13px}
+.tier-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.tier-name{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:18px;color:var(--white);letter-spacing:1.5px;text-transform:uppercase}
+.tier-prices{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0 10px}
+.tprice{border:1px solid var(--border);background:var(--s2);padding:8px;cursor:pointer;text-align:center;transition:all .1s;position:relative}
+.tprice:hover,.tprice.sel{border-color:var(--red)}
+.tprice.sel{background:var(--rbg)}
+.tpl{font-size:9px;color:var(--dim);font-weight:600;letter-spacing:1px;text-transform:uppercase}
+.tpa{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:18px;color:var(--white);margin-top:2px}
+.tpa span{font-size:10px;font-family:'Barlow',sans-serif;font-weight:500;color:var(--dim)}
+.tper{font-size:9px;color:var(--red);font-weight:700;margin-top:2px;letter-spacing:.5px}
+.tfl{list-style:none;margin-top:8px}
+.tfl li{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink2);padding:2px 0}
+.tfl li::before{content:'→';color:var(--red);font-weight:900;font-size:11px;flex-shrink:0}
+.tier-bdg{position:absolute;top:-8px;right:10px;background:var(--red);color:var(--white);font-size:8px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;padding:2px 8px}
+.tplus{font-size:10px;color:var(--red);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
+/* Upgrade-Overlay für Basic-User */
+.upg-box{background:var(--s2);border:1px solid var(--border);border-left:3px solid var(--red);padding:20px;margin:12px;text-align:center}
+.upg-lock{font-size:28px;margin-bottom:8px}
+.upg-lbl{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:11px;color:var(--red);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+.upg-t{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:20px;color:var(--white);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
+.upg-d{font-size:12px;color:var(--ink2);line-height:1.5;margin-bottom:14px}
+.upg-btn{background:var(--red);color:var(--white);border:none;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:900;padding:11px 22px;cursor:pointer;letter-spacing:2px;text-transform:uppercase}
+.upg-btn:hover{background:var(--rdk)}
 /* DASHBOARD */
 .dhead{background:var(--s1);border-bottom:2px solid var(--red);padding:18px 20px 14px}
 .dgreet{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:24px;letter-spacing:1px;text-transform:uppercase}
@@ -236,7 +265,7 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;hei
 const BACKEND='https://peak-backend-u52q.onrender.com';
 var step=1,TOTAL=8,lang='en';
 var ud={name:'',age:'',gender:'',weight:'',dweight:'',height:'',sleep:'',job:'',commute:'',stress:'5',sport:'',level:'',sessions:'',dur:'',equip:'',al:[],di:[],cu:[],cook:'',budget:'',goal:''};
-var plan=null,selPlan='annual',flog=[],mrat={},wrat={};
+var plan=null,selPlan='annual',selTier='premium',flog=[],mrat={},wrat={};
 var dashTab='nutrition';
 
 // ── TRANSLATIONS ──────────────────────────────────────────────────────
@@ -256,6 +285,11 @@ var T={en:{
   g5:'Recover better',g5d:'Sleep deeper, stress less',g6:'Daily habits',g6d:'Consistency in nutrition and movement',
   bld:'Build my plan',
   s6:'Plan Ready',ul:'UNLOCK YOUR FULL PLAN',uls:'Your meals, workouts and recovery are ready.',
+  tBas:'Basic',tPrem:'Premium',tCh:'CHOOSE YOUR PLAN',
+  tBasF:['Preset nutrition plan','Preset training plan','Preset recovery plan'],
+  tPremF:['Full AI meal plan + recipes','Sport-specific workout programme','Recovery guide + reminders','Live shopping mode + scanner','Real-time plan adaptation','Recipe builder','Cuisine mood picker'],
+  tEv:'Everything in Basic, plus:',perMo:'/mo',perYr:'/yr',inAnn:'in annual plan',
+  pxOnly:'Premium only',upgTxt:'Upgrade to Premium to unlock this feature.',upgBtn:'Upgrade to Premium',
   f7:'7 days free.',rem:'Cancel anytime.',mo:'Monthly',an:'Annual',sv:'Save 50% · €119/yr',pop:'Most popular',
   fs:['Full AI meal plan + recipes','Sport-specific workout programme','Recovery guide + reminders','Live shopping mode + scanner','Real-time plan adaptation','Recipe builder'],
   st:'START 7-DAY FREE TRIAL',sec:'Secure · No charge today · Cancel anytime',
@@ -283,6 +317,11 @@ var T={en:{
   g5:'Besser regenerieren',g5d:'Tiefer schlafen, weniger Stress',g6:'Tägliche Gewohnheiten',g6d:'Konsistenz in Ernährung und Bewegung',
   bld:'Meinen Plan erstellen',
   s6:'Plan bereit',ul:'DEINEN PLAN FREISCHALTEN',uls:'Deine Mahlzeiten, Workouts und Regeneration sind bereit.',
+  tBas:'Basic',tPrem:'Premium',tCh:'WÄHLE DEINEN PLAN',
+  tBasF:['Vorgegebener Ernährungsplan','Vorgegebener Trainingsplan','Vorgegebener Regenerationsplan'],
+  tPremF:['Vollständiger KI-Ernährungsplan + Rezepte','Sportspezifisches Trainingsprogramm','Regenerationsguide + Erinnerungen','Live-Shopping-Modus + Scanner','Echtzeit-Anpassung','Rezept-Builder','Cuisine Mood Picker'],
+  tEv:'Alles aus Basic, plus:',perMo:'/Mon',perYr:'/Jahr',inAnn:'im Jahresplan',
+  pxOnly:'Nur Premium',upgTxt:'Upgrade auf Premium, um diese Funktion freizuschalten.',upgBtn:'Auf Premium upgraden',
   f7:'7 Tage kostenlos.',rem:'Jederzeit kündbar.',mo:'Monatlich',an:'Jährlich',sv:'50% sparen · €119/Jahr',pop:'Am beliebtesten',
   fs:['Vollständiger KI-Ernährungsplan','Sportspezifisches Trainingsprogramm','Regenerationsguide + Erinnerungen','Live-Shopping-Modus + Scanner','Echtzeit-Anpassung','Rezept-Builder'],
   st:'7-TÄGIGE TESTPHASE STARTEN',sec:'Sicher · Heute keine Zahlung · Jederzeit kündbar',
@@ -392,11 +431,66 @@ async function fetchPlan(){
 function fp(){return plan||{calories:2000,protein:150,carbs:200,fat:70,timeline:'12 weeks',headline:'Your transformation starts now',todayMeals:[{emoji:'🍳',name:'Scrambled eggs',time:'Breakfast',kcal:420,macro:'28g protein'},{emoji:'🥗',name:'Chicken & quinoa',time:'Lunch',kcal:550,macro:'45g protein'},{emoji:'🍽️',name:'Salmon',time:'Dinner',kcal:580,macro:'40g protein'},{emoji:'🍎',name:'Greek yoghurt',time:'Snack',kcal:180,macro:'15g protein'}],workout:{title:'Performance Session',focus:'Building athletic base',desc:'Progressive training session.',duration:60,exercises:[{name:'Warm-up',detail:'10 min'},{name:'Main set',detail:'35 min'},{name:'Cool-down',detail:'10 min'}]},recovery:{tip:'Sleep 7-8hrs.',sleep:'Consistent bedtime.',hydration:'2.5L water.'},shopping:['Chicken','Salmon','Quinoa','Yoghurt','Vegetables'],milestones:['Week 3','Week 7','Week 12']};}
 
 // ── PAYWALL ───────────────────────────────────────────────────────────
-function s6(){setP(7,TOTAL);document.getElementById('sl').textContent='Almost there!';var p=fp();
-card('<div class="ch"><div class="chip">✦ '+t('s6')+'</div><div class="ct">PLAN READY, <em>'+(ud.name||'THERE').toUpperCase()+'</em></div><p class="cs">'+p.headline+'</p></div><div class="cb"><div class="pprev"><div class="ppb"><div class="prow"><span class="prl">'+t('dt')+'</span><span class="prv">'+p.calories+' kcal</span></div><div class="prow"><span class="prl">'+t('pg')+'</span><span class="prv">'+p.protein+'g</span></div><div class="prow"><span class="prl">'+t('tl')+'</span><span class="prv">'+p.timeline+'</span></div><div style="margin-top:6px">'+p.todayMeals.slice(0,3).map(function(m){return '<div style="background:var(--s3);padding:7px 10px;margin-top:4px"><div style="font-weight:700;font-size:11px">'+m.emoji+' '+m.name+'</div><div style="font-size:10px;color:var(--faint);margin-top:1px">'+m.time+' · '+m.kcal+' kcal</div></div>';}).join('')+'</div></div><div class="pwov"><div style="font-size:22px;margin-bottom:7px">🔒</div><div class="pwt">'+t('ul')+'</div><div class="pws">'+t('uls')+'<br>'+t('f7')+' '+t('rem')+'</div><div class="pg"><div class="pc '+(selPlan==='monthly'?'sel':'')+'" onclick="sp2(\'monthly\',this)"><div class="pp">'+t('mo')+'</div><div class="pa">€19<span>.99/mo</span></div><div class="ps"> </div></div><div class="pc '+(selPlan==='annual'?'sel':'')+'" onclick="sp2(\'annual\',this)"><div class="popbdg">'+t('pop')+'</div><div class="pp">'+t('an')+'</div><div class="pa">€9<span>.99/mo</span></div><div class="ps">'+t('sv')+'</div></div></div><ul class="flist">'+t('fs').map(function(f){return '<li>'+f+'</li>';}).join('')+'</ul><button class="bpay" onclick="step=7;render()">'+t('st')+'</button><div class="secn">'+t('sec')+'</div></div></div></div>');}
-function sp2(p,el){selPlan=p;document.querySelectorAll('.pc').forEach(function(c){c.classList.remove('sel');});el.classList.add('sel');}
+function s6(){
+  setP(7,TOTAL);
+  document.getElementById('sl').textContent='Almost there!';
+  var p=fp();
+  var bf=t('tBasF'),pf=t('tPremF');
+  function tierCard(tier,name,mPrice,yPrice,yPerMo,features,isPopular,showPlus){
+    var sel=selTier===tier?'sel':'';
+    var plnM=(selTier===tier&&selPlan==='monthly')?'sel':'';
+    var plnA=(selTier===tier&&selPlan==='annual')?'sel':'';
+    return '<div class="tier '+sel+'" onclick="st2(\''+tier+'\')">'+
+      (isPopular?'<div class="tier-bdg">'+t('pop')+'</div>':'')+
+      '<div class="tier-head"><div class="tier-name">'+name+'</div></div>'+
+      '<div class="tier-prices">'+
+        '<div class="tprice '+plnM+'" onclick="event.stopPropagation();sp3(\''+tier+'\',\'monthly\')">'+
+          '<div class="tpl">'+t('mo')+'</div>'+
+          '<div class="tpa">€'+mPrice.split('.')[0]+'<span>.'+(mPrice.split('.')[1]||'00')+t('perMo')+'</span></div>'+
+        '</div>'+
+        '<div class="tprice '+plnA+'" onclick="event.stopPropagation();sp3(\''+tier+'\',\'annual\')">'+
+          '<div class="tpl">'+t('an')+'</div>'+
+          '<div class="tpa">€'+yPrice+'<span>'+t('perYr')+'</span></div>'+
+          '<div class="tper">= €'+yPerMo+t('perMo')+' '+t('inAnn')+'</div>'+
+        '</div>'+
+      '</div>'+
+      (showPlus?'<div class="tplus">'+t('tEv')+'</div>':'')+
+      '<ul class="tfl">'+features.map(function(f){return '<li>'+f+'</li>';}).join('')+'</ul>'+
+    '</div>';
+  }
+  card(
+    '<div class="ch"><div class="chip">✦ '+t('s6')+'</div><div class="ct">PLAN READY, <em>'+(ud.name||'THERE').toUpperCase()+'</em></div><p class="cs">'+p.headline+'</p></div>'+
+    '<div class="cb">'+
+      '<div class="pprev"><div class="ppb">'+
+        '<div class="prow"><span class="prl">'+t('dt')+'</span><span class="prv">'+p.calories+' kcal</span></div>'+
+        '<div class="prow"><span class="prl">'+t('pg')+'</span><span class="prv">'+p.protein+'g</span></div>'+
+        '<div class="prow"><span class="prl">'+t('tl')+'</span><span class="prv">'+p.timeline+'</span></div>'+
+      '</div>'+
+      '<div class="pwov">'+
+        '<div style="font-size:22px;margin-bottom:7px">🔒</div>'+
+        '<div class="pwt">'+t('ul')+'</div>'+
+        '<div class="pws">'+t('uls')+'<br>'+t('f7')+' '+t('rem')+'</div>'+
+        '<div class="tsec-t">'+t('tCh')+'</div>'+
+        '<div class="tier-grid">'+
+          tierCard('basic',t('tBas'),'9.99','59','4.92',bf,false,false)+
+          tierCard('premium',t('tPrem'),'19.99','119','9.92',pf,true,true)+
+        '</div>'+
+        '<button class="bpay" onclick="step=7;render()">'+t('st')+'</button>'+
+        '<div class="secn">'+t('sec')+'</div>'+
+      '</div></div>'+
+    '</div>'
+  );
+}
+function st2(tier){selTier=tier;render();}
+function sp3(tier,p){selTier=tier;selPlan=p;render();}
 
-function s7(){card('<div class="ch"><div class="chip">✦ '+t('s7')+'</div><div class="ct">'+t('os')+' <em>'+t('rs')+'</em></div><p class="cs">7 days free. '+(selPlan==='annual'?'Then €119/year.':'Then €19.99/month.')+'</p></div><div class="cb"><div class="tbdg"><div class="tbi">✅</div><div class="tbt"><strong>'+t('nc')+'</strong> '+t('rn')+'</div></div><div id="ep" class="ebox"></div><div class="field"><label>'+t('el')+'</label><input type="email" id="em" placeholder="michael@example.com" value="'+(ud.email||'')+'"></div><p style="font-size:10px;color:var(--faint);margin-top:-4px;margin-bottom:12px">'+t('ph')+'</p><div class="cbox"><div class="cbox-t">'+t('cst')+'</div><label class="cbx"><input type="checkbox" id="cc1" onchange="updConsent()"><span>'+t('cs1')+'</span></label><label class="cbx"><input type="checkbox" id="cc2" onchange="updConsent()"><span>'+t('cs2')+' <a href="https://peak-mj-performance.app/impressum" target="_blank" rel="noopener">'+t('cs2l')+'</a> '+t('cs2a')+' <a href="https://peak-mj-performance.app/datenschutz" target="_blank" rel="noopener">'+t('cs2p')+'</a>'+t('cs2e')+'</span></label></div></div><div class="cf"><button class="bbk" onclick="step=6;render()">← Back</button><button class="bnx" id="pb2" onclick="doPay()" style="opacity:.5;cursor:not-allowed" disabled>🔒 '+t('tp')+' →</button></div>');}
+function s7(){
+  var mP,yP;
+  if(selTier==='basic'){mP='€9.99/month';yP='€59/year';}
+  else{mP='€19.99/month';yP='€119/year';}
+  var priceTxt='7 days free. '+(selPlan==='annual'?'Then '+yP+'.':'Then '+mP+'.');
+  card('<div class="ch"><div class="chip">✦ '+t('s7')+'</div><div class="ct">'+t('os')+' <em>'+t('rs')+'</em></div><p class="cs">'+priceTxt+'</p></div><div class="cb"><div class="tbdg"><div class="tbi">✅</div><div class="tbt"><strong>'+t('nc')+'</strong> '+t('rn')+'</div></div><div id="ep" class="ebox"></div><div class="field"><label>'+t('el')+'</label><input type="email" id="em" placeholder="michael@example.com" value="'+(ud.email||'')+'"></div><p style="font-size:10px;color:var(--faint);margin-top:-4px;margin-bottom:12px">'+t('ph')+'</p><div class="cbox"><div class="cbox-t">'+t('cst')+'</div><label class="cbx"><input type="checkbox" id="cc1" onchange="updConsent()"><span>'+t('cs1')+'</span></label><label class="cbx"><input type="checkbox" id="cc2" onchange="updConsent()"><span>'+t('cs2')+' <a href="https://peak-mj-performance.app/impressum" target="_blank" rel="noopener">'+t('cs2l')+'</a> '+t('cs2a')+' <a href="https://peak-mj-performance.app/datenschutz" target="_blank" rel="noopener">'+t('cs2p')+'</a>'+t('cs2e')+'</span></label></div></div><div class="cf"><button class="bbk" onclick="step=6;render()">← Back</button><button class="bnx" id="pb2" onclick="doPay()" style="opacity:.5;cursor:not-allowed" disabled>🔒 '+t('tp')+' →</button></div>');
+}
 
 function updConsent(){
   var c1=document.getElementById('cc1'),c2=document.getElementById('cc2'),btn=document.getElementById('pb2');
@@ -425,7 +519,7 @@ async function doPay(){
       return;
     }
     // No existing account → proceed to Stripe Checkout
-    var res=await fetch(BACKEND+'/create-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,plan:selPlan,userData:{name:ud.name,goal:ud.goal,sport:ud.sport},consent:{healthData:true,terms:true,at:ud.consentAt}})});
+    var res=await fetch(BACKEND+'/create-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,plan:selPlan,tier:selTier,userData:{name:ud.name,goal:ud.goal,sport:ud.sport},consent:{healthData:true,terms:true,at:ud.consentAt}})});
     var data=await res.json();
     if(data.url)window.location.href=data.url;
     else throw new Error(data.error||'Error');
@@ -448,15 +542,19 @@ async function doLoginLink(){
 }
 
 async function doOpenPortal(){
-  var email=ud.email,btn=document.getElementById('aeBtn2');
-  if(!btn)return;
-  btn.textContent=t('aePA');btn.style.opacity='.6';btn.onclick=null;
+  var email=ud.email;
+  if(!email){alert('Please log in first.');return;}
+  var btn=document.getElementById('aeBtn2');
+  if(btn){btn.textContent=t('aePA');btn.style.opacity='.6';btn.onclick=null;}
   try{
     var res=await fetch(BACKEND+'/customer-portal',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email})});
     var data=await res.json();
     if(!res.ok)throw new Error(data.error||'Error');
     window.location.href=data.url;
-  }catch(err){showE('ep',err.message);btn.textContent='⚙️ '+t('aeC');btn.style.opacity='1';btn.onclick=doOpenPortal;}
+  }catch(err){
+    if(btn){showE('ep',err.message);btn.textContent='⚙️ '+t('aeC');btn.style.opacity='1';btn.onclick=doOpenPortal;}
+    else alert(err.message);
+  }
 }
 
 function s8(){
@@ -471,6 +569,17 @@ function showDash(){
   document.getElementById('pb').style.width='100%';
   document.getElementById('sl').textContent=t('db');
   showTab(dashTab);
+}
+
+function isBasic(){return ud.tier==='basic';}
+function upgHTML(){
+  return '<div class="upg-box">'+
+    '<div class="upg-lock">🔒</div>'+
+    '<div class="upg-lbl">'+t('pxOnly')+'</div>'+
+    '<div class="upg-t">'+t('ul')+'</div>'+
+    '<div class="upg-d">'+t('upgTxt')+'</div>'+
+    '<button class="upg-btn" onclick="doOpenPortal()">'+t('upgBtn')+' →</button>'+
+  '</div>';
 }
 
 function dshell(tab,content){
@@ -502,7 +611,7 @@ function tNu(p){
   c+='<div class="mbw"><div class="mbl"><span>'+(de?'Fette':'Fat')+'</span><span>'+p.fat+'g</span></div><div class="mb"><div class="mf" style="width:48%;background:var(--dim)"></div></div></div>';
   c+='<div class="dst">'+t('tm')+'</div>';
   c+=p.todayMeals.map(function(m,i){var r=mrat[i];return '<div class="mc" onclick="showMealDetail('+i+')"><span class="me">'+m.emoji+'</span><div class="mi"><div class="mn">'+m.name+'</div><div class="mm">'+m.time+' · '+m.macro+'</div>'+(!r?'<div class="rrow" onclick="event.stopPropagation()">'+[1,2,3,4,5].map(function(s){return '<span class="star" onclick="rateMeal('+i+','+s+',this)">⭐</span>';}).join('')+'</div>':'<div style="font-size:10px;color:var(--red);margin-top:3px">'+(de?'BEWERTET':'RATED')+' '+r+'/5 ✓</div>')+'</div><span class="mk">'+m.kcal+' kcal</span><span style="color:var(--faint);font-size:10px;margin-left:5px">→</span></div>';}).join('');
-  c+='<div class="aib" style="margin-top:11px"><div class="ailbl"><div class="aidot"></div>PEAK AI</div><p>'+(de?'Nicht nach Plan? ':'Not feeling the plan? ')+'<span style="color:var(--red);cursor:pointer;font-weight:700" onclick="showMoodPicker()">'+(de?'Küche wählen →':'Pick a cuisine →')+'</span></p></div><div id="moodA"></div>';
+  if(!isBasic()){c+='<div class="aib" style="margin-top:11px"><div class="ailbl"><div class="aidot"></div>PEAK AI</div><p>'+(de?'Nicht nach Plan? ':'Not feeling the plan? ')+'<span style="color:var(--red);cursor:pointer;font-weight:700" onclick="showMoodPicker()">'+(de?'Küche wählen →':'Pick a cuisine →')+'</span></p></div><div id="moodA"></div>';}
   c+='<button class="blog" onclick="logout()">'+t('lo')+'</button>';
   dshell('nutrition',c);
 }
@@ -663,6 +772,7 @@ function openRec(key){
 
 // ── SCANNER TAB ───────────────────────────────────────────────────────
 function tSc(){
+  if(isBasic()){dshell('scanner',upgHTML());return;}
   var de=lang==='de';
   var c='<div class="tiles c3" style="margin-bottom:11px">'+[{i:'📷',l:(de?'Barcode':'Barcode'),f:'simScan'},{i:'🍽️',l:(de?'Menükarte':'Menu Scan'),f:'simMenu'},{i:'🛒',l:(de?'Einkauf':'Shopping'),f:'simShop'}].map(function(b){return '<div class="tile" onclick="'+b.f+'()" style="flex-direction:column;text-align:center;padding:12px 5px"><span style="font-size:19px;margin-bottom:4px">'+b.i+'</span><span class="tl" style="font-size:10px;letter-spacing:.5px">'+b.l+'</span></div>';}).join('')+'</div><div id="sr"></div><div class="sbox" onclick="simScan()"><div style="text-align:center"><div class="sfr"><div class="sln"></div></div><div class="stxt">'+(de?'TIPPEN ZUM SIMULIEREN':'TAP TO SIMULATE')+'</div></div></div>';
   dshell('scanner',c);
@@ -685,6 +795,7 @@ function addLog(){var inp=document.getElementById('li');if(!inp||!inp.value.trim
 
 // ── RECIPES TAB ───────────────────────────────────────────────────────
 function tRp(){
+  if(isBasic()){dshell('recipes',upgHTML());return;}
   var de=lang==='de';
   var c='<div class="aib" style="margin-bottom:12px"><div class="ailbl"><div class="aidot"></div>'+t('rb').toUpperCase()+'</div><p>'+(de?'Gib ein was du dir wünschst. Ich baue ein Rezept das zu deinen Makros passt.':'Tell me your craving. I\'ll build a recipe matching your macros.')+'</p></div>';
   c+='<div class="field"><label>'+(de?'Was möchtest du essen?':'What are you craving?')+'</label><input id="moodIn" type="text" placeholder="'+(de?'z.B. Safranrisotto, Pasta, Frühstück...':'e.g. saffron risotto, high-protein pasta...')+'"></div>';
@@ -859,6 +970,7 @@ async function loadAuthProfile(){
     ud.name=p.name||ud.name||'';
     if(p.goal)ud.goal=p.goal;
     if(p.sport)ud.sport=p.sport;
+    ud.tier=p.tier||'premium';
 
     // Merge any saved onboarding data from sessionStorage (full profile)
     try{
