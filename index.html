@@ -262,6 +262,7 @@ var T={en:{
   s7:'Start Trial',os:'One step from your',rs:'RESULTS',
   el:'Email',pl:'Password',ph:'No password needed — we\'ll send your login link by email.',nc:'Not charged today.',rn:'Reminders Day 5 and 6.',tp:'Continue to payment',
   cst:'Before we start',cs1:'I consent to the processing of my health and fitness data (weight, height, diet, sleep, stress) by PEAK / MJ Performance for the purpose of creating my personalised plan. (Art. 9(2)(a) GDPR)',cs2:'I accept the',cs2l:'Terms of Service',cs2a:'and the',cs2p:'Privacy Policy',cs2e:'.',csE:'Please accept both to continue.',
+  aeT:'Account already exists',aeD:'An account with this email already exists. What would you like to do?',aeL:'Send me a login link',aeC:'Cancel my subscription',aeU:'Use a different email',aeS:'Check your inbox',aeSD:'We sent a login link to',aeSD2:'. Click it to sign in.',aeLA:'Sending...',aePA:'Opening portal...',
   db:'Dashboard',nu:'Nutrition',fi:'Fitness',re:'Recovery',sc:'Scanner',lg:'Log',rp:'Recipes',
   tm:"Today's Meals",tw:"Today's Workout",lo:'Logout',gd:'Good day,',
   ql:'Quick Log',lp:'e.g. 2 beers, peanuts...',lb3:'Log it',rb:'Recipe Builder',gr:'Generate with AI',
@@ -288,6 +289,7 @@ var T={en:{
   s7:'Testphase',os:'Einen Schritt von deinen',rs:'ERGEBNISSEN',
   el:'E-Mail',pl:'Passwort',ph:'Kein Passwort nötig — Login-Link kommt per E-Mail.',nc:'Heute keine Zahlung.',rn:'Erinnerungen an Tag 5 und 6.',tp:'Weiter zur Zahlung',
   cst:'Bevor wir starten',cs1:'Ich willige ein, dass meine Gesundheits- und Fitnessdaten (Gewicht, Größe, Ernährung, Schlaf, Stress) durch PEAK / MJ Performance zur Erstellung meines personalisierten Plans verarbeitet werden. (Art. 9 Abs. 2 lit. a DSGVO)',cs2:'Ich akzeptiere die',cs2l:'AGB',cs2a:'und die',cs2p:'Datenschutzerklärung',cs2e:'.',csE:'Bitte beide akzeptieren, um fortzufahren.',
+  aeT:'Konto existiert bereits',aeD:'Für diese E-Mail existiert bereits ein Konto. Was möchtest du tun?',aeL:'Login-Link senden',aeC:'Abo kündigen',aeU:'Andere E-Mail nutzen',aeS:'Prüfe dein Postfach',aeSD:'Wir haben einen Login-Link an',aeSD2:'geschickt. Klick darauf, um dich anzumelden.',aeLA:'Sende...',aePA:'Öffne Portal...',
   db:'Übersicht',nu:'Ernährung',fi:'Fitness',re:'Regeneration',sc:'Scanner',lg:'Protokoll',rp:'Rezepte',
   tm:'Heutige Mahlzeiten',tw:'Heutiges Workout',lo:'Abmelden',gd:'Guten Tag,',
   ql:'Schnell-Protokoll',lp:'z.B. 2 Bier, Erdnüsse...',lb3:'Eintragen',rb:'Rezept-Builder',gr:'Mit KI generieren',
@@ -414,11 +416,47 @@ async function doPay(){
   btn.textContent='Loading...';btn.style.opacity='.6';btn.onclick=null;
   document.getElementById('ep').style.display='none';
   try{
+    // First: check if an account already exists for this email
+    var chk=await fetch(BACKEND+'/auth/check-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em})});
+    var chkData=await chk.json();
+    if(chkData.exists){
+      // Account exists → show options screen instead of going to Stripe
+      showAccountExists(em,chkData.hasSubscription);
+      return;
+    }
+    // No existing account → proceed to Stripe Checkout
     var res=await fetch(BACKEND+'/create-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,plan:selPlan,userData:{name:ud.name,goal:ud.goal,sport:ud.sport},consent:{healthData:true,terms:true,at:ud.consentAt}})});
     var data=await res.json();
     if(data.url)window.location.href=data.url;
     else throw new Error(data.error||'Error');
   }catch(err){showE('ep',err.message);btn.textContent='🔒 '+t('tp')+' →';btn.style.opacity='1';btn.onclick=doPay;}
+}
+
+function showAccountExists(email,hasSub){
+  card('<div class="ch"><div class="chip">✦ '+t('s7')+'</div><div class="ct">'+t('aeT')+'</div><p class="cs">'+t('aeD')+'</p></div><div class="cb"><div id="ep" class="ebox"></div><div class="tbdg"><div class="tbi">👤</div><div class="tbt">'+email+'</div></div><div style="display:flex;flex-direction:column;gap:8px;margin-top:4px"><button class="bnx" id="aeBtn1" onclick="doLoginLink()">📧 '+t('aeL')+'</button>'+(hasSub?'<button class="bnx" id="aeBtn2" onclick="doOpenPortal()" style="background:var(--s2);color:var(--white);border:1px solid var(--border)">⚙️ '+t('aeC')+'</button>':'')+'<button class="bbk" onclick="step=7;render()">✏️ '+t('aeU')+'</button></div></div>');
+}
+
+async function doLoginLink(){
+  var email=ud.email,btn=document.getElementById('aeBtn1');
+  btn.textContent=t('aeLA');btn.style.opacity='.6';btn.onclick=null;
+  try{
+    var res=await fetch(BACKEND+'/auth/send-login-link',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email})});
+    var data=await res.json();
+    if(!res.ok)throw new Error(data.error||'Error');
+    showInboxCheck(email);
+  }catch(err){showE('ep',err.message);btn.textContent='📧 '+t('aeL');btn.style.opacity='1';btn.onclick=doLoginLink;}
+}
+
+async function doOpenPortal(){
+  var email=ud.email,btn=document.getElementById('aeBtn2');
+  if(!btn)return;
+  btn.textContent=t('aePA');btn.style.opacity='.6';btn.onclick=null;
+  try{
+    var res=await fetch(BACKEND+'/customer-portal',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email})});
+    var data=await res.json();
+    if(!res.ok)throw new Error(data.error||'Error');
+    window.location.href=data.url;
+  }catch(err){showE('ep',err.message);btn.textContent='⚙️ '+t('aeC');btn.style.opacity='1';btn.onclick=doOpenPortal;}
 }
 
 function s8(){
