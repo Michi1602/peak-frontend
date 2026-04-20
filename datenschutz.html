@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Datenschutzerklärung | PEAK</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@900&family=Barlow:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#0E0E0E;--s1:#151515;--s2:#1A1A1A;--border:#262626;--white:#fff;--ink2:#d4d4d4;--dim:#888;--faint:#555;--red:#E8001A;--rbg:#1a0608}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--white);line-height:1.65;padding:40px 24px;max-width:900px;margin:0 auto}
+  .topbar{display:flex;justify-content:space-between;align-items:center;padding-bottom:20px;border-bottom:2px solid var(--red);margin-bottom:32px}
+  .logo{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:28px;letter-spacing:3px;color:var(--white)}
+  .back{color:var(--red);text-decoration:none;font-weight:700;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;border:1px solid var(--red);padding:6px 14px}
+  .back:hover{background:var(--red);color:var(--white)}
+  .lang-switch{text-align:right;margin-bottom:20px}
+  .lang-switch a{color:var(--red);text-decoration:none;font-weight:700;padding:4px 12px;border:1px solid var(--red);font-size:11px;letter-spacing:1.5px;text-transform:uppercase}
+  h1{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:36px;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
+  h2{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:22px;letter-spacing:1.5px;text-transform:uppercase;margin-top:36px;padding-bottom:6px;border-bottom:2px solid var(--red);color:var(--white)}
+  h3{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:16px;letter-spacing:1px;text-transform:uppercase;margin-top:22px;color:var(--ink2)}
+  h4{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;margin-top:16px;color:var(--dim)}
+  p{margin:10px 0;color:var(--ink2);font-size:14px}
+  ul{margin:8px 0 8px 22px;color:var(--ink2);font-size:14px}
+  li{margin:4px 0}
+  a{color:var(--red)}
+  hr{border:none;border-top:1px solid var(--border);margin:56px 0}
+  .note{font-size:11px;color:var(--faint);font-style:italic;letter-spacing:.5px}
+  strong{color:var(--white)}
+  .toc{background:var(--s2);border-left:3px solid var(--red);padding:16px 20px;margin:20px 0;font-size:13px}
+  .toc ol{margin-left:22px}
+  .toc a{text-decoration:none}
+  .toc a:hover{text-decoration:underline}
+  .box{background:var(--rbg);border:1px solid var(--red);padding:14px 18px;margin:16px 0}
+  .ptable{width:100%;border-collapse:collapse;margin:16px 0;font-size:12px}
+  .ptable th,.ptable td{border:1px solid var(--border);padding:8px 10px;text-align:left;vertical-align:top;color:var(--ink2)}
+  .ptable th{background:var(--s1);color:var(--white);font-family:'Barlow Condensed',sans-serif;font-weight:900;letter-spacing:1px;text-transform:uppercase}
+  .ptable td:first-child{font-weight:700;color:var(--white)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">PEAK</div>
+  <a href="https://peak-mj-performance.app" class="back">← App</a>
+</div>
+
+<!-- DE -->
+<div id="de">
+<div class="lang-switch"><a href="#en">EN →</a></div>
+
+<h1>Datenschutzerklärung</h1>
+<p class="note">Stand: April 2026</p>
+
+<p>Diese Datenschutzerklärung informiert Sie über die Verarbeitung personenbezogener Daten bei Nutzung der <strong>PEAK-App</strong> (peak-mj-performance.app), einem digitalen Performance-Coaching-Service betrieben von MJ Performance.</p>
+
+<div class="toc">
+<strong>Inhalt</strong>
+<ol>
+  <li><a href="#de-1">Verantwortlicher</a></li>
+  <li><a href="#de-2">Datenerfassung</a></li>
+  <li><a href="#de-3">Gesundheitsdaten (Art. 9 DSGVO)</a></li>
+  <li><a href="#de-4">Zahlungsabwicklung (Stripe)</a></li>
+  <li><a href="#de-5">Authentifizierung (Supabase / Google)</a></li>
+  <li><a href="#de-6">KI-Verarbeitung (Anthropic)</a></li>
+  <li><a href="#de-7">E-Mail-Versand (Resend)</a></li>
+  <li><a href="#de-8">Hosting (Vercel / Render)</a></li>
+  <li><a href="#de-9">Cookies und localStorage</a></li>
+  <li><a href="#de-10">Auftragsverarbeiter im Überblick</a></li>
+  <li><a href="#de-11">Datenübermittlung in Drittländer</a></li>
+  <li><a href="#de-12">Speicherdauer</a></li>
+  <li><a href="#de-13">Ihre Rechte</a></li>
+  <li><a href="#de-14">Änderungen</a></li>
+</ol>
+</div>
+
+<h2 id="de-1">1. Verantwortlicher</h2>
+<p>Verantwortlich im Sinne der DSGVO:</p>
+<p>
+  Michael Jahn<br>
+  MJ Performance<br>
+  Am Hasel 6<br>
+  85139 Wettstetten<br>
+  Deutschland<br>
+  E-Mail: info@mj-performance.net
+</p>
+
+<h2 id="de-2">2. Datenerfassung in der PEAK-App</h2>
+
+<h4>Im Onboarding (vor Registrierung)</h4>
+<ul>
+  <li><strong>Persönliche Angaben:</strong> Vorname, Alter, Geschlecht, Körpergröße, aktuelles Gewicht, Traumgewicht, Schlafdauer</li>
+  <li><strong>Lebensstil:</strong> Berufsart, Arbeitsweg, Stresslevel</li>
+  <li><strong>Sport und Fitness:</strong> Sportart, Erfahrungslevel, Trainingshäufigkeit, Trainingsdauer, Trainingsumgebung</li>
+  <li><strong>Ernährung:</strong> Allergien, Ernährungsweise, bevorzugte Küchen, Kochkenntnisse, wöchentliches Budget</li>
+  <li><strong>Zielsetzung:</strong> Gewünschtes Fitness-/Ernährungsziel</li>
+</ul>
+
+<h4>Bei Registrierung und Zahlung</h4>
+<ul>
+  <li>E-Mail-Adresse</li>
+  <li>Zahlungs- und Abrechnungsdaten (direkt durch Stripe verarbeitet)</li>
+  <li>Einwilligungsnachweis (Zeitstempel)</li>
+</ul>
+
+<h4>Während der Nutzung</h4>
+<ul>
+  <li>Nutzungsdaten (welche Funktionen genutzt werden)</li>
+  <li>Protokollierte Mahlzeiten, Trainingseinheiten, Gewichtsveränderungen</li>
+  <li>Technische Daten (IP-Adresse, Browser, Gerätetyp)</li>
+</ul>
+
+<p><strong>Rechtsgrundlagen:</strong> Art. 6 Abs. 1 lit. b DSGVO (Vertrag), Art. 6 Abs. 1 lit. a + Art. 9 Abs. 2 lit. a DSGVO (Einwilligung für Gesundheitsdaten), Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an Servicebereitstellung).</p>
+
+<h2 id="de-3">3. Verarbeitung besonderer Datenkategorien (Gesundheitsdaten)</h2>
+
+<div class="box">
+<p><strong>Wichtig:</strong> Daten wie Körpergewicht, Größe, Ernährung, Schlafdauer und Stresslevel gelten als Gesundheitsdaten im Sinne von Art. 9 DSGVO. Diese werden nur mit Ihrer ausdrücklichen Einwilligung verarbeitet.</p>
+</div>
+
+<p>Vor Abschluss des Abonnements bestätigen Sie im Onboarding per Checkbox ausdrücklich Ihre Einwilligung zur Verarbeitung dieser Daten zum Zwecke der Erstellung Ihres personalisierten Plans. Wir dokumentieren die Einwilligung mit Zeitstempel.</p>
+
+<p><strong>Rechtsgrundlage:</strong> Art. 9 Abs. 2 lit. a DSGVO (ausdrückliche Einwilligung).</p>
+
+<p><strong>Widerruf:</strong> Sie können Ihre Einwilligung jederzeit widerrufen — per E-Mail an info@mj-performance.net oder durch Kündigung Ihres Abonnements. Nach Widerruf werden Ihre Gesundheitsdaten gelöscht, sofern keine gesetzlichen Aufbewahrungspflichten bestehen.</p>
+
+<p><strong>Keine automatisierte Einzelentscheidung:</strong> KI-generierte Empfehlungen sind keine automatisierten Einzelentscheidungen i.S.v. Art. 22 DSGVO. Sie dienen als individueller Vorschlag und ersetzen keine medizinische Beratung.</p>
+
+<h2 id="de-4">4. Zahlungsabwicklung</h2>
+<p>Für Zahlungen nutzen wir <strong>Stripe Payments Europe, Ltd.</strong> (1 Grand Canal Street Lower, Grand Canal Dock, Dublin, Irland). Übermittelt werden: Name, E-Mail, Rechnungsadresse, Telefonnummer, Zahlungsdaten. MJ Performance hat keinen Zugriff auf vollständige Zahlungsdaten, nur auf Abrechnungsinformationen.</p>
+<p>Datenschutzerklärung Stripe: <a href="https://stripe.com/de/privacy" target="_blank" rel="noopener">stripe.com/de/privacy</a></p>
+<p><strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. b DSGVO. Drittlandübermittlung USA über EU-US DPF und SCC abgesichert.</p>
+
+<h2 id="de-5">5. Authentifizierung</h2>
+
+<h3>Magic Link (Email-Login)</h3>
+<p>Zur Anmeldung erhalten Sie einen einmaligen Login-Link per E-Mail. Wir verarbeiten dafür Ihre E-Mail und einen kryptographischen Token.</p>
+
+<h3>Google Sign-In (OAuth, optional)</h3>
+<p>Bei Nutzung werden von Google übermittelt: E-Mail, Name, Profilbild (falls vorhanden), Google-ID. Übermittlung erfolgt nach Ihrer Zustimmung im Google-Consent-Dialog. Google ist eigenständiger Verantwortlicher. Datenschutzerklärung: <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">policies.google.com/privacy</a></p>
+
+<h3>Auth-Infrastruktur: Supabase</h3>
+<p>Technische Verwaltung über <strong>Supabase Inc.</strong> (Singapur / EU-Server in Frankfurt). Datenschutzerklärung: <a href="https://supabase.com/privacy" target="_blank" rel="noopener">supabase.com/privacy</a></p>
+
+<p><strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. b DSGVO (Magic Link), Art. 6 Abs. 1 lit. a DSGVO (Google OAuth).</p>
+
+<h2 id="de-6">6. KI-Verarbeitung</h2>
+<p>Für die Generierung personalisierter Pläne nutzen wir <strong>Anthropic PBC</strong> (548 Market Street, PMB 90375, San Francisco, CA 94104-5401, USA).</p>
+<p>Übermittelt werden nur die zur Plan-Generierung notwendigen Daten: demografische Basisdaten, Präferenzen, Ziele, Nutzereingaben. <strong>Name, vollständige E-Mail oder Zahlungsdaten werden nicht übermittelt.</strong></p>
+<p>Anthropic verarbeitet diese Daten als Auftragsverarbeiter und verwendet sie laut Vertrag <strong>nicht</strong> zum Training ihrer Modelle.</p>
+<p>Datenschutzerklärung: <a href="https://www.anthropic.com/legal/privacy" target="_blank" rel="noopener">anthropic.com/legal/privacy</a></p>
+<p><strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. b + Art. 9 Abs. 2 lit. a DSGVO. Drittlandübermittlung USA über SCC + AVV abgesichert.</p>
+
+<h2 id="de-7">7. E-Mail-Versand</h2>
+<p>Für transaktionale E-Mails (Willkommen, Erinnerungen, Magic-Link) nutzen wir <strong>Plus Five Five, Inc. (Resend)</strong> (2261 Market Street #4667, San Francisco, CA 94114, USA).</p>
+<p>Übermittelt werden: E-Mail-Adresse, Vorname, Versandzeitpunkt, Zustellstatus. E-Mail-Versandprotokolle werden maximal 90 Tage gespeichert.</p>
+<p>Jede Marketing-E-Mail enthält einen Abmelde-Link. Transaktionale E-Mails (Abrechnungen) sind hiervon nicht betroffen.</p>
+<p>Datenschutzerklärung: <a href="https://resend.com/legal/privacy-policy" target="_blank" rel="noopener">resend.com/legal/privacy-policy</a></p>
+<p><strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. b + Art. 6 Abs. 1 lit. f DSGVO. Drittlandübermittlung USA über EU-US DPF + SCC abgesichert.</p>
+
+<h2 id="de-8">8. Hosting</h2>
+
+<h3>Frontend: Vercel</h3>
+<p><strong>Vercel Inc.</strong> (440 N Barranca Ave #4133, Covina, CA 91723, USA) hostet die PEAK-App. Beim Aufruf werden technische Verbindungsdaten (IP, User-Agent, Zeitpunkt) verarbeitet. Datenschutzerklärung: <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener">vercel.com/legal/privacy-policy</a></p>
+
+<h3>Backend: Render</h3>
+<p><strong>Render Services, Inc.</strong> (525 Brannan Street, San Francisco, CA 94107, USA) hostet den Backend-Server. Datenschutzerklärung: <a href="https://render.com/privacy" target="_blank" rel="noopener">render.com/privacy</a></p>
+
+<h3>Datenbank: Supabase</h3>
+<p>Siehe Abschnitt 5. Unsere Datenbank liegt in der EU-Region (Frankfurt).</p>
+
+<p><strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. b + f DSGVO. Mit allen Hosting-Anbietern bestehen AVVs.</p>
+
+<h2 id="de-9">9. Cookies und localStorage</h2>
+<p>Die PEAK-App nutzt ausschließlich technisch notwendige Speichermechanismen:</p>
+<ul>
+  <li><strong>localStorage</strong> für Session, Theme (hell/dunkel), Sprache, Onboarding-Fortschritt</li>
+  <li><strong>Auth-Cookies von Supabase</strong> für die Anmeldung</li>
+</ul>
+<p>Diese Speicherung ist für die Servicefunktion notwendig und gemäß § 25 Abs. 2 Nr. 2 TTDSG einwilligungsfrei.</p>
+
+<h2 id="de-10">10. Auftragsverarbeiter im Überblick</h2>
+<table class="ptable">
+  <thead><tr><th>Anbieter</th><th>Zweck</th><th>Sitz</th><th>Transfer</th></tr></thead>
+  <tbody>
+    <tr><td>Stripe</td><td>Zahlungsabwicklung</td><td>Irland / USA</td><td>EU-US DPF, SCC</td></tr>
+    <tr><td>Supabase</td><td>Datenbank, Auth</td><td>Singapur / EU (Frankfurt)</td><td>SCC</td></tr>
+    <tr><td>Anthropic</td><td>KI-Plan-Generierung</td><td>USA</td><td>SCC, AVV</td></tr>
+    <tr><td>Resend</td><td>E-Mail-Versand</td><td>USA</td><td>EU-US DPF, SCC</td></tr>
+    <tr><td>Vercel</td><td>Frontend-Hosting</td><td>USA</td><td>EU-US DPF, SCC</td></tr>
+    <tr><td>Render</td><td>Backend-Hosting</td><td>USA</td><td>EU-US DPF, SCC</td></tr>
+    <tr><td>Google (OAuth)</td><td>Optionale Anmeldung</td><td>Irland / USA</td><td>Eigenst. Verantwortlicher, EU-US DPF</td></tr>
+    <tr><td>IONOS</td><td>Domain-Registrar</td><td>Deutschland</td><td>innerhalb EU</td></tr>
+  </tbody>
+</table>
+
+<h2 id="de-11">11. Datenübermittlung in Drittländer</h2>
+<p>Einige Auftragsverarbeiter sitzen in den USA. Der Datenschutz wird sichergestellt durch:</p>
+<ul>
+  <li><strong>EU-US Data Privacy Framework (DPF)</strong> für zertifizierte US-Unternehmen (Stripe, Resend, Vercel, Render, Google). Prüfung: <a href="https://www.dataprivacyframework.gov" target="_blank" rel="noopener">dataprivacyframework.gov</a></li>
+  <li><strong>Standardvertragsklauseln (SCC)</strong> nach Art. 46 Abs. 2 lit. c DSGVO</li>
+  <li><strong>Auftragsverarbeitungsverträge (AVV)</strong> mit jedem Verarbeiter</li>
+</ul>
+
+<h2 id="de-12">12. Speicherdauer</h2>
+<ul>
+  <li><strong>Profildaten:</strong> Während der Vertragslaufzeit + 30 Tage nach Kündigung</li>
+  <li><strong>Abrechnungsdaten:</strong> 10 Jahre (HGB/AO)</li>
+  <li><strong>E-Mail-Versandprotokolle:</strong> 90 Tage</li>
+  <li><strong>Server-Log-Dateien:</strong> typischerweise 7–30 Tage</li>
+</ul>
+
+<h2 id="de-13">13. Ihre Rechte</h2>
+<p>Sie haben jederzeit das Recht auf:</p>
+<ul>
+  <li><strong>Auskunft</strong> über Ihre gespeicherten Daten (Art. 15 DSGVO)</li>
+  <li><strong>Berichtigung</strong> unrichtiger Daten (Art. 16 DSGVO)</li>
+  <li><strong>Löschung</strong> (Art. 17 DSGVO)</li>
+  <li><strong>Einschränkung</strong> (Art. 18 DSGVO)</li>
+  <li><strong>Datenübertragbarkeit</strong> (Art. 20 DSGVO)</li>
+  <li><strong>Widerspruch</strong> (Art. 21 DSGVO)</li>
+  <li><strong>Widerruf der Einwilligung</strong> (Art. 7 Abs. 3 DSGVO)</li>
+</ul>
+<p>Kontakt: <strong>info@mj-performance.net</strong></p>
+<p>Beschwerderecht (Art. 77 DSGVO) beim <strong>Bayerischen Landesamt für Datenschutzaufsicht (BayLDA)</strong>, Promenade 18, 91522 Ansbach, <a href="https://www.lda.bayern.de" target="_blank" rel="noopener">www.lda.bayern.de</a></p>
+
+<h2 id="de-14">14. Änderungen</h2>
+<p>Wir passen diese Datenschutzerklärung bei Änderungen unserer Dienste oder Rechtslage an. Die aktuelle Version finden Sie stets hier. Wesentliche Änderungen teilen wir Nutzern per E-Mail mit.</p>
+
+</div>
+
+<hr>
+
+<!-- EN -->
+<div id="en">
+<div class="lang-switch"><a href="#de">← DE</a></div>
+
+<h1>Privacy Policy</h1>
+<p class="note">Last updated: April 2026</p>
+
+<p>This privacy policy informs you about the processing of personal data when using the <strong>PEAK app</strong> (peak-mj-performance.app), a digital performance coaching service operated by MJ Performance.</p>
+
+<h2>1. Data controller</h2>
+<p>
+  Michael Jahn<br>
+  MJ Performance<br>
+  Am Hasel 6<br>
+  85139 Wettstetten<br>
+  Germany<br>
+  Email: info@mj-performance.net
+</p>
+
+<h2>2. Data collection in the PEAK app</h2>
+
+<h4>During onboarding (before registration)</h4>
+<ul>
+  <li><strong>Personal information:</strong> first name, age, gender, height, current weight, target weight, sleep duration</li>
+  <li><strong>Lifestyle:</strong> job type, commute, stress level</li>
+  <li><strong>Sports and fitness:</strong> sport, experience level, training frequency, training duration, training environment</li>
+  <li><strong>Nutrition:</strong> allergies, dietary style, preferred cuisines, cooking skills, weekly budget</li>
+  <li><strong>Goals:</strong> desired fitness/nutrition goal</li>
+</ul>
+
+<h4>During registration and payment</h4>
+<ul>
+  <li>Email address</li>
+  <li>Payment and billing data (processed directly by Stripe)</li>
+  <li>Consent record (timestamp)</li>
+</ul>
+
+<h4>During use</h4>
+<ul>
+  <li>Usage data, logged meals, training sessions, weight changes</li>
+  <li>Technical data (IP address, browser, device type)</li>
+</ul>
+
+<p><strong>Legal bases:</strong> Art. 6(1)(b) GDPR (contract), Art. 6(1)(a) + Art. 9(2)(a) GDPR (consent for health data), Art. 6(1)(f) GDPR (legitimate interest).</p>
+
+<h2>3. Special categories of data (health data)</h2>
+
+<div class="box">
+<p><strong>Important:</strong> Data such as body weight, height, nutrition, sleep duration and stress level qualify as health data within the meaning of Art. 9 GDPR. Processed only with your explicit consent.</p>
+</div>
+
+<p>Before subscribing, you confirm your explicit consent via checkbox during onboarding. We document consent with timestamp.</p>
+
+<p><strong>Legal basis:</strong> Art. 9(2)(a) GDPR (explicit consent).</p>
+
+<p><strong>Withdrawal:</strong> You can withdraw your consent at any time by email to info@mj-performance.net or by cancelling your subscription.</p>
+
+<p><strong>No automated decision-making:</strong> AI-generated recommendations do not constitute automated individual decisions under Art. 22 GDPR. They serve as suggestions and do not replace medical advice.</p>
+
+<h2>4. Payment processing</h2>
+<p>We use <strong>Stripe Payments Europe, Ltd.</strong> (Dublin, Ireland). Transmitted: name, email, billing address, phone, payment data. MJ Performance has no access to full payment data.</p>
+<p>Privacy policy: <a href="https://stripe.com/privacy" target="_blank" rel="noopener">stripe.com/privacy</a></p>
+<p><strong>Legal basis:</strong> Art. 6(1)(b) GDPR. US transfer via EU-US DPF + SCC.</p>
+
+<h2>5. Authentication</h2>
+
+<h3>Magic Link (email login)</h3>
+<p>To log in, you receive a one-time link by email. We process your email and a cryptographic token.</p>
+
+<h3>Google Sign-In (OAuth, optional)</h3>
+<p>When used, Google transmits to us: email, name, profile picture (if available), Google ID. Google is an independent controller. Privacy policy: <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">policies.google.com/privacy</a></p>
+
+<h3>Auth infrastructure: Supabase</h3>
+<p>Managed via <strong>Supabase Inc.</strong> (Singapore / EU servers in Frankfurt). Privacy policy: <a href="https://supabase.com/privacy" target="_blank" rel="noopener">supabase.com/privacy</a></p>
+
+<p><strong>Legal basis:</strong> Art. 6(1)(b) GDPR (Magic Link), Art. 6(1)(a) GDPR (Google OAuth).</p>
+
+<h2>6. AI processing</h2>
+<p>For generating personalised plans we use <strong>Anthropic PBC</strong> (San Francisco, USA).</p>
+<p>Only data necessary for plan generation is transmitted: basic demographics, preferences, goals, user inputs. <strong>Name, full email or payment data are not transmitted.</strong></p>
+<p>Anthropic processes this data as a processor and does <strong>not</strong> use it to train their models.</p>
+<p>Privacy policy: <a href="https://www.anthropic.com/legal/privacy" target="_blank" rel="noopener">anthropic.com/legal/privacy</a></p>
+<p><strong>Legal basis:</strong> Art. 6(1)(b) + Art. 9(2)(a) GDPR. US transfer via SCC + DPA.</p>
+
+<h2>7. Email delivery</h2>
+<p>For transactional emails we use <strong>Plus Five Five, Inc. (Resend)</strong> (San Francisco, USA). Transmitted: email, first name, send time, delivery status. Logs stored max 90 days.</p>
+<p>Every marketing email contains an unsubscribe link. Transactional emails are not affected.</p>
+<p>Privacy policy: <a href="https://resend.com/legal/privacy-policy" target="_blank" rel="noopener">resend.com/legal/privacy-policy</a></p>
+<p><strong>Legal basis:</strong> Art. 6(1)(b) + (f) GDPR. US transfer via EU-US DPF + SCC.</p>
+
+<h2>8. Hosting</h2>
+
+<h3>Frontend: Vercel</h3>
+<p><strong>Vercel Inc.</strong> (Covina, USA) hosts the PEAK app. Technical connection data (IP, user-agent, time) is processed. Privacy policy: <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener">vercel.com/legal/privacy-policy</a></p>
+
+<h3>Backend: Render</h3>
+<p><strong>Render Services, Inc.</strong> (San Francisco, USA) hosts the backend. Privacy policy: <a href="https://render.com/privacy" target="_blank" rel="noopener">render.com/privacy</a></p>
+
+<h3>Database: Supabase</h3>
+<p>See section 5. Our database is hosted in the EU region (Frankfurt).</p>
+
+<p><strong>Legal basis:</strong> Art. 6(1)(b) + (f) GDPR. DPAs in place with all providers.</p>
+
+<h2>9. Cookies and localStorage</h2>
+<p>The PEAK app uses only technically necessary storage:</p>
+<ul>
+  <li><strong>localStorage</strong> for session, theme, language, onboarding progress</li>
+  <li><strong>Supabase auth cookies</strong> for login</li>
+</ul>
+<p>This storage is functionally required and consent-free under § 25(2) No. 2 TTDSG.</p>
+
+<h2>10. Processors overview</h2>
+<table class="ptable">
+  <thead><tr><th>Provider</th><th>Purpose</th><th>Location</th><th>Transfer</th></tr></thead>
+  <tbody>
+    <tr><td>Stripe</td><td>Payment</td><td>Ireland / USA</td><td>EU-US DPF, SCC</td></tr>
+    <tr><td>Supabase</td><td>Database, auth</td><td>Singapore / EU (Frankfurt)</td><td>SCC</td></tr>
+    <tr><td>Anthropic</td><td>AI plan generation</td><td>USA</td><td>SCC, DPA</td></tr>
+    <tr><td>Resend</td><td>Email delivery</td><td>USA</td><td>EU-US DPF, SCC</td></tr>
+    <tr><td>Vercel</td><td>Frontend hosting</td><td>USA</td><td>EU-US DPF, SCC</td></tr>
+    <tr><td>Render</td><td>Backend hosting</td><td>USA</td><td>EU-US DPF, SCC</td></tr>
+    <tr><td>Google (OAuth)</td><td>Optional login</td><td>Ireland / USA</td><td>Independent controller, EU-US DPF</td></tr>
+    <tr><td>IONOS</td><td>Domain registrar</td><td>Germany</td><td>within EU</td></tr>
+  </tbody>
+</table>
+
+<h2>11. Data transfers to third countries</h2>
+<p>Some processors are located in the USA. Protection is ensured by:</p>
+<ul>
+  <li><strong>EU-US Data Privacy Framework</strong> for certified US companies (Stripe, Resend, Vercel, Render, Google)</li>
+  <li><strong>Standard Contractual Clauses</strong> (Art. 46(2)(c) GDPR)</li>
+  <li><strong>Data Processing Agreements</strong> with every processor</li>
+</ul>
+
+<h2>12. Retention periods</h2>
+<ul>
+  <li><strong>Profile data:</strong> during contract duration + 30 days after cancellation</li>
+  <li><strong>Billing data:</strong> 10 years (German HGB/AO retention)</li>
+  <li><strong>Email delivery logs:</strong> 90 days</li>
+  <li><strong>Server log files:</strong> typically 7–30 days</li>
+</ul>
+
+<h2>13. Your rights</h2>
+<ul>
+  <li><strong>Access</strong> (Art. 15 GDPR)</li>
+  <li><strong>Rectification</strong> (Art. 16 GDPR)</li>
+  <li><strong>Erasure</strong> (Art. 17 GDPR)</li>
+  <li><strong>Restriction</strong> (Art. 18 GDPR)</li>
+  <li><strong>Data portability</strong> (Art. 20 GDPR)</li>
+  <li><strong>Objection</strong> (Art. 21 GDPR)</li>
+  <li><strong>Withdrawal of consent</strong> (Art. 7(3) GDPR)</li>
+</ul>
+<p>Contact: <strong>info@mj-performance.net</strong></p>
+<p>Right to complain (Art. 77 GDPR) to: <strong>Bayerisches Landesamt für Datenschutzaufsicht (BayLDA)</strong>, Promenade 18, 91522 Ansbach, Germany, <a href="https://www.lda.bayern.de" target="_blank" rel="noopener">www.lda.bayern.de</a></p>
+
+<h2>14. Changes</h2>
+<p>We update this policy when our services or legal requirements change. The current version is always available here. We notify users of material changes by email.</p>
+
+</div>
+
+</body>
+</html>
