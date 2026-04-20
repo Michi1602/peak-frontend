@@ -761,12 +761,18 @@ function showInboxCheck(email){
 // Called after Supabase session is established (via magic link, Google,
 // or restored from localStorage). Loads profile row from backend and
 // routes user into the dashboard (or onboarding if profile not found).
+
+// Prevents double-calls from onAuthStateChange + bootApp racing each other
+var __authLoading=false;
+
 async function loadAuthProfile(){
+  if(__authLoading)return true;
+  __authLoading=true;
   var de=lang==='de';
   try{
     var sess=await window.sb.auth.getSession();
     var token=sess?.data?.session?.access_token;
-    if(!token)return false;
+    if(!token){__authLoading=false;return false;}
 
     var res=await fetch(BACKEND+'/user/profile',{
       headers:{Authorization:'Bearer '+token}
@@ -774,15 +780,16 @@ async function loadAuthProfile(){
 
     if(res.status===404){
       // Auth user exists but no profile row — signed in via Google without
-      // going through Stripe. Send them to onboarding; they'll hit the
-      // paywall at step 7, complete payment, which creates the profile row.
+      // going through Stripe. Show a clear "complete your signup" screen.
       var body=await res.json().catch(function(){return {};});
       if(body.email)ud.email=body.email;
-      step=1;render();
+      showNeedSubscription(body.email||'');
+      __authLoading=false;
       return true;
     }
     if(!res.ok){
       console.error('Profile load failed:',res.status);
+      __authLoading=false;
       return false;
     }
 
@@ -806,7 +813,7 @@ async function loadAuthProfile(){
       }
     }catch(e){}
 
-    // If they have sport + goal we can build a plan and show dashboard
+    // Build plan + show dashboard
     document.getElementById('pb').style.width='100%';
     document.getElementById('sl').textContent=de?'Plan wird geladen...':'Loading plan...';
     card('<div class="lw"><div class="spin"></div><div class="lt">'+(de?'Lade dein Dashboard...':'Loading your dashboard...')+'</div></div>');
@@ -815,11 +822,46 @@ async function loadAuthProfile(){
       try{await fetchPlan();}catch(e){console.error('Plan fetch failed:',e);}
     }
     showDash();
+    __authLoading=false;
     return true;
   }catch(err){
     console.error('loadAuthProfile error:',err);
+    __authLoading=false;
     return false;
   }
+}
+
+// Shown to users who authenticated (e.g. via Google) but don't have a
+// PEAK subscription yet. Clear CTA to start the trial via Stripe checkout.
+function showNeedSubscription(email){
+  var de=lang==='de';
+  document.getElementById('pb').style.width='0%';
+  document.getElementById('sl').textContent=de?'Abo benötigt':'Subscription needed';
+  var chip=de?'✦ Fast geschafft':'✦ Almost there';
+  var title=de?'Noch kein Abo':'No subscription yet';
+  var sub=email
+    ? (de?'Du bist als <strong>'+email+'</strong> angemeldet, aber hast noch kein PEAK-Abo.':'You\'re signed in as <strong>'+email+'</strong>, but you don\'t have a PEAK subscription yet.')
+    : (de?'Du bist angemeldet, aber hast noch kein PEAK-Abo.':'You\'re signed in, but you don\'t have a PEAK subscription yet.');
+  var body=de?'Starte dein 7-Tage-Trial und schalte deinen personalisierten Plan frei.':'Start your 7-day trial to unlock your personalised plan.';
+  var startBtn=de?'TRIAL STARTEN →':'START TRIAL →';
+  var logoutBtn=de?'Abmelden':'Sign out';
+  card(
+    '<div class="ch"><div class="chip">'+chip+'</div>'+
+    '<div class="ct">'+title+'</div>'+
+    '<p class="cs">'+sub+'</p></div>'+
+    '<div class="cb">'+
+    '<p style="color:var(--dim);line-height:1.7;font-size:14px;margin-bottom:8px">'+body+'</p>'+
+    '<ul style="color:var(--ink2);line-height:2;font-size:13px;margin:8px 0 0;padding-left:20px">'+
+    '<li>'+(de?'KI-Ernährungsplan':'AI nutrition plan')+'</li>'+
+    '<li>'+(de?'Sportspezifisches Training':'Sport-specific training')+'</li>'+
+    '<li>'+(de?'Regenerations-Protokoll':'Recovery protocol')+'</li>'+
+    '</ul>'+
+    '</div>'+
+    '<div class="cf" style="gap:8px">'+
+    '<button class="bbk" onclick="logout()">'+logoutBtn+'</button>'+
+    '<button class="bnx" onclick="step=1;render()" style="flex:1;letter-spacing:2px">'+startBtn+'</button>'+
+    '</div>'
+  );
 }
 
 // Boot — decides where the user lands based on URL and session state.
@@ -853,8 +895,12 @@ async function bootApp(){
   showLogin();
 }
 
-// Listen for auth state changes (e.g., after OAuth redirect completes)
+// Listen for auth state changes (e.g., after OAuth redirect completes).
+// bootApp() already handles the initial session, so we only react to
+// fresh SIGNED_IN events that happen AFTER initial page load.
+var __bootDone=false;
 window.sb.auth.onAuthStateChange(function(event,session){
+  if(!__bootDone)return; // skip events fired during bootApp
   if(event==='SIGNED_IN'&&session){
     loadAuthProfile();
   }
@@ -870,7 +916,7 @@ async function logout(){
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────
-bootApp();
+bootApp().finally(function(){__bootDone=true;});
 syncThemeButton();
 </script>
 <link rel="manifest" href="/manifest.json">
