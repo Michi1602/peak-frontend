@@ -1287,6 +1287,11 @@ function showNeedSubscription(email){
 
 // Boot — decides where the user lands based on URL and session state.
 async function bootApp(){
+  // Show loading indicator immediately — prevents blank screen / login flash
+  // on reload while we check for existing session
+  var de=lang==='de';
+  card('<div class="lw"><div class="spin"></div><div class="lt">'+(de?'Lade...':'Loading...')+'</div></div>');
+
   // Restore onboarding draft (so interrupted users resume where they were)
   loadSession();
 
