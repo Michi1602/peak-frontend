@@ -1567,10 +1567,12 @@ async function checkVoucher(){
   msg.style.color='var(--dim)';
   msg.textContent=de?'Wird geprüft...':'Validating...';
   try{
+    var emailField=document.getElementById('em');
+    var currentEmail=(emailField?emailField.value.trim():'')||ud.email||'';
     var res=await fetch(BACKEND+'/voucher/validate',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({code:code,plan:selPlan,tier:selTier})
+      body:JSON.stringify({code:code,plan:selPlan,tier:selTier,email:currentEmail})
     });
     var data=await res.json();
     btn.textContent=de?'Prüfen':'Check';
