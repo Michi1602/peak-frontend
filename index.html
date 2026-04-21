@@ -278,6 +278,32 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;hei
 .ex-row{display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)}
 .ex-num{width:19px;height:19px;background:var(--red);color:var(--white);font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
 .ex-name{font-size:13px;font-weight:700;color:var(--white)}.ex-detail{font-size:11px;color:var(--faint);margin-top:1px}
+.ex-tip{font-size:11px;color:var(--ink2);margin-top:3px;font-style:italic;line-height:1.4}
+/* Weekly plan grid */
+.wk-meta{font-size:11px;color:var(--faint);letter-spacing:1px;margin-bottom:8px;text-transform:uppercase;font-weight:700}
+.wk-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px}
+.wk-day{background:var(--s2);border:1px solid var(--border);border-top:3px solid var(--red);padding:8px 6px;cursor:pointer;transition:all .15s;min-height:78px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start}
+.wk-day:hover{border-color:var(--red);background:var(--rbg)}
+.wk-day.rest{border-top-color:var(--border);opacity:.55;cursor:default}
+.wk-day.rest:hover{border-color:var(--border);background:var(--s2)}
+.wk-day-lbl{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:11px;color:var(--red);letter-spacing:1.5px;margin-bottom:4px}
+.wk-day.rest .wk-day-lbl{color:var(--faint)}
+.wk-day-type{font-size:8px;font-weight:700;color:var(--white);letter-spacing:1px;text-align:center;line-height:1.2;margin-bottom:3px}
+.wk-day.rest .wk-day-type{color:var(--faint)}
+.wk-day-title{font-size:9px;color:var(--ink2);text-align:center;line-height:1.2;font-weight:600;margin-bottom:2px}
+.wk-day-dur{font-size:9px;color:var(--faint);margin-top:auto}
+.wk-detail{background:var(--s2);border:1px solid var(--rbd);border-left:3px solid var(--red);padding:12px 14px;margin-top:8px}
+.wk-detail-t{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:14px;color:var(--red);letter-spacing:1.5px;margin-bottom:6px}
+.wk-detail-f{font-size:9px;color:var(--red);font-weight:700;letter-spacing:1px;margin-bottom:5px}
+.wk-detail-d{font-size:12px;color:var(--ink2);line-height:1.5;margin-bottom:10px}
+@media(max-width:768px){
+  .wk-grid{grid-template-columns:repeat(7,1fr);gap:3px}
+  .wk-day{padding:6px 3px;min-height:70px}
+  .wk-day-lbl{font-size:10px;letter-spacing:1px}
+  .wk-day-type{font-size:7px}
+  .wk-day-title{font-size:8px}
+  .wk-day-dur{font-size:8px}
+}
 /* Recovery detail */
 .rdb{padding:16px 18px}
 .rdb-back{display:flex;align-items:center;gap:7px;cursor:pointer;color:var(--dim);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:16px}
@@ -601,12 +627,62 @@ async function fetchPlan(){
     plan=await aiGenJSON(prompt,1600);
     plan._lang=lang; // Track which language this plan was generated in
     if(plan.workout&&plan.workout.exercises&&typeof plan.workout.exercises[0]==='string'){plan.workout.exercises=plan.workout.exercises.map(function(e){return{name:e,detail:''};});}
+    // Ensure weekly plan exists (Chat 1: synthesise from today's workout; Chat 2+ will use templates)
+    if(!plan.week)plan.week=synthWeekPlan(sport,level,parseInt(ud.sessions||3),parseInt(ud.dur||60),plan.workout);
     saveSession();
   }catch(e){
     var k=kcal||2000;
     plan={headline:'Your '+sport+' transformation starts now',calories:k,protein:Math.round(parseFloat(ud.weight||75)*1.8),carbs:Math.round(k*0.4/4),fat:Math.round(k*0.3/9),timeline:'12 weeks',todayMeals:[{emoji:'🍳',name:'Scrambled eggs with avocado',time:'Breakfast',kcal:420,macro:'28g protein'},{emoji:'🥗',name:'Grilled chicken & quinoa',time:'Lunch',kcal:550,macro:'45g protein'},{emoji:'🍽️',name:'Salmon with vegetables',time:'Dinner',kcal:580,macro:'40g protein'},{emoji:'🍎',name:'Greek yoghurt with berries',time:'Snack',kcal:180,macro:'15g protein'}],workout:{title:sport+' Performance Session',focus:'Improving '+sport+' performance',desc:'Sport-specific exercises chosen to make you a better '+sport+' athlete.',duration:parseInt(ud.dur||60),exercises:exFallback},recovery:{tip:'7-8hrs sleep tonight.',sleep:'Consistent bedtime.',hydration:'2.5-3L water today.'},shopping:['Chicken breast','Salmon','Quinoa','Greek yoghurt','Vegetables'],milestones:['Week 3 — Habits forming.','Week 7 — Visible progress.','Week 12 — Goal reached.']};
+    plan.week=synthWeekPlan(sport,level,parseInt(ud.sessions||3),parseInt(ud.dur||60),plan.workout);
     saveSession();
   }
+}
+
+// Synthesise a 7-day week plan from today's workout.
+// This is Chat 1 stub — Chat 2 replaces with sport-specific templates.
+function synthWeekPlan(sport,level,sessionsPerWk,duration,todayWorkout){
+  sessionsPerWk=Math.max(1,Math.min(7,sessionsPerWk||3));
+  // Session distribution: spread evenly, avoid back-to-back for recovery
+  var patterns={
+    1:[true,false,false,false,false,false,false],
+    2:[true,false,false,true,false,false,false],
+    3:[true,false,true,false,true,false,false],
+    4:[true,false,true,false,true,false,true],
+    5:[true,true,false,true,true,false,true],
+    6:[true,true,false,true,true,true,true],
+    7:[true,true,true,true,true,true,true]
+  };
+  var pattern=patterns[sessionsPerWk];
+  var types=['technique','strength','endurance','speed','mixed','recovery','mobility'];
+  var days=[];
+  var typeIdx=0;
+  pattern.forEach(function(isSession){
+    if(!isSession){
+      days.push({type:'rest'});
+      return;
+    }
+    var type=types[typeIdx%types.length];
+    typeIdx++;
+    // First session uses today's workout if provided, rest are stubs
+    if(days.filter(function(d){return d.type!=='rest';}).length===0&&todayWorkout){
+      days.push({
+        type:type,
+        title:todayWorkout.title||(sport+' Session'),
+        focus:todayWorkout.focus||'',
+        desc:todayWorkout.desc||'',
+        duration:duration,
+        exercises:todayWorkout.exercises||[]
+      });
+    }else{
+      days.push({
+        type:type,
+        title:sport+' '+type,
+        duration:duration,
+        exercises:[{name:'Details coming soon',detail:'Will be filled by sport-specific templates'}]
+      });
+    }
+  });
+  return {days:days,weekNum:1,phase:'foundation'};
 }
 
 function fp(){return plan||{calories:2000,protein:150,carbs:200,fat:70,timeline:'12 weeks',headline:'Your transformation starts now',todayMeals:[{emoji:'🍳',name:'Scrambled eggs',time:'Breakfast',kcal:420,macro:'28g protein'},{emoji:'🥗',name:'Chicken & quinoa',time:'Lunch',kcal:550,macro:'45g protein'},{emoji:'🍽️',name:'Salmon',time:'Dinner',kcal:580,macro:'40g protein'},{emoji:'🍎',name:'Greek yoghurt',time:'Snack',kcal:180,macro:'15g protein'}],workout:{title:'Performance Session',focus:'Building athletic base',desc:'Progressive training session.',duration:60,exercises:[{name:'Warm-up',detail:'10 min'},{name:'Main set',detail:'35 min'},{name:'Cool-down',detail:'10 min'}]},recovery:{tip:'Sleep 7-8hrs.',sleep:'Consistent bedtime.',hydration:'2.5L water.'},shopping:['Chicken','Salmon','Quinoa','Yoghurt','Vegetables'],milestones:['Week 3','Week 7','Week 12']};}
@@ -865,8 +941,15 @@ function tFi(p){
   var de=lang==='de';
   var sport=ud.sport||'—';var level=ud.level||'—';
   var c='<div class="sg"><div class="stat"><div class="stl">'+t('sp')+'</div><div class="stv">'+sport+'</div></div><div class="stat"><div class="stl">Level</div><div class="stv">'+level+'</div></div><div class="stat"><div class="stl">'+(de?'Einheiten':'Sessions')+'</div><div class="stv">'+(ud.sessions||'—')+'×/wk</div></div><div class="stat"><div class="stl">'+(de?'Dauer':'Duration')+'</div><div class="stv">'+(ud.dur||'—')+' min</div></div></div>';
+
+  // WEEKLY PLAN VIEW
+  if(p&&p.week&&p.week.days&&p.week.days.length){
+    c+=renderWeekPlan(p.week);
+  }
+
+  // TODAY'S WORKOUT (backwards-compat OR today's session from week)
   if(p&&p.workout){
-    c+='<div class="dst">'+t('tw')+'</div>';
+    c+='<div class="dst" style="margin-top:16px">'+t('tw')+'</div>';
     c+='<div class="wc"><div class="wt">'+p.workout.title+' · '+p.workout.duration+' MIN</div><div class="wd" style="margin-bottom:5px">'+p.workout.desc+'</div>';
     if(p.workout.focus)c+='<div style="font-size:9px;color:var(--red);font-weight:700;letter-spacing:1px;margin-top:3px">'+(de?'FOKUS':'FOCUS')+': '+p.workout.focus+'</div>';
     c+='</div>';
@@ -884,6 +967,88 @@ function tFi(p){
     c+='</div>';
   }
   dshell('fitness',c);
+}
+
+// Render weekly training plan with expandable day cards
+function renderWeekPlan(week){
+  var de=lang==='de';
+  var days=week.days||[];
+  var weekNum=week.weekNum||1;
+  var phase=week.phase||'foundation';
+  var phaseLabels={
+    foundation:{en:'Foundation',de:'Grundlage'},
+    build:{en:'Build Phase',de:'Aufbauphase'},
+    peak:{en:'Peak Phase',de:'Leistungsphase'}
+  };
+  var phaseLabel=(phaseLabels[phase]||phaseLabels.foundation)[lang==='de'?'de':'en'];
+  var dayNamesEN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  var dayNamesDE=['Mo','Di','Mi','Do','Fr','Sa','So'];
+  var dayNames=de?dayNamesDE:dayNamesEN;
+
+  var sessionCount=days.filter(function(d){return d.type&&d.type!=='rest';}).length;
+
+  var c='<div class="dst" style="margin-top:4px">'+(de?'Wochenplan':'Weekly Plan')+'</div>';
+  c+='<div class="wk-meta">'+(de?'Woche':'Week')+' '+weekNum+' · '+phaseLabel+' · '+sessionCount+(de?' Einheiten':' sessions')+'</div>';
+  c+='<div class="wk-grid">';
+  days.forEach(function(d,i){
+    var dayLabel=dayNames[i]||d.day||('D'+(i+1));
+    var isRest=!d.type||d.type==='rest';
+    var typeLabel={
+      technique:{en:'TECHNIQUE',de:'TECHNIK'},
+      strength:{en:'STRENGTH',de:'KRAFT'},
+      endurance:{en:'ENDURANCE',de:'AUSDAUER'},
+      speed:{en:'SPEED',de:'TEMPO'},
+      recovery:{en:'RECOVERY',de:'REGENERATION'},
+      match:{en:'MATCH',de:'SPIEL'},
+      mobility:{en:'MOBILITY',de:'MOBILITÄT'},
+      mixed:{en:'MIXED',de:'GEMISCHT'}
+    };
+    var tl=isRest?(de?'PAUSE':'REST'):(typeLabel[d.type]||{en:d.type.toUpperCase(),de:d.type.toUpperCase()})[de?'de':'en'];
+    c+='<div class="wk-day '+(isRest?'rest':'')+'" onclick="'+(isRest?'':'openWkDay('+i+')')+'">';
+    c+='<div class="wk-day-lbl">'+dayLabel+'</div>';
+    c+='<div class="wk-day-type">'+tl+'</div>';
+    if(!isRest){
+      c+='<div class="wk-day-title">'+(d.title||'').toUpperCase()+'</div>';
+      if(d.duration)c+='<div class="wk-day-dur">'+d.duration+' '+(de?'Min':'min')+'</div>';
+    }
+    c+='</div>';
+  });
+  c+='</div>';
+  c+='<div id="wkDayDetail"></div>';
+  return c;
+}
+
+// Expand single day's exercises inline
+function openWkDay(i){
+  var p=fp();
+  if(!p||!p.week||!p.week.days)return;
+  var d=p.week.days[i];
+  if(!d)return;
+  var de=lang==='de';
+  var el=document.getElementById('wkDayDetail');
+  if(!el)return;
+  // Toggle: if same day open, close it
+  if(el.getAttribute('data-day')===String(i)){
+    el.innerHTML='';
+    el.removeAttribute('data-day');
+    return;
+  }
+  el.setAttribute('data-day',String(i));
+  var html='<div class="wk-detail">';
+  html+='<div class="wk-detail-t">'+(d.title||'').toUpperCase()+'</div>';
+  if(d.focus)html+='<div class="wk-detail-f">'+(de?'FOKUS: ':'FOCUS: ')+d.focus+'</div>';
+  if(d.desc)html+='<div class="wk-detail-d">'+d.desc+'</div>';
+  (d.exercises||[]).forEach(function(e,idx){
+    var nm=typeof e==='string'?e:(e.name||'Exercise');
+    var dt=typeof e==='string'?'':(e.detail||'');
+    var tip=typeof e==='object'?(e.tip||''):'';
+    html+='<div class="ex-row"><div class="ex-num">'+(idx+1)+'</div><div><div class="ex-name">'+nm+'</div>';
+    if(dt)html+='<div class="ex-detail">'+dt+'</div>';
+    if(tip)html+='<div class="ex-tip">💡 '+tip+'</div>';
+    html+='</div></div>';
+  });
+  html+='</div>';
+  el.innerHTML=html;
 }
 
 async function adjustWorkout(type){
