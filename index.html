@@ -74,7 +74,8 @@ html,body{height:100%;background:var(--bg);font-family:'Barlow',sans-serif;color
 .prf-edit-btn{background:none;border:none;color:var(--red);font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;padding:4px 8px;border:1px solid transparent}
 .prf-edit-btn:hover{border-color:var(--red)}
 .prf-chips{display:flex;flex-wrap:wrap;gap:5px;max-width:60%;justify-content:flex-end}
-.prf-chip{font-size:10px;padding:3px 8px;background:var(--s2);border:1px solid var(--border);color:var(--ink2)}
+.prf-chip{font-size:13px;color:var(--white);font-weight:600;background:none;border:none;padding:0}
+.prf-chip:not(:last-child)::after{content:",";color:var(--dim);margin-right:2px}
 .prf-logout{width:100%;background:var(--s2);color:var(--red);border:1px solid var(--red);padding:13px;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:13px;letter-spacing:3px;text-transform:uppercase;cursor:pointer;margin-top:12px}
 .prf-logout:hover{background:var(--red);color:var(--white)}
 .prf-regen{width:100%;background:var(--red);color:var(--white);border:none;padding:13px;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:13px;letter-spacing:3px;text-transform:uppercase;cursor:pointer;margin-bottom:8px}
@@ -516,6 +517,9 @@ function syncThemeButton(){
   }
 }
 function rerenderCurrent(){
+  // Check if we're in profile screen
+  var profileBtn=document.querySelector('[onclick*="saveProfile"],[onclick*="regenPlan"]');
+  if(profileBtn&&ud.email){showProfile();return;}
   // Check if we're in dashboard
   var nav=document.querySelector('.ntab.act');
   if(nav){
@@ -1375,10 +1379,14 @@ async function bootApp(){
 // Listen for auth state changes (e.g., after OAuth redirect completes).
 // bootApp() already handles the initial session, so we only react to
 // fresh SIGNED_IN events that happen AFTER initial page load.
+// Skip reload if we're already loaded (prevents tab-switch flicker).
 var __bootDone=false;
 window.sb.auth.onAuthStateChange(function(event,session){
   if(!__bootDone)return; // skip events fired during bootApp
   if(event==='SIGNED_IN'&&session){
+    // If we already have the user's email + plan, this is just a token
+    // refresh or tab-focus event — don't trigger a full reload.
+    if(ud.email&&plan)return;
     loadAuthProfile();
   }
 });
@@ -1404,19 +1412,24 @@ function profLabel(key){
 
 function profValue(key){
   var v=ud[key];
+  // Enum-Felder mit EN/DE Übersetzung. Match auf beiden Sprachen.
+  var ENUMS={
+    goal:{g1:['Lose weight','Abnehmen'],g2:['Build muscle','Muskelaufbau'],g3:['Improve performance','Performance steigern'],g4:['Eat cleaner','Gesünder essen'],g5:['Recover better','Besser regenerieren'],g6:['Daily habits','Tägliche Gewohnheiten']},
+    cook:{bc:['Beginner','Anfänger'],ic:['Intermediate','Mittelmäßig'],ac:['Advanced chef','Fortgeschrittener Koch']},
+    level:{beg:['Beginner','Anfänger'],int:['Intermediate','Fortgeschritten'],adv:['Advanced','Profi']},
+    job:{desk:['Desk job','Bürojob'],phys:['Physical job','Körperl. Arbeit'],mix:['Mixed','Gemischt'],shift:['Shift work','Schichtarbeit']},
+    commute:{car:['Car','Auto'],bus:['Bus/Train','Bus/Zug'],walk:['Walking','Zu Fuß'],bike:['Cycling','Fahrrad']},
+    equip:{gym:['Gym','Fitnessstudio'],hm:['Home','Zuhause'],out:['Outdoors','Draußen']}
+  };
+  if(ENUMS[key]&&v){
+    for(var k in ENUMS[key]){
+      if(v===ENUMS[key][k][0]||v===ENUMS[key][k][1]){
+        return lang==='de'?ENUMS[key][k][1]:ENUMS[key][k][0];
+      }
+    }
+  }
   if(Array.isArray(v))return v.length?v.join(', '):'—';
   if(v===''||v===null||v===undefined)return '—';
-  // Goal: translate stored value to current language
-  if(key==='goal'){
-    var GOALS={
-      en:{g1:'Lose weight',g2:'Build muscle',g3:'Improve performance',g4:'Eat cleaner',g5:'Recover better',g6:'Daily habits'},
-      de:{g1:'Abnehmen',g2:'Muskelaufbau',g3:'Performance steigern',g4:'Gesünder essen',g5:'Besser regenerieren',g6:'Tägliche Gewohnheiten'}
-    };
-    for(var gk in GOALS.en){
-      if(v===GOALS.en[gk]||v===GOALS.de[gk])return t(gk);
-    }
-    return String(v);
-  }
   // Unit suffixes
   if(key==='weight'||key==='dweight')return v+' kg';
   if(key==='height')return v+' cm';
