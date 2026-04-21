@@ -638,10 +638,595 @@ async function fetchPlan(){
   }
 }
 
-// Synthesise a 7-day week plan from today's workout.
-// This is Chat 1 stub — Chat 2 replaces with sport-specific templates.
+// ═══════════════════════════════════════════════════════════════════════
+// TRAINING TEMPLATES — Sport-specific structured plans
+// ═══════════════════════════════════════════════════════════════════════
+// Each template defines:
+//   - sessionOrder: which session types to use at 1-7 sessions/week
+//   - sessions: pool of concrete workouts per session type + level
+//   - warmup/cooldown: standard bookends
+// The KI handles sports NOT in this dictionary via generic prompt.
+// Content stays English; the KI translates at render time when needed.
+// ═══════════════════════════════════════════════════════════════════════
+
+var TPL={
+  // ─────── FOOTBALL ───────
+  Football:{
+    sessionOrder:{
+      1:['mixed'],
+      2:['technique','strength'],
+      3:['technique','strength','endurance'],
+      4:['technique','strength','endurance','speed'],
+      5:['technique','strength','endurance','speed','mobility'],
+      6:['technique','strength','endurance','speed','mobility','match'],
+      7:['technique','strength','endurance','speed','mobility','match','recovery']
+    },
+    sessions:{
+      technique:{
+        beg:{title:'Ball Control Basics',focus:'First touch, passing accuracy',desc:'Build the fundamentals of ball handling with controlled, repeatable drills.',
+          exercises:[
+            {name:'Cone dribbling',detail:'3×60s slalom through 8 cones',tip:'Keep ball close — small touches'},
+            {name:'Wall passing',detail:'4×20 passes each foot',tip:'Receive with inside, pass with inside'},
+            {name:'First touch control',detail:'3×10 thrown balls, settle and pass back',tip:'Cushion the ball, don\'t stop it dead'},
+            {name:'Shooting drill',detail:'15 shots on target from edge of box',tip:'Plant foot next to ball, laces through centre'}
+          ]},
+        int:{title:'Advanced Ball Mastery',focus:'Speed of play, 1v1 moves',desc:'Sharpen match-ready technique under fatigue and pressure.',
+          exercises:[
+            {name:'Ronaldo chop + step-over',detail:'3×10 reps each direction',tip:'Sell the first move, change direction fast'},
+            {name:'Gate passing under pressure',detail:'5×2min with passive defender',tip:'Scan before receiving — know next pass'},
+            {name:'Quick turns drill',detail:'4×8 turns in tight space',tip:'Drop shoulder before the turn'},
+            {name:'Finishing from crosses',detail:'20 finishes, alternating near/far post',tip:'Meet the ball — don\'t wait'}
+          ]},
+        adv:{title:'Elite Technical Session',focus:'Pressure decision-making',desc:'Match-intensity technical work with scanning and reading the game.',
+          exercises:[
+            {name:'Rondo 4v2',detail:'6×3min intervals',tip:'One touch where possible — force quick decisions'},
+            {name:'Position-specific passing patterns',detail:'5×3 patterns (e.g. CM → winger → striker)',tip:'Weight of pass determines next action'},
+            {name:'Finishing from transitions',detail:'3 sets: sprint 15m + finish, 8 reps',tip:'Open body shape when receiving — see goal faster'},
+            {name:'Small-sided 3v3 possession',detail:'4×4min, 2-touch limit',tip:'Communicate every pass — shoulder checks mandatory'}
+          ]}
+      },
+      strength:{
+        beg:{title:'Football Strength Foundation',focus:'Leg power, core stability',desc:'Build the base strength needed to compete, change direction, and resist tackles.',
+          exercises:[
+            {name:'Goblet squats',detail:'3×10 @ moderate weight',tip:'Chest up, knees track over toes'},
+            {name:'Walking lunges',detail:'3×12 each leg',tip:'Step long — stretch the back hip'},
+            {name:'Plank',detail:'3×45s',tip:'Squeeze glutes — don\'t let hips sag'},
+            {name:'Glute bridges',detail:'3×15 with 2s hold at top',tip:'Drive through heels'}
+          ]},
+        int:{title:'Explosive Lower Body',focus:'Power, jump height, sprint drive',desc:'Develop the explosive strength that separates good and great footballers.',
+          exercises:[
+            {name:'Back squats',detail:'4×6 @ 75-80% 1RM',tip:'Drive up fast — controlled descent'},
+            {name:'Romanian deadlifts',detail:'4×8 moderate weight',tip:'Hinge at hips — feel hamstring stretch'},
+            {name:'Box jumps',detail:'4×5 max-effort jumps',tip:'Land soft — absorb with bent knees'},
+            {name:'Single-leg deadlifts',detail:'3×8 each leg',tip:'Hips square to ground throughout'},
+            {name:'Pallof press (anti-rotation)',detail:'3×10 each side',tip:'Resist the rotation — core stays rigid'}
+          ]},
+        adv:{title:'Peak Power Development',focus:'Contrast training, elite explosiveness',desc:'Combine heavy lifts with plyometrics for max power transfer to sprinting and jumping.',
+          exercises:[
+            {name:'Trap bar deadlift',detail:'5×3 @ 85-90% 1RM',tip:'Full hip extension at top — explosive'},
+            {name:'Contrast: Back squat + Broad jump',detail:'4 sets: 3 squats @ 80% + 3 jumps',tip:'60s rest between lift and jump'},
+            {name:'Depth jumps',detail:'4×5 from 40cm box',tip:'Minimise ground contact — react fast'},
+            {name:'Nordic hamstring curls',detail:'3×6 eccentric',tip:'Resist the fall — hamstring protection'},
+            {name:'Single-leg squat (pistol)',detail:'3×5 each leg',tip:'Full range — bum to heel'}
+          ]}
+      },
+      endurance:{
+        beg:{title:'Aerobic Base Building',focus:'Match fitness, recovery between sprints',desc:'Develop the engine that lets you perform at minute 90.',
+          exercises:[
+            {name:'Jog warm-up',detail:'10 min easy pace',tip:'Should be able to hold conversation'},
+            {name:'Intervals: 400m on, 200m off',detail:'6 reps at steady tempo',tip:'Controlled effort — not a sprint'},
+            {name:'Fartlek running',detail:'15 min with 6×30s surges',tip:'Alternate pace — find your rhythm'},
+            {name:'Cool down',detail:'5 min easy jog + stretch',tip:'Never stop dead — keep blood flowing'}
+          ]},
+        int:{title:'Match-Specific Conditioning',focus:'Repeated sprint ability',desc:'Mimic the stop-start demands of a real game.',
+          exercises:[
+            {name:'Dynamic warm-up',detail:'10 min: skips, lunges, strides',tip:'Get hip flexors firing'},
+            {name:'Yo-Yo style shuttles',detail:'8×(20m out + 20m back), 40s rest',tip:'Hit same pace every rep — no drop-off'},
+            {name:'Tempo run',detail:'15 min at 80% effort',tip:'Uncomfortable but sustainable'},
+            {name:'Sprint repeats',detail:'6×60m with 90s rest',tip:'Full recovery — quality over quantity'},
+            {name:'Cooldown jog + stretch',detail:'10 min',tip:'Target quads, hamstrings, calves'}
+          ]},
+        adv:{title:'Elite Repeat Sprint Ability',focus:'Peak VO2max + lactate tolerance',desc:'The kind of work that lets you beat your opponent in the 89th minute.',
+          exercises:[
+            {name:'Dynamic warm-up',detail:'12 min full activation',tip:'Include bounding and cutting'},
+            {name:'Bronco test pattern',detail:'5×(20m/40m/60m shuttle), 60s rest',tip:'Beat your previous best'},
+            {name:'6×6×30m sprints',detail:'30s rest between, 3min between sets',tip:'Maintain 95%+ effort every rep'},
+            {name:'Tempo threshold run',detail:'4×4min at threshold, 2min rest',tip:'Hard but repeatable'},
+            {name:'Contrast recovery jog',detail:'10 min easy + full stretch',tip:'Set up tomorrow\'s session'}
+          ]}
+      },
+      speed:{
+        beg:{title:'Sprint Mechanics',focus:'Running form, acceleration',desc:'Learn to move efficiently before learning to move fast.',
+          exercises:[
+            {name:'A-skips',detail:'3×20m',tip:'High knees, punch the ground'},
+            {name:'B-skips',detail:'3×20m',tip:'Extend leg before driving down'},
+            {name:'Acceleration sprints',detail:'5×20m from standing',tip:'Lean forward first 5m, then stand tall'},
+            {name:'Flying 20s',detail:'4×20m with 15m build-up',tip:'Hit max speed — feel the rhythm'}
+          ]},
+        int:{title:'Agility & Change of Direction',focus:'Cutting, first step explosiveness',desc:'Football isn\'t won in straight lines.',
+          exercises:[
+            {name:'Ladder drills',detail:'5 patterns, 2 sets each',tip:'Light feet — quick in/out'},
+            {name:'T-drill',detail:'6 reps, alternating sides',tip:'Plant outside foot — drive off it'},
+            {name:'5-10-5 pro agility',detail:'8 reps, 90s rest',tip:'Low hips at the plant'},
+            {name:'Reactive sprints',detail:'6×20m with visual cue start',tip:'Explode from first step'},
+            {name:'Sprint 40m',detail:'4 reps with full recovery',tip:'Stand tall at top speed'}
+          ]},
+        adv:{title:'Maximum Velocity Training',focus:'Top speed, deceleration control',desc:'Top-speed work is what creates separation in 1v1s.',
+          exercises:[
+            {name:'Prep drills',detail:'10 min: wickets, wall drills',tip:'Technical quality first'},
+            {name:'Flying 30s',detail:'6×30m with 20m build-up, 3min rest',tip:'Hold form at max velocity'},
+            {name:'Resisted sprints (band/sled)',detail:'5×20m heavy, 3min rest',tip:'Maintain sprint posture under load'},
+            {name:'Deceleration drills',detail:'6×(sprint 20m + stop in 5m)',tip:'Absorb through hips — low and wide'},
+            {name:'Change of direction combo',detail:'4 reps: 20m sprint + 10m back + 20m forward',tip:'Explode off every plant'}
+          ]}
+      },
+      mobility:{
+        beg:{title:'Football Mobility Basics',focus:'Hip range, ankle, thoracic spine',desc:'Loosen the areas footballers lock up most.',
+          exercises:[
+            {name:'World\'s greatest stretch',detail:'3×5 each side',tip:'Rotate thoracic fully — reach high'},
+            {name:'Deep squat hold',detail:'3×30s',tip:'Heels flat, chest up, weight on midfoot'},
+            {name:'Hip flexor stretch',detail:'3×45s each side',tip:'Tuck pelvis, feel front of hip'},
+            {name:'Ankle circles & dorsiflexion',detail:'2×10 each direction',tip:'Full range — don\'t rush'}
+          ]},
+        int:{title:'Active Mobility Flow',focus:'Dynamic range, injury prevention',desc:'Keep your body supple for the demands of 90 minutes.',
+          exercises:[
+            {name:'Cossack squats',detail:'3×8 each side',tip:'Sink deep — stretch adductors'},
+            {name:'90/90 hip flow',detail:'3×10 transitions',tip:'Control each rotation — no momentum'},
+            {name:'Thoracic rotations',detail:'3×8 each side',tip:'Keep hips square — rotate upper back only'},
+            {name:'Banded hip distraction',detail:'2×45s each leg',tip:'Lean into the stretch'},
+            {name:'Soleus stretch',detail:'2×30s each',tip:'Bent knee — targets lower calf'}
+          ]},
+        adv:{title:'Athletic Mobility System',focus:'Maximum ROM + control',desc:'Elite-level mobility that unlocks every movement pattern on the pitch.',
+          exercises:[
+            {name:'Loaded cossack squat',detail:'3×6 with kettlebell',tip:'Control the descent fully'},
+            {name:'Jefferson curl',detail:'3×8 light weight',tip:'Round spine segment by segment'},
+            {name:'Pigeon pose variations',detail:'3×60s each side',tip:'Find tension — breathe through it'},
+            {name:'ATG split squat',detail:'3×8 each leg',tip:'Bum to heel — no cheating'},
+            {name:'Bretzel 2.0 stretch',detail:'2×45s each side',tip:'Full thoracic + hip opener'}
+          ]}
+      },
+      match:{
+        beg:{title:'Small-Sided Game',focus:'Applying skills under pressure',desc:'Put technique into action in live match situations.',
+          exercises:[
+            {name:'Warm-up rondo',detail:'8 min 4v2 possession',tip:'One-touch when possible'},
+            {name:'3v3 to small goals',detail:'4×4min with 1min rest',tip:'Quick transitions — don\'t rest with the ball'},
+            {name:'5v5 match',detail:'15 min free play',tip:'Play what you see — don\'t overthink'},
+            {name:'Finishing session',detail:'10 shots from edge of box',tip:'Variation: inside, laces, cut-back'}
+          ]},
+        int:{title:'Tactical Scenarios',focus:'Decision-making, positioning',desc:'Practice the moments that win matches.',
+          exercises:[
+            {name:'Rondo + transitions',detail:'10 min 6v4 with counter',tip:'Lose ball → sprint back immediately'},
+            {name:'Position-specific drills',detail:'15 min based on your role',tip:'Defender: covering, Mid: receiving, Attacker: runs behind'},
+            {name:'7v7 phase of play',detail:'3×8min scenarios',tip:'Work one tactical principle per round'},
+            {name:'Set piece routines',detail:'10 corners + 5 free kicks',tip:'Rehearse movement patterns'}
+          ]},
+        adv:{title:'Full Match Simulation',focus:'Game intelligence, executing under fatigue',desc:'Replicate match intensity with tactical overlays.',
+          exercises:[
+            {name:'Tactical rondos',detail:'12 min positional rondo 5v5+2',tip:'Find the free player — scan before receiving'},
+            {name:'Phase of play 8v8',detail:'4×8min with specific constraints',tip:'Each round: different tactical trigger'},
+            {name:'11v11 match intervals',detail:'3×12min with 3min rest',tip:'Full intensity — like a knockout'},
+            {name:'Mental performance review',detail:'10 min cool-down chat',tip:'What worked? What to drill tomorrow?'}
+          ]}
+      },
+      recovery:{
+        beg:{title:'Active Recovery',focus:'Blood flow, light movement',desc:'Help the body repair without adding fatigue.',
+          exercises:[
+            {name:'Easy bike/jog',detail:'20 min low intensity',tip:'Conversational pace only'},
+            {name:'Full-body stretch routine',detail:'15 min slow flow',tip:'Hold each position 30-60s'},
+            {name:'Foam rolling',detail:'10 min: quads, hamstrings, calves, glutes',tip:'Slow — breathe through tight spots'}
+          ]},
+        int:{title:'Structured Recovery Protocol',focus:'Nervous system reset',desc:'Accelerate recovery between intense sessions.',
+          exercises:[
+            {name:'Pool session',detail:'20 min easy swim or walk',tip:'Zero impact — water pressure aids circulation'},
+            {name:'Mobility flow',detail:'15 min yoga-style',tip:'Deep breathing throughout'},
+            {name:'Contrast therapy',detail:'6 rounds: 30s cold / 60s warm shower',tip:'Start with warm, end with cold'},
+            {name:'Foam rolling + stretching',detail:'15 min full body',tip:'Target sore spots'}
+          ]},
+        adv:{title:'Elite Recovery Day',focus:'Full recovery before peak session',desc:'Maximise adaptation from previous training.',
+          exercises:[
+            {name:'Sauna session',detail:'15-20 min at 80°C',tip:'Hydrate before and after — 500ml each'},
+            {name:'Contrast plunge',detail:'3×(3min warm + 1min cold)',tip:'End cold — boosts circulation'},
+            {name:'Mobility + breathwork',detail:'20 min combined',tip:'Parasympathetic activation'},
+            {name:'Foam roll + lacrosse ball',detail:'15 min full-body release',tip:'Target adductors and glutes extra'}
+          ]}
+      },
+      mixed:{
+        beg:{title:'All-Round Session',focus:'Touch one area from each pillar',desc:'Perfect for limited training time — work technique, strength and conditioning in one.',
+          exercises:[
+            {name:'Warm-up + ball work',detail:'10 min with ball',tip:'Touches, turns, passes'},
+            {name:'Strength circuit',detail:'3 rounds: 10 squats, 10 push-ups, 30s plank',tip:'Minimal rest between exercises'},
+            {name:'Sprint intervals',detail:'6×30m with 60s rest',tip:'Maximum intent every rep'},
+            {name:'Cool-down stretch',detail:'10 min',tip:'Hold stretches 45s each'}
+          ]},
+        int:{title:'Integrated Performance',focus:'Skill + physical combined',desc:'Train like a modern footballer — physical and technical fused.',
+          exercises:[
+            {name:'Dynamic warm-up',detail:'10 min with ball',tip:'Intensity builds each minute'},
+            {name:'Strength + finish combo',detail:'4 sets: 5 goblet squats + 5 shots',tip:'Transfer gym strength to pitch'},
+            {name:'Shuttle + ball control',detail:'6×(20m shuttle + first-touch pass)',tip:'Sharp under fatigue'},
+            {name:'Small-sided game',detail:'10 min 3v3',tip:'Apply everything at game pace'},
+            {name:'Cool-down',detail:'10 min',tip:'Target tight hips'}
+          ]},
+        adv:{title:'Complete Session',focus:'Match-day readiness',desc:'One session covering every performance attribute at game intensity.',
+          exercises:[
+            {name:'Activation + ball rondo',detail:'12 min 5v2',tip:'One-touch rondos — quality on the ball'},
+            {name:'Explosive strength complex',detail:'4 sets: 3 box jumps + 3 broad jumps + 6 sprints',tip:'Rest fully — 2min between sets'},
+            {name:'Repeated sprint ability',detail:'3×6×30m, 30s rest, 3min between sets',tip:'Same time every rep'},
+            {name:'Tactical 7v7',detail:'4×5min at match intensity',tip:'Bring everything you\'ve trained'},
+            {name:'Cool-down + mobility',detail:'12 min',tip:'Includes foam rolling key areas'}
+          ]}
+      }
+    }
+  },
+
+  // ─────── RUNNING ───────
+  Running:{
+    sessionOrder:{
+      1:['endurance'],
+      2:['endurance','speed'],
+      3:['endurance','speed','tempo'],
+      4:['endurance','speed','tempo','recovery'],
+      5:['endurance','speed','tempo','strength','recovery'],
+      6:['endurance','speed','tempo','strength','recovery','mobility'],
+      7:['endurance','speed','tempo','strength','recovery','mobility','match']
+    },
+    sessions:{
+      endurance:{
+        beg:{title:'Easy Long Run',focus:'Aerobic base, running economy',desc:'Build the foundation that all other running performance is built on.',
+          exercises:[
+            {name:'Dynamic warm-up',detail:'5 min: leg swings, lunges, skips',tip:'Loosen hips before running'},
+            {name:'Easy run',detail:'25-35 min at conversational pace',tip:'You should be able to hold a full sentence'},
+            {name:'Strides',detail:'4×20s fast, 40s walk',tip:'Focus on relaxed form at speed'},
+            {name:'Cool-down stretch',detail:'5 min',tip:'Calves, hamstrings, hip flexors'}
+          ]},
+        int:{title:'Aerobic Development Run',focus:'Mitochondrial density, fat oxidation',desc:'The run that makes you faster without trying to be fast.',
+          exercises:[
+            {name:'Dynamic warm-up',detail:'8 min drills',tip:'Include butt kicks and high knees'},
+            {name:'Steady run',detail:'45-60 min at aerobic pace (70% HRmax)',tip:'Breathe through nose if possible'},
+            {name:'Strides',detail:'6×100m at 5K pace',tip:'Smooth, not strained'},
+            {name:'Cool-down + stretch',detail:'10 min',tip:'Extra time on calves and hips'}
+          ]},
+        adv:{title:'Long Endurance Run',focus:'Glycogen efficiency, mental toughness',desc:'The session that builds the engine for marathon-level performance.',
+          exercises:[
+            {name:'Full warm-up',detail:'10 min with drills and activations',tip:'Prime the nervous system'},
+            {name:'Progressive long run',detail:'75-90 min, last 20 min at marathon pace',tip:'Start easy — finish strong'},
+            {name:'Strides',detail:'6×100m relaxed at 10K pace',tip:'Neuromuscular freshness despite fatigue'},
+            {name:'Cool-down + mobility',detail:'15 min',tip:'Foam roll immediately after'}
+          ]}
+      },
+      speed:{
+        beg:{title:'Speed Introduction',focus:'Form at pace, turnover',desc:'Learn what fast feels like before trying to run fast.',
+          exercises:[
+            {name:'Warm-up',detail:'10 min easy + drills',tip:'Full activation — speed needs it'},
+            {name:'Intervals',detail:'6×200m at 5K pace, 200m jog recovery',tip:'Relaxed shoulders, quick cadence'},
+            {name:'Strides',detail:'4×100m building to near-max',tip:'Smooth acceleration — don\'t force it'},
+            {name:'Cool-down jog + stretch',detail:'10 min',tip:'Gentle — not static stretching'}
+          ]},
+        int:{title:'VO2max Intervals',focus:'Aerobic power, lactate threshold',desc:'The workout that lifts your ceiling.',
+          exercises:[
+            {name:'Full warm-up',detail:'15 min easy + drills + 4 strides',tip:'Body must be ready for hard effort'},
+            {name:'Intervals',detail:'5×1000m at 5K pace, 2min jog recovery',tip:'Even pacing — last rep matches first'},
+            {name:'Strides',detail:'4×100m relaxed',tip:'Flush out lactate'},
+            {name:'Cool-down',detail:'10-15 min easy',tip:'Don\'t skip — aids recovery'}
+          ]},
+        adv:{title:'Peak Speed Development',focus:'Anaerobic capacity, mental execution',desc:'Race-specific speed work at the edge of your limits.',
+          exercises:[
+            {name:'Extended warm-up',detail:'20 min with drills + activations',tip:'Prime the anaerobic system too'},
+            {name:'Main set',detail:'6×800m at 3K pace, 90s rest',tip:'Discipline — hit paces every rep'},
+            {name:'Finisher',detail:'4×200m all-out, 200m walk',tip:'Empty the tank'},
+            {name:'Long cool-down',detail:'15 min easy + stretch',tip:'Essential recovery work'}
+          ]}
+      },
+      tempo:{
+        beg:{title:'Threshold Introduction',focus:'Lactate clearance',desc:'Find your sustainable hard pace.',
+          exercises:[
+            {name:'Warm-up',detail:'10 min easy',tip:'Build gradually'},
+            {name:'Tempo block',detail:'15 min at comfortably hard pace',tip:'Could hold for 20-30min max'},
+            {name:'Cool-down',detail:'10 min easy',tip:'Shake out legs'}
+          ]},
+        int:{title:'Sustained Tempo',focus:'Lactate threshold improvement',desc:'The workout that pushes your threshold pace faster.',
+          exercises:[
+            {name:'Warm-up + drills',detail:'15 min',tip:'Full readiness'},
+            {name:'Tempo run',detail:'20-25 min at threshold pace',tip:'One hour race effort'},
+            {name:'Strides',detail:'4×100m',tip:'Neuromuscular reset'},
+            {name:'Cool-down',detail:'10 min',tip:'Easy shake-out'}
+          ]},
+        adv:{title:'Progressive Tempo',focus:'Threshold extension + finishing strength',desc:'Elite threshold work that prepares you for peak race performance.',
+          exercises:[
+            {name:'Warm-up',detail:'15 min + drills + strides',tip:'Extended prep for quality'},
+            {name:'Progressive tempo',detail:'35-45 min: start at marathon pace, finish at 10K pace',tip:'Each km slightly faster'},
+            {name:'Float recovery',detail:'5 min easy jog',tip:'Partial recovery only'},
+            {name:'Finisher',detail:'3×400m at 5K pace',tip:'Tap into speed reserves'},
+            {name:'Cool-down',detail:'10 min',tip:'Thorough work-down'}
+          ]}
+      },
+      strength:{
+        beg:{title:'Runner\'s Strength Basics',focus:'Injury prevention, running economy',desc:'Build the body that carries the miles.',
+          exercises:[
+            {name:'Goblet squats',detail:'3×12',tip:'Full depth — thigh parallel'},
+            {name:'Single-leg bridges',detail:'3×10 each leg',tip:'Drive through heel'},
+            {name:'Walking lunges',detail:'3×10 each leg',tip:'Knee tracks over toe'},
+            {name:'Plank variations',detail:'3×45s front + 30s side each',tip:'Hips don\'t sag'},
+            {name:'Calf raises',detail:'3×20 slow reps',tip:'Pause 1s at top'}
+          ]},
+        int:{title:'Runner\'s Strength Block',focus:'Power output, stride efficiency',desc:'Heavier loads to support faster running.',
+          exercises:[
+            {name:'Back squats or goblet',detail:'4×6 moderate-heavy',tip:'Full range — hip crease below knee'},
+            {name:'Romanian deadlifts',detail:'4×8',tip:'Feel hamstring stretch — not back'},
+            {name:'Bulgarian split squats',detail:'3×8 each leg',tip:'Back foot elevated on bench'},
+            {name:'Single-leg calf raises',detail:'3×15 each leg',tip:'Full range, controlled'},
+            {name:'Plank with shoulder taps',detail:'3×20 total taps',tip:'Minimise hip rotation'}
+          ]},
+        adv:{title:'Strength for Elite Running',focus:'Maximum power, tendon stiffness',desc:'The strength base that elite runners rely on.',
+          exercises:[
+            {name:'Trap bar deadlift',detail:'5×5 @ 80% 1RM',tip:'Explosive concentric — controlled lowering'},
+            {name:'Weighted step-ups',detail:'4×6 each leg',tip:'Drive through heel of working leg'},
+            {name:'Pogo hops',detail:'4×20 reps',tip:'Stiff ankles — minimise ground contact'},
+            {name:'Nordic curls',detail:'3×6 eccentric',tip:'Resist the fall fully'},
+            {name:'Hanging leg raises',detail:'3×10',tip:'Control up AND down'}
+          ]}
+      },
+      recovery:{
+        beg:{title:'Recovery Jog',focus:'Active flushing',desc:'The easy day that makes your hard days possible.',
+          exercises:[
+            {name:'Very easy jog',detail:'20-25 min at conversational pace',tip:'If in doubt — go slower'},
+            {name:'Full-body stretch',detail:'15 min',tip:'Hold each stretch 45s'}
+          ]},
+        int:{title:'Active Recovery',focus:'Adaptation, not stress',desc:'Promote recovery without adding fatigue.',
+          exercises:[
+            {name:'Easy jog',detail:'30-35 min truly easy',tip:'Heart rate stays below 70% max'},
+            {name:'Mobility flow',detail:'15 min dynamic',tip:'Move through full ranges'},
+            {name:'Foam roll',detail:'10 min targeted',tip:'Quads, IT band, calves'}
+          ]},
+        adv:{title:'Structured Recovery Day',focus:'Maximise adaptation',desc:'What separates elite runners is how they recover.',
+          exercises:[
+            {name:'Easy jog or cross-train',detail:'40 min low intensity',tip:'Bike or swim if legs are tired'},
+            {name:'Mobility work',detail:'20 min',tip:'Include hip and thoracic'},
+            {name:'Contrast therapy',detail:'6 rounds cold/warm shower',tip:'End cold'},
+            {name:'Foam roll + stretch',detail:'15 min full body',tip:'Extended work on tight areas'}
+          ]}
+      },
+      mobility:{
+        beg:{title:'Runner\'s Mobility Basics',focus:'Hip, ankle, thoracic',desc:'Keep the chain loose.',
+          exercises:[
+            {name:'World\'s greatest stretch',detail:'3×5 each side',tip:'Deep lunge + rotation'},
+            {name:'Hip flexor stretch',detail:'3×45s each',tip:'Tuck pelvis under'},
+            {name:'Calf stretches',detail:'2×45s each leg (straight + bent knee)',tip:'Target gastroc and soleus'},
+            {name:'Thoracic rotations',detail:'2×10 each side',tip:'Chest opens fully'}
+          ]},
+        int:{title:'Active Mobility Flow',focus:'Dynamic range, control',desc:'Keep moving freely as mileage builds.',
+          exercises:[
+            {name:'Cossack squats',detail:'3×6 each side',tip:'Sink deep'},
+            {name:'90/90 transitions',detail:'3×8 switches',tip:'Control both directions'},
+            {name:'Banded hip openers',detail:'2×45s each',tip:'Lean into stretch'},
+            {name:'Ankle dorsiflexion',detail:'3×10 each',tip:'Knee over toe, heel stays down'},
+            {name:'Scorpion stretch',detail:'2×8 each side',tip:'Rotate through thoracic'}
+          ]},
+        adv:{title:'Athletic Mobility',focus:'Max ROM + strength',desc:'Mobility that makes you faster.',
+          exercises:[
+            {name:'Loaded cossack',detail:'3×5 with kettlebell',tip:'Controlled depth'},
+            {name:'ATG split squat',detail:'3×6 each leg',tip:'Bum to heel — no cheating'},
+            {name:'Jefferson curl',detail:'3×8 light weight',tip:'Segmental spine flexion'},
+            {name:'Pigeon variations',detail:'3×45s each',tip:'Find tension — breathe'},
+            {name:'Banded distractions',detail:'2×60s hip + ankle',tip:'Create joint space'}
+          ]}
+      },
+      match:{
+        beg:{title:'Time Trial',focus:'Race simulation',desc:'Test where you are.',
+          exercises:[
+            {name:'Full warm-up',detail:'15 min + strides',tip:'Be truly ready'},
+            {name:'5K time trial',detail:'Effort-based or measured route',tip:'Even pacing first 4K, attack last 1K'},
+            {name:'Cool-down',detail:'10 min easy',tip:'Reflect on pacing'}
+          ]},
+        int:{title:'Race-Specific Simulation',focus:'Pacing, mental execution',desc:'Practice race day without the race.',
+          exercises:[
+            {name:'Full warm-up',detail:'20 min + drills + strides',tip:'Race-day routine'},
+            {name:'Race-pace intervals',detail:'3×2km at goal race pace',tip:'Dial in feel for pace'},
+            {name:'Float recoveries',detail:'3 min easy between',tip:'Simulate race breathing'},
+            {name:'Finisher',detail:'1km negative-split finish',tip:'Demonstrate closing speed'},
+            {name:'Cool-down',detail:'15 min',tip:'Lots of water + stretch'}
+          ]},
+        adv:{title:'Peak Race Simulation',focus:'Execution at goal pace',desc:'The session that predicts race performance.',
+          exercises:[
+            {name:'Full race warm-up',detail:'25 min full routine',tip:'Exactly what you\'ll do on race day'},
+            {name:'Goal-pace effort',detail:'5-8km at goal race pace',tip:'Commit to pace — don\'t drift'},
+            {name:'Finishing speed',detail:'3×400m at 5K pace',tip:'Prove closing strength'},
+            {name:'Long cool-down',detail:'20 min + full mobility',tip:'Recovery starts immediately'}
+          ]}
+      }
+    }
+  },
+
+  // ─────── WEIGHTS / STRENGTH TRAINING ───────
+  Weights:{
+    sessionOrder:{
+      1:['mixed'],
+      2:['strength','strength'],
+      3:['strength','strength','strength'],
+      4:['strength','strength','strength','strength'],
+      5:['strength','strength','strength','strength','mobility'],
+      6:['strength','strength','strength','strength','mobility','recovery'],
+      7:['strength','strength','strength','strength','mobility','recovery','match']
+    },
+    // Session types rotate push/pull/legs or upper/lower
+    sessions:{
+      strength:{
+        beg:{title:'Full-Body Foundation',focus:'Compound lifts, movement quality',desc:'Master the fundamentals before adding complexity.',
+          exercises:[
+            {name:'Goblet squat',detail:'3×10 moderate weight',tip:'Chest up, heels flat, full depth'},
+            {name:'Romanian deadlift',detail:'3×10',tip:'Hinge at hips — feel hamstring stretch'},
+            {name:'Dumbbell bench press',detail:'3×10',tip:'Lower to mid-chest, controlled'},
+            {name:'Single-arm dumbbell row',detail:'3×10 each side',tip:'Pull elbow to hip'},
+            {name:'Plank',detail:'3×45s',tip:'Straight line from heels to head'},
+            {name:'Lateral band walks',detail:'2×15 each direction',tip:'Stay low, small steps'}
+          ]},
+        int:{title:'Upper/Lower Split',focus:'Hypertrophy, progressive overload',desc:'More volume, more specificity, measurable progress.',
+          exercises:[
+            {name:'Back squat',detail:'4×6 @ 75% 1RM',tip:'Hip crease below knee — drive up fast'},
+            {name:'Bulgarian split squat',detail:'3×10 each leg',tip:'Elevated back foot — weight on front leg'},
+            {name:'Barbell hip thrust',detail:'4×8',tip:'Chin tucked, drive through heels, pause at top'},
+            {name:'Bench press',detail:'4×6 @ 75% 1RM',tip:'Arch slight, retract shoulder blades'},
+            {name:'Pull-ups or lat pulldown',detail:'4×8',tip:'Full extension at bottom — chin over bar'},
+            {name:'Overhead press',detail:'3×8',tip:'Ribcage down — don\'t arch back'},
+            {name:'Core finisher',detail:'Hanging leg raises 3×10',tip:'Control both directions'}
+          ]},
+        adv:{title:'Elite Strength Day',focus:'Max strength, power output',desc:'Heavy compound work with accessory progression.',
+          exercises:[
+            {name:'Back squat',detail:'5×3 @ 87-92% 1RM',tip:'Maximum intent — explode up'},
+            {name:'Trap bar deadlift',detail:'5×3 @ 85%',tip:'Neutral spine — drive through floor'},
+            {name:'Front squat',detail:'4×5',tip:'Elbows high — chest up'},
+            {name:'Bench press',detail:'5×3 @ 87%',tip:'Leg drive active — full body lift'},
+            {name:'Weighted pull-ups',detail:'4×5 with added weight',tip:'Full range — no kipping'},
+            {name:'Push press',detail:'4×4 explosive',tip:'Dip-drive — use legs'},
+            {name:'Weighted plank',detail:'3×30s with 10-20kg plate',tip:'Never lose position'}
+          ]}
+      },
+      mobility:{
+        beg:{title:'Lifter\'s Mobility',focus:'Hip, shoulder, thoracic',desc:'Keep what you lift functional.',
+          exercises:[
+            {name:'Deep squat hold',detail:'3×30s',tip:'Full depth — feet flat'},
+            {name:'Thoracic extensions on foam roll',detail:'3×10',tip:'Support neck — open chest'},
+            {name:'Shoulder dislocates',detail:'3×10 with band/stick',tip:'Arms straight throughout'},
+            {name:'Hip flexor stretch',detail:'3×45s each',tip:'Tuck pelvis'},
+            {name:'Wrist circles',detail:'2×10 each direction',tip:'Prep for pressing'}
+          ]},
+        int:{title:'Active Mobility',focus:'ROM + control under load',desc:'Move well so you can lift well.',
+          exercises:[
+            {name:'Cossack squats',detail:'3×8 each side',tip:'Sink deep in each rep'},
+            {name:'90/90 flow',detail:'3×8 switches',tip:'Controlled both ways'},
+            {name:'Overhead squat',detail:'3×8 with PVC',tip:'Arms locked overhead throughout'},
+            {name:'Jefferson curl',detail:'3×8 light',tip:'Segmental flexion'},
+            {name:'Band pull-aparts',detail:'3×15',tip:'Scapulae retract fully'}
+          ]},
+        adv:{title:'Athletic Mobility System',focus:'Max ROM, active control',desc:'What separates athletic strength from gym strength.',
+          exercises:[
+            {name:'Loaded cossack',detail:'3×6 with kettlebell',tip:'Slow descent'},
+            {name:'ATG split squat',detail:'3×8 each leg',tip:'Bum to heel'},
+            {name:'Weighted Jefferson curl',detail:'3×6 light DB',tip:'Spine flexion under load'},
+            {name:'Dragon pose',detail:'3×45s each',tip:'Deep hip opener'},
+            {name:'Turkish get-up',detail:'3×3 each side',tip:'Every position matters'},
+            {name:'Banded distractions',detail:'2×60s hip + shoulder',tip:'Create joint space'}
+          ]}
+      },
+      recovery:{
+        beg:{title:'Recovery Day',focus:'Blood flow, adaptation',desc:'Grow from the work you\'ve done.',
+          exercises:[
+            {name:'Easy cardio',detail:'20-30 min walk/bike',tip:'Low intensity only'},
+            {name:'Full-body stretch',detail:'15 min',tip:'Hold 45s each'},
+            {name:'Foam rolling',detail:'10 min',tip:'Target sore areas'}
+          ]},
+        int:{title:'Active Recovery',focus:'Parasympathetic reset',desc:'Recover like a pro.',
+          exercises:[
+            {name:'Low-intensity cardio',detail:'30 min',tip:'Zone 1 only'},
+            {name:'Mobility flow',detail:'20 min dynamic',tip:'Move through ranges'},
+            {name:'Contrast shower',detail:'6 rounds warm/cold',tip:'End cold'},
+            {name:'Foam roll + stretch',detail:'15 min',tip:'Full body'}
+          ]},
+        adv:{title:'Structured Recovery',focus:'Max adaptation',desc:'Treat recovery like training.',
+          exercises:[
+            {name:'Sauna',detail:'15-20 min at 80°C',tip:'Hydrate well'},
+            {name:'Cold plunge',detail:'3×3 min at 10°C',tip:'Between sauna rounds'},
+            {name:'Mobility + breathwork',detail:'25 min combined',tip:'Parasympathetic work'},
+            {name:'Massage or self-massage',detail:'20 min targeted',tip:'Problem areas extra time'}
+          ]}
+      },
+      match:{
+        beg:{title:'Test Day',focus:'Progress check',desc:'Measure what you\'ve built.',
+          exercises:[
+            {name:'Full warm-up',detail:'15 min + activation',tip:'Be completely ready'},
+            {name:'Squat 5RM test',detail:'Build to a heavy 5',tip:'Form quality over weight'},
+            {name:'Deadlift 5RM test',detail:'Build to a heavy 5',tip:'Perfect technique'},
+            {name:'Bench 5RM test',detail:'Build to a heavy 5',tip:'Leg drive throughout'},
+            {name:'Cool-down',detail:'10 min + stretch',tip:'Log your numbers'}
+          ]},
+        int:{title:'Strength Test + Volume',focus:'1RM prediction, capacity',desc:'Test strength then train capacity.',
+          exercises:[
+            {name:'Extended warm-up',detail:'20 min full activation',tip:'Joints must be warm'},
+            {name:'Squat to 3RM',detail:'Work up in singles/doubles',tip:'Use as 92-95% 1RM estimate'},
+            {name:'Deadlift to 3RM',detail:'Work up methodically',tip:'Rest 3-4 min between heavy sets'},
+            {name:'Bench 3×5 @ 85%',detail:'Post-test volume',tip:'Controlled pace'},
+            {name:'Accessories: rows, core',detail:'2 sets each, moderate',tip:'Finish the session strong'}
+          ]},
+        adv:{title:'Peak Test Day',focus:'Max strength assessment',desc:'The day that determines your next training block.',
+          exercises:[
+            {name:'Elite warm-up',detail:'25 min full prep',tip:'Mental and physical readiness'},
+            {name:'Squat 1RM',detail:'Build in singles 80→85→90→95→attempt',tip:'Only commit to safe attempts'},
+            {name:'Deadlift 1RM',detail:'Similar ramp-up',tip:'Use opener/second/third concept'},
+            {name:'Bench 1RM',detail:'Same protocol',tip:'Trust your competition form'},
+            {name:'Back-off sets',detail:'3×5 @ 75% for top lift',tip:'Volume after intensity'},
+            {name:'Extensive cool-down',detail:'20 min',tip:'You\'ve earned full recovery'}
+          ]}
+      },
+      mixed:{
+        beg:{title:'Full-Body Session',focus:'Total body stimulus',desc:'Train everything in one efficient session.',
+          exercises:[
+            {name:'Goblet squat',detail:'3×10',tip:'Full depth'},
+            {name:'Dumbbell bench press',detail:'3×10',tip:'Controlled lowering'},
+            {name:'Single-arm row',detail:'3×10 each side',tip:'Pull to hip'},
+            {name:'Romanian deadlift',detail:'3×10',tip:'Hinge pattern'},
+            {name:'Plank',detail:'3×45s',tip:'Straight line'}
+          ]},
+        int:{title:'Total Body Strength',focus:'Compound movements, balanced development',desc:'Hit every major pattern with quality loads.',
+          exercises:[
+            {name:'Back squat',detail:'4×6',tip:'Explosive up'},
+            {name:'Bench press',detail:'4×6',tip:'Leg drive'},
+            {name:'Weighted pull-ups',detail:'4×6',tip:'Full range'},
+            {name:'Romanian deadlift',detail:'4×8',tip:'Feel hamstrings'},
+            {name:'Overhead press',detail:'3×8',tip:'Tight core'},
+            {name:'Core: plank + side plank',detail:'3 rounds',tip:'Anti-rotation'}
+          ]},
+        adv:{title:'Elite Full-Body',focus:'Maximum stimulus, optimal recovery',desc:'One session that hits everything at high quality.',
+          exercises:[
+            {name:'Trap bar deadlift',detail:'5×3 @ 85%',tip:'Explosive'},
+            {name:'Bench press',detail:'5×3 @ 85%',tip:'Tight setup'},
+            {name:'Weighted pull-up',detail:'4×5',tip:'Added weight as tolerated'},
+            {name:'Front squat',detail:'4×5',tip:'Elbows high'},
+            {name:'Push press',detail:'3×5',tip:'Leg drive'},
+            {name:'Weighted carry',detail:'3×40m heavy',tip:'Walk with purpose'}
+          ]}
+      }
+    }
+  }
+};
+
+// Find template for sport (case-insensitive, fuzzy)
+function getTpl(sport){
+  if(!sport)return null;
+  if(TPL[sport])return TPL[sport];
+  var key=Object.keys(TPL).find(function(k){return k.toLowerCase()===sport.toLowerCase();});
+  return key?TPL[key]:null;
+}
+
+// Map onboarding level string to template key
+function levelKey(level){
+  if(!level)return 'int';
+  var l=String(level).toLowerCase();
+  if(l.indexOf('beg')>=0||l.indexOf('anfäng')>=0||l.indexOf('anfang')>=0)return 'beg';
+  if(l.indexOf('adv')>=0||l.indexOf('profi')>=0||l.indexOf('pro')>=0||l.indexOf('elite')>=0)return 'adv';
+  return 'int';
+}
+
+// Build a sport-specific session from template
+function buildSession(tpl,sessionType,level,duration){
+  if(!tpl||!tpl.sessions||!tpl.sessions[sessionType])return null;
+  var lk=levelKey(level);
+  var session=tpl.sessions[sessionType][lk]||tpl.sessions[sessionType].int;
+  if(!session)return null;
+  return {
+    type:sessionType,
+    title:session.title,
+    focus:session.focus,
+    desc:session.desc,
+    duration:duration,
+    exercises:session.exercises.slice() // copy so templates aren't mutated
+  };
+}
+
+
+// Synthesise a 7-day week plan. Uses sport-specific templates where available,
+// falls back to generic stubs for sports the KI will handle later.
 function synthWeekPlan(sport,level,sessionsPerWk,duration,todayWorkout){
   sessionsPerWk=Math.max(1,Math.min(7,sessionsPerWk||3));
+  duration=duration||60;
   // Session distribution: spread evenly, avoid back-to-back for recovery
   var patterns={
     1:[true,false,false,false,false,false,false],
@@ -653,17 +1238,33 @@ function synthWeekPlan(sport,level,sessionsPerWk,duration,todayWorkout){
     7:[true,true,true,true,true,true,true]
   };
   var pattern=patterns[sessionsPerWk];
-  var types=['technique','strength','endurance','speed','mixed','recovery','mobility'];
+  var tpl=getTpl(sport);
+  // Determine the sequence of session types
+  var typeSequence;
+  if(tpl&&tpl.sessionOrder&&tpl.sessionOrder[sessionsPerWk]){
+    typeSequence=tpl.sessionOrder[sessionsPerWk];
+  }else{
+    // Generic fallback: rotate through common types
+    var generic=['strength','endurance','mobility','mixed','recovery','speed','technique'];
+    typeSequence=[];
+    for(var i=0;i<sessionsPerWk;i++)typeSequence.push(generic[i%generic.length]);
+  }
   var days=[];
-  var typeIdx=0;
+  var sessionIdx=0;
   pattern.forEach(function(isSession){
     if(!isSession){
       days.push({type:'rest'});
       return;
     }
-    var type=types[typeIdx%types.length];
-    typeIdx++;
-    // First session uses today's workout if provided, rest are stubs
+    var type=typeSequence[sessionIdx%typeSequence.length];
+    sessionIdx++;
+    // Try template-based session first
+    var session=buildSession(tpl,type,level,duration);
+    if(session){
+      days.push(session);
+      return;
+    }
+    // Fallback: first session uses today's workout if provided
     if(days.filter(function(d){return d.type!=='rest';}).length===0&&todayWorkout){
       days.push({
         type:type,
@@ -674,11 +1275,12 @@ function synthWeekPlan(sport,level,sessionsPerWk,duration,todayWorkout){
         exercises:todayWorkout.exercises||[]
       });
     }else{
+      // Generic stub — will be replaced by KI-generated content in Chat 4
       days.push({
         type:type,
-        title:sport+' '+type,
+        title:sport+' '+type.charAt(0).toUpperCase()+type.slice(1),
         duration:duration,
-        exercises:[{name:'Details coming soon',detail:'Will be filled by sport-specific templates'}]
+        exercises:[{name:'Coming soon',detail:'Details will be AI-generated',tip:''}]
       });
     }
   });
