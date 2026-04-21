@@ -403,6 +403,55 @@ async function aiGenJSON(prompt, maxTokens, purpose){
   return JSON.parse(clean);
 }
 
+// ── FREE TIER FEATURE GATES ────────────────────────────────────────────
+// isFree(): true if current user is on free tier
+// gateFree(featureKey): shows upgrade prompt + returns true if should block
+//                      returns false if user can proceed
+// freeLimitReachedUI(): shows a specific prompt when plan-gen cap is hit
+function isFree(){ return ud.tier==='free'; }
+
+function gateFree(featureKey){
+  if(!isFree())return false; // allowed
+  showUpgradePrompt(featureKey);
+  return true; // blocked
+}
+
+function showUpgradePrompt(featureKey){
+  var de=lang==='de';
+  var titles={
+    training_progression: de?'Woche 2 ist Premium':'Week 2 is Premium',
+    recovery_tools: de?'Recovery-Tools sind Premium':'Recovery tools are Premium',
+    workout_adjustment: de?'Workout-Anpassung ist Premium':'Workout adjustments are Premium',
+    session_complete: de?'Session-Tracking ist Premium':'Session tracking is Premium',
+    meal_rating: de?'Bewertungen sind Premium':'Ratings are Premium',
+    plan_limit: de?'Plan-Limit erreicht':'Plan limit reached',
+  };
+  var descs={
+    training_progression: de?'Dein Gratis-Plan zeigt Woche 1. Upgrade für 12-Wochen-Progression.':'Your free plan shows Week 1. Upgrade for the 12-week progression.',
+    recovery_tools: de?'Schlaf, Mobilität, Sauna, Kältebad und mehr — mit Premium freischalten.':'Sleep, mobility, sauna, cold plunge and more — unlock with Premium.',
+    workout_adjustment: de?'Pass dein Training per AI an deinen Status an. Mit Premium.':'Let AI adjust your training to how you feel. Premium only.',
+    session_complete: de?'Hak Sessions ab, gib Feedback und lass den Plan lernen. Premium.':'Check off sessions, rate them, let the plan learn. Premium.',
+    meal_rating: de?'Bewerte Mahlzeiten damit PEAK deinen Plan optimiert. Premium.':'Rate meals so PEAK can tune your plan. Premium.',
+    plan_limit: de?'Du hast 3/3 kostenlose Pläne verwendet. Upgrade für unbegrenzt.':'You\'ve used 3/3 free plans. Upgrade for unlimited.',
+  };
+  var t_=titles[featureKey]||(de?'Upgrade erforderlich':'Upgrade required');
+  var d_=descs[featureKey]||(de?'Dieses Feature ist Premium.':'This feature is Premium.');
+  peakConfirm(d_,{
+    title:t_,
+    confirmLabel:de?'Premium ansehen':'See Premium',
+    cancelLabel:de?'Später':'Later',
+  }).then(function(ok){
+    if(ok)goUpgrade();
+  });
+}
+
+function goUpgrade(){
+  // Reset onboarding step to plan-selection (step 6). We keep ud data, just
+  // reshow tier choice. After Stripe checkout succeeds, user becomes premium.
+  step=6;
+  render();
+}
+
 // PEAK-style inline toast — replaces native alert()
 function peakToast(msg, opts){
   opts=opts||{};
@@ -421,13 +470,18 @@ function peakToast(msg, opts){
   }, opts.duration||3200);
 }
 // PEAK-style confirm (returns Promise<boolean>)
-function peakConfirm(msg){
+function peakConfirm(msg, opts){
+  opts=opts||{};
   return new Promise(function(resolve){
+    var de=lang==='de';
+    var title=opts.title||(de?'Bestätigen':'Confirm');
+    var okLabel=opts.confirmLabel||(de?'Ja':'Yes');
+    var caLabel=opts.cancelLabel||(de?'Abbrechen':'Cancel');
     var wrap=document.createElement('div');
     wrap.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;font-family:Barlow,sans-serif';
     var box=document.createElement('div');
     box.style.cssText='background:var(--s1);border:1px solid var(--red);border-left:3px solid var(--red);padding:20px;max-width:380px;width:100%';
-    box.innerHTML='<div style="font-family:\'Barlow Condensed\';font-weight:900;font-size:11px;color:var(--red);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">'+(lang==='de'?'Bestätigen':'Confirm')+'</div><div style="color:var(--white);font-size:14px;line-height:1.45;margin-bottom:14px">'+msg+'</div><div style="display:flex;gap:8px"><button id="pkCok" style="flex:1;background:var(--red);color:var(--white);border:none;padding:10px;font-family:\'Barlow Condensed\';font-weight:900;font-size:12px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">'+(lang==='de'?'Ja':'Yes')+'</button><button id="pkCca" style="flex:1;background:var(--s3);color:var(--dim);border:1px solid var(--border);padding:10px;font-family:\'Barlow Condensed\';font-weight:900;font-size:12px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">'+(lang==='de'?'Abbrechen':'Cancel')+'</button></div>';
+    box.innerHTML='<div style="font-family:\'Barlow Condensed\';font-weight:900;font-size:11px;color:var(--red);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">'+title+'</div><div style="color:var(--white);font-size:14px;line-height:1.45;margin-bottom:14px">'+msg+'</div><div style="display:flex;gap:8px"><button id="pkCok" style="flex:1;background:var(--red);color:var(--white);border:none;padding:10px;font-family:\'Barlow Condensed\';font-weight:900;font-size:12px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">'+okLabel+'</button><button id="pkCca" style="flex:1;background:var(--s3);color:var(--dim);border:1px solid var(--border);padding:10px;font-family:\'Barlow Condensed\';font-weight:900;font-size:12px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">'+caLabel+'</button></div>';
     wrap.appendChild(box);
     document.body.appendChild(wrap);
     function close(v){if(wrap.parentNode)wrap.parentNode.removeChild(wrap);resolve(v);}
@@ -1804,12 +1858,49 @@ function upgHTML(){
   '</div>';
 }
 
+// Upgrade box specifically for free-tier users (no Stripe customer yet,
+// so we send them back to onboarding plan-selection instead of customer portal).
+function upgHTMLFree(featureKey){
+  var de=lang==='de';
+  var titles={
+    recovery_tools: de?'Recovery-Tools':'Recovery Tools',
+    scanner: de?'Scanner':'Scanner',
+  };
+  var descs={
+    recovery_tools: de?'Schlaf, Mobilität, Sauna, Kältebad, Meditation und mehr. Mit Premium voll dabei.':'Sleep, mobility, sauna, cold plunge, meditation and more. Unlock with Premium.',
+    scanner: de?'Barcode- und Menüscanner für smartes Tracking. Nur Premium.':'Barcode and menu scanner for smart tracking. Premium only.',
+  };
+  var label=titles[featureKey]||(de?'Premium':'Premium');
+  var desc=descs[featureKey]||(de?'Dieses Feature ist Premium.':'This feature is Premium.');
+  return '<div class="upg-box">'+
+    '<div class="upg-lock">🔒</div>'+
+    '<div class="upg-lbl">'+(de?'PREMIUM':'PREMIUM')+'</div>'+
+    '<div class="upg-t">'+label+'</div>'+
+    '<div class="upg-d">'+desc+'</div>'+
+    '<button class="upg-btn" onclick="goUpgrade()">'+(de?'Upgrade':'Upgrade')+' →</button>'+
+  '</div>';
+}
+
 function dshell(tab,content){
   dashTab=tab;
   var p=fp();
   var tabs=[{k:'nutrition',l:t('nu')},{k:'fitness',l:t('fi')},{k:'recovery',l:t('re')},{k:'scanner',l:t('sc')},{k:'log',l:t('lg')},{k:'recipes',l:t('rp')}];
   var defaultTimeline=lang==='de'?'12 Wochen':'12 weeks';
-  card('<div class="dhead"><div class="dgreet">'+t('gd')+' '+(ud.name||'ATHLETE').toUpperCase()+' ⚡</div><div class="dsub">'+(ud.goal||'PEAK')+' · '+(p.timeline||defaultTimeline)+' · '+(p.headline||'')+'</div></div><div class="dnav">'+tabs.map(function(tb){return '<button class="ntab '+(tab===tb.k?'act':'')+'" data-tab="'+tb.k+'" onclick="showTab(\''+tb.k+'\')">'+tb.l+'</button>';}).join('')+'</div><div class="dbody" id="db">'+content+'</div>');
+  // Free-tier header banner — shows plan-gen usage + upgrade CTA
+  var freeBanner='';
+  if(isFree()){
+    var de=lang==='de';
+    var used=ud.plan_generations_used||0;
+    var usageTxt=(de?'Plans: ':'Plans: ')+used+'/3';
+    var label=de?'GRATIS':'FREE';
+    var cta=de?'Upgrade':'Upgrade';
+    freeBanner='<div style="background:var(--s1);border-left:3px solid var(--red);padding:10px 14px;display:flex;align-items:center;gap:12px;margin:0 0 10px;font-family:Barlow,sans-serif">'+
+      '<div style="font-family:Barlow Condensed,sans-serif;font-weight:900;font-size:10px;letter-spacing:2px;color:var(--red)">'+label+'</div>'+
+      '<div style="flex:1;font-size:11px;color:var(--dim)">'+usageTxt+'</div>'+
+      '<button onclick="goUpgrade()" style="background:var(--red);color:var(--white);border:none;padding:6px 12px;font-family:Barlow Condensed,sans-serif;font-weight:900;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer">'+cta+' →</button>'+
+    '</div>';
+  }
+  card('<div class="dhead"><div class="dgreet">'+t('gd')+' '+(ud.name||'ATHLETE').toUpperCase()+' ⚡</div><div class="dsub">'+(ud.goal||'PEAK')+' · '+(p.timeline||defaultTimeline)+' · '+(p.headline||'')+'</div></div>'+freeBanner+'<div class="dnav">'+tabs.map(function(tb){return '<button class="ntab '+(tab===tb.k?'act':'')+'" data-tab="'+tb.k+'" onclick="showTab(\''+tb.k+'\')">'+tb.l+'</button>';}).join('')+'</div><div class="dbody" id="db">'+content+'</div>');
 }
 
 function showTab(tab){
@@ -1834,12 +1925,13 @@ function tNu(p){
   c+='<div class="mbw"><div class="mbl"><span>'+(de?'Fette':'Fat')+'</span><span>'+p.fat+'g</span></div><div class="mb"><div class="mf" style="width:48%;background:var(--dim)"></div></div></div>';
   c+='<div class="dst">'+t('tm')+'</div>';
   c+=p.todayMeals.map(function(m,i){var r=mrat[i];return '<div class="mc" onclick="showMealDetail('+i+')"><span class="me">'+m.emoji+'</span><div class="mi"><div class="mn">'+m.name+'</div><div class="mm">'+m.time+' · '+m.macro+'</div>'+(!r?'<div class="rrow" onclick="event.stopPropagation()">'+[1,2,3,4,5].map(function(s){return '<span class="star" onclick="rateMeal('+i+','+s+',this)">⭐</span>';}).join('')+'</div>':'<div style="font-size:10px;color:var(--red);margin-top:3px">'+(de?'BEWERTET':'RATED')+' '+r+'/5 ✓</div>')+'</div><span class="mk">'+m.kcal+' kcal</span><span style="color:var(--faint);font-size:10px;margin-left:5px">→</span></div>';}).join('');
-  if(!isBasic()){c+='<div class="aib" style="margin-top:11px"><div class="ailbl"><div class="aidot"></div>PEAK AI</div><p>'+(de?'Nicht nach Plan? ':'Not feeling the plan? ')+'<span style="color:var(--red);cursor:pointer;font-weight:700" onclick="showMoodPicker()">'+(de?'Küche wählen →':'Pick a cuisine →')+'</span></p></div><div id="moodA"></div>';}
+  if(!isBasic()&&!isFree()){c+='<div class="aib" style="margin-top:11px"><div class="ailbl"><div class="aidot"></div>PEAK AI</div><p>'+(de?'Nicht nach Plan? ':'Not feeling the plan? ')+'<span style="color:var(--red);cursor:pointer;font-weight:700" onclick="showMoodPicker()">'+(de?'Küche wählen →':'Pick a cuisine →')+'</span></p></div><div id="moodA"></div>';}
   if(p&&p.shopping&&p.shopping.length){c+='<div class="dst" style="margin-top:14px">'+(de?'Einkaufsliste':'Shopping List')+'</div>';c+='<div class="aib">'+p.shopping.map(function(s){return '<div style="font-size:12px;padding:4px 0;color:var(--ink2);border-bottom:1px solid var(--border)">🛒 '+s+'</div>';}).join('')+'</div>';}
   dshell('nutrition',c);
 }
 
 function showMoodPicker(){
+  if(gateFree('meal_rating'))return;
   var cu=['🇲🇽 Mexican','🍝 Italian','🍜 Asian','🥗 Mediterranean','🍔 American','🍛 Indian','🇯🇵 Japanese','🥙 Middle Eastern'];
   var a=document.getElementById('moodA');
   if(!a)return;
@@ -2052,6 +2144,7 @@ function openWkDay(i){
 
 // Mark session as completed
 function completeSession(dayIdx){
+  if(gateFree('session_complete'))return;
   var p=fp();
   if(!p||!p.week)return;
   var weekNum=p.week.weekNum||trainState.currentWeek||1;
@@ -2067,6 +2160,7 @@ function completeSession(dayIdx){
 
 // Record feedback for a session
 function rateFeedback(dayIdx,rating){
+  if(gateFree('session_complete'))return;
   var p=fp();
   if(!p||!p.week)return;
   var weekNum=p.week.weekNum||trainState.currentWeek||1;
@@ -2081,6 +2175,7 @@ function rateFeedback(dayIdx,rating){
 
 // Advance to next week: regenerate plan with incremented week number
 async function advanceWeek(){
+  if(gateFree('training_progression'))return;
   var de=lang==='de';
   var current=trainState.currentWeek||1;
   if(current>=12){
@@ -2104,6 +2199,7 @@ async function advanceWeek(){
 }
 
 async function adjustWorkout(type){
+  if(gateFree('workout_adjustment'))return;
   var el=document.getElementById('adj');if(el)el.innerHTML='<div style="font-size:11px;color:var(--dim);padding:7px 0">'+(lang==='de'?'Anpassen...':'Adjusting...')+'</div>';
   var msgs={easier:'Make workout 20% easier, swap hardest exercise for lighter alternative',harder:'Increase intensity 20%, add one more set',shorter:'Shorten to 20-25 min, keep only most important exercises',injury:'Adapt for minor injury, remove impact, focus on uninjured areas'};
   var p=fp();
@@ -2171,6 +2267,8 @@ var recData={
 function rL(v){if(v&&typeof v==='object'&&v.en)return v[lang]||v.en;return v;}
 
 function tRe(p){
+  // Free tier: lock whole recovery tab
+  if(isFree()){dshell('recovery',upgHTMLFree('recovery_tools'));return;}
   var de=lang==='de';
   var c='<div class="dst">'+(de?'Regenerationsprotokoll':'Recovery Protocol')+'</div>';
   if(p&&p.recovery){
@@ -2194,6 +2292,7 @@ function openRec(key){
 
 // ── SCANNER TAB ───────────────────────────────────────────────────────
 function tSc(){
+  if(isFree()){dshell('scanner',upgHTMLFree('scanner'));return;}
   if(isBasic()){dshell('scanner',upgHTML());return;}
   var de=lang==='de';
   var c='<div class="tiles c3" style="margin-bottom:11px">'+[{i:'📷',l:(de?'Barcode':'Barcode'),f:'simScan'},{i:'🍽️',l:(de?'Menükarte':'Menu Scan'),f:'simMenu'},{i:'🛒',l:(de?'Einkauf':'Shopping'),f:'simShop'}].map(function(b){return '<div class="tile" onclick="'+b.f+'()" style="flex-direction:column;text-align:center;padding:12px 5px"><span style="font-size:19px;margin-bottom:4px">'+b.i+'</span><span class="tl" style="font-size:10px;letter-spacing:.5px">'+b.l+'</span></div>';}).join('')+'</div><div id="sr"></div><div class="sbox" onclick="simScan()"><div style="text-align:center"><div class="sfr"><div class="sln"></div></div><div class="stxt">'+(de?'TIPPEN ZUM SIMULIEREN':'TAP TO SIMULATE')+'</div></div></div>';
@@ -2338,7 +2437,7 @@ async function genRec(){
 }
 
 // ── RATINGS ───────────────────────────────────────────────────────────
-function rateMeal(idx,score,el){mrat[idx]=score;var row=el.closest('.rrow');if(row)row.querySelectorAll('.star').forEach(function(s,i){s.style.opacity=i<score?1:0.2;});}
+function rateMeal(idx,score,el){if(gateFree('meal_rating'))return;mrat[idx]=score;var row=el.closest('.rrow');if(row)row.querySelectorAll('.star').forEach(function(s,i){s.style.opacity=i<score?1:0.2;});}
 function rateWk(cat,score,el){wrat[cat]=score;var row=el.parentElement;if(row)row.querySelectorAll('span').forEach(function(s,i){s.style.opacity=i<score?1:0.2;});if(score>=4&&cat==='Effort')setTimeout(function(){peakToast(lang==='de'?'Starke Leistung. Intensität wird für nächste Session erhöht.':'Strong effort. Intensity increases next session.',{kind:'success'});},200);if(score<=2&&cat==='Effort')setTimeout(function(){peakToast(lang==='de'?'Notiert — Schwierigkeit wird angepasst.':'Noted — difficulty adjusted for next session.');},200);}
 
 // ── LOGIN ─────────────────────────────────────────────────────────────
