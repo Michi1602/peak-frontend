@@ -465,6 +465,18 @@ function toggleLang(){
   lang=lang==='en'?'de':'en';
   document.getElementById('lb').textContent=lang==='en'?'DE':'EN';
   rerenderCurrent();
+
+  // If a plan exists AND it was generated in a different language,
+  // offer to rebuild it. Don't force — UI labels are already translated.
+  if(plan&&plan._lang&&plan._lang!==lang&&ud.email){
+    setTimeout(async function(){
+      var de=lang==='de';
+      var ok=await peakConfirm(
+        de?'Dein Plan ist noch auf Englisch. Jetzt auf Deutsch neu generieren?':'Your plan is still in German. Regenerate it in English now?'
+      );
+      if(ok)regenPlan();
+    },300);
+  }
 }
 // Show/hide Login button vs. Profile icon based on auth state.
 // Called after login, logout, and on every profile load.
@@ -581,9 +593,11 @@ async function fetchPlan(){
   var sport=ud.sport||'Running';var level=ud.level||'Intermediate';
   var sportTips={Running:['Interval runs 6×400m at tempo','Hill repeats 5×uphill','Core: Dead bugs 3×12, Bird dogs 3×10','Single-leg deadlifts 3×8 each','Calf raises 3×20'],Football:['Ball control 3×10min','Sprint intervals 6×30m','Core: Plank series 3×45s','Single-leg squats 3×10 each','Lateral agility ladder 3×2min'],Weights:['Compound lifts: Squat/Bench/Deadlift','Progressive overload +2.5kg','Accessory: Face pulls, Band pull-aparts','Core: Hanging leg raises 3×12','Mobility 10min post'],Swimming:['Pull buoy drill 400m','4×100m at race pace','Rotator cuff exercises','Swiss ball rollouts 3×12','Shoulder mobility warm-up 10min'],Cycling:['Threshold 3×10min at FTP','High-cadence drills 100+RPM','Core: Plank variations','Hip flexor stretch post-ride','Single-leg pedalling'],Yoga:['Sun salutation ×10','Balance: Tree, Warrior III','Hip opening: Pigeon series','Shoulder openers','Box breathing 5min'],Tennis:['Footwork: Split-step drills','50 focused serves','Core rotation: Cable woodchops 3×12','Shoulder: External rotation','Agility: T-drill ×6'],Basketball:['100 shot makes','Ball handling: Crossover series','Vertical: Depth jumps 3×8','Core: Medicine ball rotations','Defensive slides 4×1min'],'Martial Arts':['Shadow boxing 4×3min rounds','Stance and footwork drills','Core: Russian twists, Wood chops','Hip flexor, hamstring flexibility','Reaction mirror drills']};
   var exFallback=(sportTips[sport]||['Warm-up 10 min','Main set 35 min','Cool-down 10 min']).map(function(e){return {name:e,detail:''};});
-  var prompt='You are PEAK AI by MJ Performance. Language: '+lang+'.\nUser: '+ud.name+', age '+ud.age+', '+ud.weight+'kg→'+ud.dweight+'kg, '+ud.height+'cm, sleep '+ud.sleep+'hrs\nJob: '+ud.job+', stress '+ud.stress+'/10\nSport: '+sport+' ('+level+'), '+ud.sessions+'×/wk, '+ud.dur+'min, at '+ud.equip+'\nAllergies: '+(ud.al||[]).join(',')+'\nDiet: '+(ud.di||[]).join(',')+'\nCuisines: '+(ud.cu||[]).join(',')+'\nCooking: '+ud.cook+'\nGoal: '+ud.goal+', Calories: '+kcal+'\n\nCreate a personalised plan. For workout: create 4-5 SPECIFIC exercises for '+sport+' at '+level+' level that improve performance in '+sport+'. NOT generic gym. Include drills, technique, sport-specific conditioning. Each needs name + sets/reps/duration.\n\nRespond ONLY with valid JSON, no markdown:\n{"headline":"<12 words in '+lang+'>","calories":'+kcal+',"protein":<g>,"carbs":<g>,"fat":<g>,"timeline":"<weeks>","todayMeals":[{"emoji":"🍳","name":"<meal>","time":"Breakfast","kcal":<n>,"macro":"<e.g. 28g protein>"},{"emoji":"🥗","name":"<meal>","time":"Lunch","kcal":<n>,"macro":"<e.g. 42g protein>"},{"emoji":"🍽️","name":"<meal>","time":"Dinner","kcal":<n>,"macro":"<e.g. 38g protein>"},{"emoji":"🍎","name":"<snack>","time":"Snack","kcal":<n>,"macro":"<e.g. 15g protein>"}],"workout":{"title":"<sport-specific title>","focus":"<what this improves in '+sport+'>","desc":"<2 sentences why>","duration":<min>,"exercises":[{"name":"<exercise>","detail":"<sets/reps/duration>"},{"name":"<exercise>","detail":"<sets/reps>"},{"name":"<exercise>","detail":"<sets/reps>"},{"name":"<exercise>","detail":"<duration>"}]},"recovery":{"tip":"<tip>","sleep":"<advice>","hydration":"<target>"},"shopping":["<item1>","<item2>","<item3>","<item4>","<item5>"],"milestones":["<wk2-3>","<wk5-7>","<final>"]}';
+  var langInstr=lang==='de'?'IMPORTANT: Respond entirely in GERMAN (Deutsch). All text fields including headline, meal names, workout names, exercise names, tips, shopping items, milestones must be in German. Keep meal time values as English labels "Breakfast","Lunch","Dinner","Snack" for app compatibility.':'IMPORTANT: Respond entirely in ENGLISH. All text fields must be in English.';
+  var prompt='You are PEAK AI by MJ Performance.\n'+langInstr+'\nUser: '+ud.name+', age '+ud.age+', '+ud.weight+'kg→'+ud.dweight+'kg, '+ud.height+'cm, sleep '+ud.sleep+'hrs\nJob: '+ud.job+', stress '+ud.stress+'/10\nSport: '+sport+' ('+level+'), '+ud.sessions+'×/wk, '+ud.dur+'min, at '+ud.equip+'\nAllergies: '+(ud.al||[]).join(',')+'\nDiet: '+(ud.di||[]).join(',')+'\nCuisines: '+(ud.cu||[]).join(',')+'\nCooking: '+ud.cook+'\nGoal: '+ud.goal+', Calories: '+kcal+'\n\nCreate a personalised plan. For workout: create 4-5 SPECIFIC exercises for '+sport+' at '+level+' level that improve performance in '+sport+'. NOT generic gym. Include drills, technique, sport-specific conditioning. Each needs name + sets/reps/duration.\n\nRespond ONLY with valid JSON, no markdown:\n{"headline":"<12 words>","calories":'+kcal+',"protein":<g>,"carbs":<g>,"fat":<g>,"timeline":"<weeks>","todayMeals":[{"emoji":"🍳","name":"<meal>","time":"Breakfast","kcal":<n>,"macro":"<e.g. 28g protein>"},{"emoji":"🥗","name":"<meal>","time":"Lunch","kcal":<n>,"macro":"<e.g. 42g protein>"},{"emoji":"🍽️","name":"<meal>","time":"Dinner","kcal":<n>,"macro":"<e.g. 38g protein>"},{"emoji":"🍎","name":"<snack>","time":"Snack","kcal":<n>,"macro":"<e.g. 15g protein>"}],"workout":{"title":"<sport-specific title>","focus":"<what this improves in '+sport+'>","desc":"<2 sentences why>","duration":<min>,"exercises":[{"name":"<exercise>","detail":"<sets/reps/duration>"},{"name":"<exercise>","detail":"<sets/reps>"},{"name":"<exercise>","detail":"<sets/reps>"},{"name":"<exercise>","detail":"<duration>"}]},"recovery":{"tip":"<tip>","sleep":"<advice>","hydration":"<target>"},"shopping":["<item1>","<item2>","<item3>","<item4>","<item5>"],"milestones":["<wk2-3>","<wk5-7>","<final>"]}';
   try{
     plan=await aiGenJSON(prompt,1600);
+    plan._lang=lang; // Track which language this plan was generated in
     if(plan.workout&&plan.workout.exercises&&typeof plan.workout.exercises[0]==='string'){plan.workout.exercises=plan.workout.exercises.map(function(e){return{name:e,detail:''};});}
     saveSession();
   }catch(e){
@@ -752,7 +766,8 @@ function dshell(tab,content){
   dashTab=tab;
   var p=fp();
   var tabs=[{k:'nutrition',l:t('nu')},{k:'fitness',l:t('fi')},{k:'recovery',l:t('re')},{k:'scanner',l:t('sc')},{k:'log',l:t('lg')},{k:'recipes',l:t('rp')}];
-  card('<div class="dhead"><div class="dgreet">'+t('gd')+' '+(ud.name||'ATHLETE').toUpperCase()+' ⚡</div><div class="dsub">'+(ud.goal||'PEAK')+' · '+(p.timeline||'12 weeks')+' · '+(p.headline||'')+'</div></div><div class="dnav">'+tabs.map(function(tb){return '<button class="ntab '+(tab===tb.k?'act':'')+'" data-tab="'+tb.k+'" onclick="showTab(\''+tb.k+'\')">'+tb.l+'</button>';}).join('')+'</div><div class="dbody" id="db">'+content+'</div>');
+  var defaultTimeline=lang==='de'?'12 Wochen':'12 weeks';
+  card('<div class="dhead"><div class="dgreet">'+t('gd')+' '+(ud.name||'ATHLETE').toUpperCase()+' ⚡</div><div class="dsub">'+(ud.goal||'PEAK')+' · '+(p.timeline||defaultTimeline)+' · '+(p.headline||'')+'</div></div><div class="dnav">'+tabs.map(function(tb){return '<button class="ntab '+(tab===tb.k?'act':'')+'" data-tab="'+tb.k+'" onclick="showTab(\''+tb.k+'\')">'+tb.l+'</button>';}).join('')+'</div><div class="dbody" id="db">'+content+'</div>');
 }
 
 function showTab(tab){
@@ -882,23 +897,58 @@ async function adjustWorkout(type){
 
 // ── RECOVERY TAB ──────────────────────────────────────────────────────
 var recData={
-  cold:{emoji:'🧊',title:'Cold Plunge',short:'8-12°C · 2-3 min · after training',
-    desc:'Cold water immersion is one of the most evidence-backed recovery tools in elite sport.',
-    benefits:[{t:'Reduced soreness',d:'Reduces inflammation and lactic acid buildup. Studies show up to 40% less DOMS.'},{t:'Faster recovery',d:'Drives nutrient-rich blood to recovering muscles on re-warming.'},{t:'Mental resilience',d:'Regular cold exposure builds stress tolerance and focus under pressure.'},{t:'Better circulation',d:'Alternating constriction and dilation improves blood vessel function over time.'}],
-    protocol:[['Temperature','8-12°C (46-54°F)'],['Duration','2-3 minutes'],['Timing','30-90 min after training'],['Frequency','3-4× per week'],['Avoid','Within 4hrs of strength training']]},
-  sauna:{emoji:'🧖',title:'Sauna',short:'15-20 min · before bed',
-    desc:'Heat therapy increases growth hormone, improves cardiovascular adaptation and deepens sleep.',
-    benefits:[{t:'Growth hormone',d:'20 min sauna can increase GH by 200-300%, supporting muscle repair.'},{t:'Cardiovascular',d:'Regular heat exposure improves stroke volume — similar to aerobic training.'},{t:'Deep sleep',d:'Post-sauna temperature drop triggers deeper slow-wave and REM sleep.'},{t:'Stress reduction',d:'Parasympathetic activation reduces cortisol and promotes full recovery.'}],
-    protocol:[['Temperature','80-100°C'],['Duration','15-20 min'],['Timing','60-90 min before bed'],['Hydration','500ml before + after'],['Cool down','Cold shower between rounds']]},
-  stretch:{emoji:'🧘',title:'Stretching',short:'10-15 min post-workout',
-    desc:'Targeted post-training stretching maintains mobility, prevents injury and accelerates recovery.',
-    benefits:[{t:'Injury prevention',d:'Tight hips cause most lower back and knee injuries. Stretching addresses the root.'},{t:'Better performance',d:'Flexible athletes apply force through greater ranges of motion more efficiently.'},{t:'Faster recovery',d:'Active stretching increases blood flow to muscles, clearing waste products.'},{t:'Posture',d:'Correcting imbalances improves movement quality and reduces injury risk.'}],
-    protocol:[['Duration','10-15 min post-training'],['Hold time','30-60 seconds per stretch'],['Focus','Muscles used in the session'],['Breathing','Exhale into the stretch'],['Frequency','Daily for best results']]},
-  sleep:{emoji:'😴',title:'Sleep Hygiene',short:'No screens 90min before bed',
-    desc:'Sleep is where adaptation happens. Training without sleep is training wasted.',
-    benefits:[{t:'Muscle repair',d:'80% of growth hormone releases during deep sleep. Muscles rebuild here.'},{t:'Neural recovery',d:'Brain consolidates motor patterns from training during REM sleep.'},{t:'Hormonal balance',d:'Poor sleep raises cortisol and drops testosterone — harming performance.'},{t:'Immune function',d:'Sleep-deprived athletes get sick 4× more often.'}],
-    protocol:[['Target','7-9 hours per night'],['Consistency','Same bedtime ±30 min'],['Temperature','16-19°C room'],['Screens','No blue light 90 min before bed'],['Routine','Reading, light stretching, or meditation']]}
+  cold:{emoji:'🧊',
+    title:{en:'Cold Plunge',de:'Kältebad'},
+    short:{en:'8-12°C · 2-3 min · after training',de:'8-12°C · 2-3 Min · nach dem Training'},
+    desc:{en:'Cold water immersion is one of the most evidence-backed recovery tools in elite sport.',de:'Kältebäder sind eines der am besten wissenschaftlich belegten Regenerationstools im Leistungssport.'},
+    benefits:{
+      en:[{t:'Reduced soreness',d:'Reduces inflammation and lactic acid buildup. Studies show up to 40% less DOMS.'},{t:'Faster recovery',d:'Drives nutrient-rich blood to recovering muscles on re-warming.'},{t:'Mental resilience',d:'Regular cold exposure builds stress tolerance and focus under pressure.'},{t:'Better circulation',d:'Alternating constriction and dilation improves blood vessel function over time.'}],
+      de:[{t:'Weniger Muskelkater',d:'Reduziert Entzündungen und Laktataufbau. Studien zeigen bis zu 40% weniger Muskelkater.'},{t:'Schnellere Regeneration',d:'Beim Wiedererwärmen wird nährstoffreiches Blut in die Muskeln transportiert.'},{t:'Mentale Stärke',d:'Regelmäßige Kälteexposition baut Stresstoleranz und Fokus unter Druck auf.'},{t:'Bessere Durchblutung',d:'Der Wechsel von Verengung und Erweiterung verbessert die Gefäßfunktion langfristig.'}]
+    },
+    protocol:{
+      en:[['Temperature','8-12°C (46-54°F)'],['Duration','2-3 minutes'],['Timing','30-90 min after training'],['Frequency','3-4× per week'],['Avoid','Within 4hrs of strength training']],
+      de:[['Temperatur','8-12°C'],['Dauer','2-3 Minuten'],['Timing','30-90 Min nach dem Training'],['Häufigkeit','3-4× pro Woche'],['Vermeiden','Innerhalb von 4 Std nach Krafttraining']]
+    }},
+  sauna:{emoji:'🧖',
+    title:{en:'Sauna',de:'Sauna'},
+    short:{en:'15-20 min · before bed',de:'15-20 Min · vor dem Schlafen'},
+    desc:{en:'Heat therapy increases growth hormone, improves cardiovascular adaptation and deepens sleep.',de:'Wärmetherapie erhöht das Wachstumshormon, verbessert die Herz-Kreislauf-Anpassung und vertieft den Schlaf.'},
+    benefits:{
+      en:[{t:'Growth hormone',d:'20 min sauna can increase GH by 200-300%, supporting muscle repair.'},{t:'Cardiovascular',d:'Regular heat exposure improves stroke volume — similar to aerobic training.'},{t:'Deep sleep',d:'Post-sauna temperature drop triggers deeper slow-wave and REM sleep.'},{t:'Stress reduction',d:'Parasympathetic activation reduces cortisol and promotes full recovery.'}],
+      de:[{t:'Wachstumshormon',d:'20 Min Sauna können GH um 200-300% steigern und unterstützen Muskelreparatur.'},{t:'Herz-Kreislauf',d:'Regelmäßige Hitzeexposition verbessert das Schlagvolumen — ähnlich wie Ausdauertraining.'},{t:'Tiefer Schlaf',d:'Der Temperaturabfall nach der Sauna löst tieferen Tiefschlaf und REM-Schlaf aus.'},{t:'Stressreduktion',d:'Parasympathische Aktivierung reduziert Cortisol und fördert vollständige Erholung.'}]
+    },
+    protocol:{
+      en:[['Temperature','80-100°C'],['Duration','15-20 min'],['Timing','60-90 min before bed'],['Hydration','500ml before + after'],['Cool down','Cold shower between rounds']],
+      de:[['Temperatur','80-100°C'],['Dauer','15-20 Min'],['Timing','60-90 Min vor dem Schlafen'],['Hydration','500ml vorher + nachher'],['Abkühlung','Kalte Dusche zwischen Gängen']]
+    }},
+  stretch:{emoji:'🧘',
+    title:{en:'Stretching',de:'Dehnen'},
+    short:{en:'10-15 min post-workout',de:'10-15 Min nach dem Training'},
+    desc:{en:'Targeted post-training stretching maintains mobility, prevents injury and accelerates recovery.',de:'Gezieltes Dehnen nach dem Training erhält Beweglichkeit, beugt Verletzungen vor und beschleunigt die Regeneration.'},
+    benefits:{
+      en:[{t:'Injury prevention',d:'Tight hips cause most lower back and knee injuries. Stretching addresses the root.'},{t:'Better performance',d:'Flexible athletes apply force through greater ranges of motion more efficiently.'},{t:'Faster recovery',d:'Active stretching increases blood flow to muscles, clearing waste products.'},{t:'Posture',d:'Correcting imbalances improves movement quality and reduces injury risk.'}],
+      de:[{t:'Verletzungsprävention',d:'Verkürzte Hüften verursachen die meisten Rücken- und Knieverletzungen. Dehnen geht die Ursache an.'},{t:'Bessere Leistung',d:'Flexible Athleten können Kraft effizienter über größere Bewegungsbereiche aufbringen.'},{t:'Schnellere Regeneration',d:'Aktives Dehnen erhöht die Durchblutung und transportiert Abbauprodukte ab.'},{t:'Haltung',d:'Ausgleich von Dysbalancen verbessert Bewegungsqualität und verringert Verletzungsrisiko.'}]
+    },
+    protocol:{
+      en:[['Duration','10-15 min post-training'],['Hold time','30-60 seconds per stretch'],['Focus','Muscles used in the session'],['Breathing','Exhale into the stretch'],['Frequency','Daily for best results']],
+      de:[['Dauer','10-15 Min nach dem Training'],['Haltezeit','30-60 Sekunden pro Dehnung'],['Fokus','In der Einheit beanspruchte Muskeln'],['Atmung','Beim Ausatmen in die Dehnung'],['Häufigkeit','Täglich für beste Ergebnisse']]
+    }},
+  sleep:{emoji:'😴',
+    title:{en:'Sleep Hygiene',de:'Schlafhygiene'},
+    short:{en:'No screens 90min before bed',de:'Keine Bildschirme 90 Min vor dem Schlafen'},
+    desc:{en:'Sleep is where adaptation happens. Training without sleep is training wasted.',de:'Schlaf ist der Moment der Anpassung. Training ohne Schlaf ist verschwendetes Training.'},
+    benefits:{
+      en:[{t:'Muscle repair',d:'80% of growth hormone releases during deep sleep. Muscles rebuild here.'},{t:'Neural recovery',d:'Brain consolidates motor patterns from training during REM sleep.'},{t:'Hormonal balance',d:'Poor sleep raises cortisol and drops testosterone — harming performance.'},{t:'Immune function',d:'Sleep-deprived athletes get sick 4× more often.'}],
+      de:[{t:'Muskelreparatur',d:'80% des Wachstumshormons werden im Tiefschlaf ausgeschüttet. Muskeln regenerieren hier.'},{t:'Neurale Regeneration',d:'Im REM-Schlaf festigt das Gehirn Bewegungsmuster aus dem Training.'},{t:'Hormonhaushalt',d:'Schlechter Schlaf erhöht Cortisol und senkt Testosteron — schadet der Leistung.'},{t:'Immunsystem',d:'Athleten mit Schlafmangel werden 4× häufiger krank.'}]
+    },
+    protocol:{
+      en:[['Target','7-9 hours per night'],['Consistency','Same bedtime ±30 min'],['Temperature','16-19°C room'],['Screens','No blue light 90 min before bed'],['Routine','Reading, light stretching, or meditation']],
+      de:[['Ziel','7-9 Stunden pro Nacht'],['Konsistenz','Gleiche Schlafzeit ±30 Min'],['Temperatur','16-19°C Zimmer'],['Bildschirme','Kein Blaulicht 90 Min vor dem Schlafen'],['Routine','Lesen, leichtes Dehnen oder Meditation']]
+    }}
 };
+
+// Helper: pick language variant from recData entry
+function rL(v){if(v&&typeof v==='object'&&v.en)return v[lang]||v.en;return v;}
 
 function tRe(p){
   var de=lang==='de';
@@ -909,7 +959,7 @@ function tRe(p){
     c+='<div class="rc"><div class="rt" style="color:var(--red)">⚡ '+(de?'HEUTIGER TIPP':'TODAY\'S TIP')+'</div><div class="rd">'+p.recovery.tip+'</div></div>';
   }
   c+='<div class="dst" style="margin-top:14px">'+(de?'Tools — tippen für Details':'Tools — tap for details')+'</div>';
-  Object.keys(recData).forEach(function(k){var r=recData[k];c+='<div class="rc" onclick="openRec(\''+k+'\')"><div class="rt">'+r.emoji+' '+r.title.toUpperCase()+'<span style="color:var(--faint);font-size:10px">→</span></div><div class="rd">'+r.short+'</div></div>';});
+  Object.keys(recData).forEach(function(k){var r=recData[k];c+='<div class="rc" onclick="openRec(\''+k+'\')"><div class="rt">'+r.emoji+' '+rL(r.title).toUpperCase()+'<span style="color:var(--faint);font-size:10px">→</span></div><div class="rd">'+rL(r.short)+'</div></div>';});
   dshell('recovery',c);
 }
 
@@ -917,8 +967,9 @@ function openRec(key){
   var r=recData[key];if(!r)return;
   var de=lang==='de';
   var tabs=[{k:'nutrition',l:t('nu')},{k:'fitness',l:t('fi')},{k:'recovery',l:t('re')},{k:'scanner',l:t('sc')},{k:'log',l:t('lg')},{k:'recipes',l:t('rp')}];
-  var c='<div class="rdb"><div class="rdb-back" onclick="showTab(\'recovery\')">← '+(de?'Zurück':'Back')+'</div><div style="font-size:40px;margin-bottom:10px">'+r.emoji+'</div><h1>'+r.title+'</h1><p>'+r.desc+'</p><h3>'+(de?'Vorteile':'Benefits')+'</h3>'+r.benefits.map(function(b){return '<div class="benefit"><div class="benefit-t">'+b.t+'</div><div class="benefit-d">'+b.d+'</div></div>';}).join('')+'<h3>Protocol</h3><div class="proto">'+r.protocol.map(function(row){return '<div class="proto-row"><span class="proto-l">'+row[0]+'</span><span class="proto-v">'+row[1]+'</span></div>';}).join('')+'</div></div>';
-  card('<div class="dhead"><div class="dgreet">'+r.emoji+' '+r.title.toUpperCase()+'</div><div class="dsub">'+r.short+'</div></div><div class="dnav">'+tabs.map(function(tb){return '<button class="ntab '+(tb.k==='recovery'?'act':'')+'" data-tab="'+tb.k+'" onclick="showTab(\''+tb.k+'\')">'+tb.l+'</button>';}).join('')+'</div>'+c);
+  var title=rL(r.title);
+  var c='<div class="rdb"><div class="rdb-back" onclick="showTab(\'recovery\')">← '+(de?'Zurück':'Back')+'</div><div style="font-size:40px;margin-bottom:10px">'+r.emoji+'</div><h1>'+title+'</h1><p>'+rL(r.desc)+'</p><h3>'+(de?'Vorteile':'Benefits')+'</h3>'+rL(r.benefits).map(function(b){return '<div class="benefit"><div class="benefit-t">'+b.t+'</div><div class="benefit-d">'+b.d+'</div></div>';}).join('')+'<h3>'+(de?'Protokoll':'Protocol')+'</h3><div class="proto">'+rL(r.protocol).map(function(row){return '<div class="proto-row"><span class="proto-l">'+row[0]+'</span><span class="proto-v">'+row[1]+'</span></div>';}).join('')+'</div></div>';
+  card('<div class="dhead"><div class="dgreet">'+r.emoji+' '+title.toUpperCase()+'</div><div class="dsub">'+rL(r.short)+'</div></div><div class="dnav">'+tabs.map(function(tb){return '<button class="ntab '+(tb.k==='recovery'?'act':'')+'" data-tab="'+tb.k+'" onclick="showTab(\''+tb.k+'\')">'+tb.l+'</button>';}).join('')+'</div>'+c);
 }
 
 // ── SCANNER TAB ───────────────────────────────────────────────────────
