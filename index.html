@@ -770,7 +770,17 @@ return;
 pbEl.style.width=((s-1)/(tot-1)*100)+’%’;
 slEl.textContent=s<=tot?(lang===‘de’?‘Schritt ‘+s+’ von ‘+tot:‘Step ‘+s+’ of ‘+tot):(lang===‘de’?‘Fast geschafft!’:‘Almost there!’);
 }
-function render(){currentView=step===0?‘intro’:‘onboarding’;setP(step,TOTAL);var c=document.getElementById(‘mc’);c.style.animation=‘none’;c.offsetHeight;c.style.animation=‘up .32s ease’;({0:s0,1:s1,2:s2,3:s3,4:s4,5:s5,6:s6,7:s7,8:s8,70:s7f,71:s7fi})[step]();try{window.scrollTo({top:0,behavior:‘instant’});}catch(e){window.scrollTo(0,0);}}
+function render(){
+// Safety: if step is out of range, reset to intro (prevents blank screen)
+var handlers={0:s0,1:s1,2:s2,3:s3,4:s4,5:s5,6:s6,7:s7,8:s8,70:s7f,71:s7fi};
+if(!handlers[step]){step=0;}
+currentView=step===0?‘intro’:‘onboarding’;
+setP(step,TOTAL);
+var c=document.getElementById(‘mc’);
+c.style.animation=‘none’;c.offsetHeight;c.style.animation=‘up .32s ease’;
+handlers[step]();
+try{window.scrollTo({top:0,behavior:‘instant’});}catch(e){window.scrollTo(0,0);}
+}
 function card(h){document.getElementById(‘mc’).innerHTML=h;}
 function foot(lbl,fn,bk){bk=bk===undefined;return ‘<div class="cf">’+((!bk)&&step>1?’<button class="bbk" onclick="step--;render()">← Back</button>’:’’)+’<button class="bnx" onclick="('+fn.toString()+')()">’+lbl+’ →</button></div>’;}
 function sel(el,key,val){el.closest(’.tiles’).querySelectorAll(’.tile’).forEach(function(x){x.classList.remove(‘sel’);});el.classList.add(‘sel’);ud[key]=val;}
@@ -836,14 +846,18 @@ try{sessionStorage.setItem(‘pk_train’,JSON.stringify(trainState));}catch(e){
 function s0(){
 document.getElementById(‘pb’).style.width=‘0%’;
 document.getElementById(‘sl’).textContent=lang===‘de’?‘Willkommen’:‘Welcome’;
+var de=lang===‘de’;
 card(
 ‘<div class="intro">’+
 ‘<div class="intro-k">PEAK</div>’+
 ‘<h1 class="intro-h">’+t(‘s0t’)+’ <em>’+t(‘s0e’)+’</em></h1>’+
 ‘<p class="intro-s">’+t(‘s0s’)+’</p>’+
-‘<button class="intro-cta" onclick="step=1;render()">’+t(‘s0cta’).toUpperCase()+’ →</button>’+
+‘<button class="intro-cta" onclick="step=1;render()">’+(de?‘PLAN ERSTELLEN’:‘CREATE MY PLAN’)+’ →</button>’+
 ‘<div class="intro-meta">’+t(‘s0dur’)+’</div>’+
-‘<button class="intro-login" onclick="showLogin()">’+t(‘s0login’)+’</button>’+
+‘<div style="margin-top:26px;padding-top:18px;border-top:1px solid var(--border);max-width:340px;margin-left:auto;margin-right:auto">’+
+‘<div style="font-size:11px;color:var(--faint);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;margin-bottom:8px">’+(de?‘Schon Kunde?’:‘Already a member?’)+’</div>’+
+‘<button onclick="showLogin()" style="width:100%;background:none;border:1.5px solid var(--red);color:var(--red);font-family:\'Barlow Condensed\',sans-serif;font-size:13px;font-weight:900;padding:11px;cursor:pointer;letter-spacing:2.5px;text-transform:uppercase">’+(de?‘🔐 Einloggen’:‘🔐 Log in’)+’</button>’+
+‘</div>’+
 ‘</div>’
 );
 }
@@ -2943,6 +2957,9 @@ async function bootApp(){
 // on reload while we check for existing session
 var de=lang===‘de’;
 card(’<div class="lw"><div class="spin"></div><div class="lt">’+(de?‘Lade…’:‘Loading…’)+’</div></div>’);
+
+// Ensure clean starting state — prevents stale step from previous flow
+step=0;
 
 // Restore onboarding draft (so interrupted users resume where they were)
 loadSession();
