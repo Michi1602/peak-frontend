@@ -605,8 +605,45 @@ function selSp(el,n){el.closest('.tiles').querySelectorAll('.stile').forEach(fun
 function selGoal(el,k){document.querySelectorAll('.gc').forEach(function(x){x.classList.remove('sel');});el.classList.add('sel');ud.goal=t(k);}
 function tc(el,key,val){if(!ud[key])ud[key]=[];if(ud[key].includes(val)){ud[key]=ud[key].filter(function(v){return v!==val;});el.classList.remove('sel');}else{ud[key].push(val);el.classList.add('sel');}}
 function showE(id,msg){var el=document.getElementById(id);if(el){el.textContent='⚠ '+msg;el.style.display='block';}}
-function saveSession(){try{sessionStorage.setItem('pk_ud',JSON.stringify(ud));if(plan)sessionStorage.setItem('pk_plan',JSON.stringify(plan));sessionStorage.setItem('pk_train',JSON.stringify(trainState));}catch(e){}}
+function saveSession(){try{sessionStorage.setItem('pk_ud',JSON.stringify(ud));if(plan)sessionStorage.setItem('pk_plan',JSON.stringify(plan));sessionStorage.setItem('pk_train',JSON.stringify(trainState));}catch(e){}if(ud.email)scheduleTrainSync();}
 function loadSession(){try{var d=sessionStorage.getItem('pk_ud');if(d){var saved=JSON.parse(d);Object.keys(saved).forEach(function(k){if(saved[k])ud[k]=saved[k];});}var p=sessionStorage.getItem('pk_plan');if(p)plan=JSON.parse(p);var ts=sessionStorage.getItem('pk_train');if(ts){var t=JSON.parse(ts);if(t.completed)trainState.completed=t.completed;if(t.feedback)trainState.feedback=t.feedback;if(t.currentWeek)trainState.currentWeek=t.currentWeek;}}catch(e){}}
+
+// Debounced backend sync for trainState. Waits 1.5s after last change
+// so rapid actions (abhaken + feedback) only fire one request.
+var __trainSyncTimer=null;
+function scheduleTrainSync(){
+  if(__trainSyncTimer)clearTimeout(__trainSyncTimer);
+  __trainSyncTimer=setTimeout(syncTrainingState,1500);
+}
+async function syncTrainingState(){
+  try{
+    var sess=await window.sb.auth.getSession();
+    var tok=sess?.data?.session?.access_token;
+    if(!tok)return;
+    await fetch(BACKEND+'/user/training-state',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+tok},
+      body:JSON.stringify({training_state:trainState})
+    });
+  }catch(e){console.error('trainState sync failed:',e);}
+}
+async function loadTrainingStateFromBackend(){
+  try{
+    var sess=await window.sb.auth.getSession();
+    var tok=sess?.data?.session?.access_token;
+    if(!tok)return;
+    var res=await fetch(BACKEND+'/user/training-state',{headers:{Authorization:'Bearer '+tok}});
+    if(!res.ok)return;
+    var json=await res.json();
+    if(json.training_state){
+      trainState.completed=json.training_state.completed||{};
+      trainState.feedback=json.training_state.feedback||{};
+      trainState.currentWeek=json.training_state.currentWeek||1;
+      // Update sessionStorage so next render uses backend data
+      try{sessionStorage.setItem('pk_train',JSON.stringify(trainState));}catch(e){}
+    }
+  }catch(e){console.error('trainState load failed:',e);}
+}
 
 // ── STEPS ─────────────────────────────────────────────────────────────
 function s0(){
@@ -654,11 +691,13 @@ async function fetchPlan(){
     // Ensure weekly plan exists (Chat 1: synthesise from today's workout; Chat 2+ will use templates)
     if(!plan.week)plan.week=synthWeekPlan(sport,level,parseInt(ud.sessions||3),parseInt(ud.dur||60),plan.workout);
     saveSession();
+    enrichWeekWithAI();
   }catch(e){
     var k=kcal||2000;
     plan={headline:'Your '+sport+' transformation starts now',calories:k,protein:Math.round(parseFloat(ud.weight||75)*1.8),carbs:Math.round(k*0.4/4),fat:Math.round(k*0.3/9),timeline:'12 weeks',todayMeals:[{emoji:'🍳',name:'Scrambled eggs with avocado',time:'Breakfast',kcal:420,macro:'28g protein'},{emoji:'🥗',name:'Grilled chicken & quinoa',time:'Lunch',kcal:550,macro:'45g protein'},{emoji:'🍽️',name:'Salmon with vegetables',time:'Dinner',kcal:580,macro:'40g protein'},{emoji:'🍎',name:'Greek yoghurt with berries',time:'Snack',kcal:180,macro:'15g protein'}],workout:{title:sport+' Performance Session',focus:'Improving '+sport+' performance',desc:'Sport-specific exercises chosen to make you a better '+sport+' athlete.',duration:parseInt(ud.dur||60),exercises:exFallback},recovery:{tip:'7-8hrs sleep tonight.',sleep:'Consistent bedtime.',hydration:'2.5-3L water today.'},shopping:['Chicken breast','Salmon','Quinoa','Greek yoghurt','Vegetables'],milestones:['Week 3 — Habits forming.','Week 7 — Visible progress.','Week 12 — Goal reached.']};
     plan.week=synthWeekPlan(sport,level,parseInt(ud.sessions||3),parseInt(ud.dur||60),plan.workout);
     saveSession();
+    enrichWeekWithAI();
   }
 }
 
@@ -1287,6 +1326,19 @@ function applyProgression(exercises,mult){
   });
 }
 
+// Build a week of training via KI for sports not in TPL.
+// One API call delivers all sessions — cheaper than one per day.
+async function aiBuildWeek(sport,level,sessionsPerWk,duration,typeSequence,weekNum,phase){
+  var langInstr=lang==='de'?'Respond entirely in GERMAN.':'Respond entirely in ENGLISH.';
+  var phaseInstr={foundation:'Foundation phase: moderate intensity, focus on movement quality.',build:'Build phase: progressively heavier loads and higher volume (+15% vs foundation).',peak:'Peak phase: maximum intensity, sport-specific demands (+30% vs foundation).'}[phase]||'';
+  var prompt='You are an expert strength & conditioning coach for '+sport+'.\n'+langInstr+'\nBuild '+sessionsPerWk+' training sessions for a '+level+'-level athlete, week '+weekNum+' of a 12-week program.\n'+phaseInstr+'\nSession types (in order): '+typeSequence.join(', ')+'.\nEach session: '+duration+' minutes. 4-5 exercises with sets/reps/duration and one technique tip.\n\nRespond ONLY with valid JSON:\n{"sessions":[{"type":"<type>","title":"<session title>","focus":"<what this trains>","desc":"<1-2 sentences>","exercises":[{"name":"<exercise>","detail":"<sets/reps/duration>","tip":"<technique tip>"},{"name":"<exercise>","detail":"<detail>","tip":"<tip>"},{"name":"<exercise>","detail":"<detail>","tip":"<tip>"},{"name":"<exercise>","detail":"<detail>","tip":"<tip>"}]}]}';
+  try{
+    var res=await aiGenJSON(prompt,2000);
+    return (res&&res.sessions)||null;
+  }catch(e){console.error('aiBuildWeek failed:',e);return null;}
+}
+
+
 function buildSession(tpl,sessionType,level,duration){
   if(!tpl||!tpl.sessions||!tpl.sessions[sessionType])return null;
   var lk=levelKey(level);
@@ -1362,16 +1414,48 @@ function synthWeekPlan(sport,level,sessionsPerWk,duration,todayWorkout){
         exercises:applyProgression(todayWorkout.exercises||[],mult)
       });
     }else{
-      // Generic stub — will be replaced by KI-generated content in Chat 4
+      // Generic stub — will be replaced by KI-generated content via enrichWeekWithAI
       days.push({
         type:type,
         title:sport+' '+type.charAt(0).toUpperCase()+type.slice(1),
         duration:duration,
-        exercises:[{name:'Coming soon',detail:'Details will be AI-generated',tip:''}]
+        exercises:[{name:'Coming soon',detail:'Details will be AI-generated',tip:''}],
+        _needsAI:true
       });
     }
   });
   return {days:days,weekNum:weekNum,phase:phase};
+}
+
+// After synthWeekPlan: if any days are AI stubs, fetch real content.
+// Fire-and-forget; updates plan.week.days in place, re-renders fitness tab.
+async function enrichWeekWithAI(){
+  if(!plan||!plan.week||!plan.week.days)return;
+  var stubDays=plan.week.days.filter(function(d){return d._needsAI;});
+  if(stubDays.length===0)return;
+  var typeSequence=stubDays.map(function(d){return d.type;});
+  var sport=ud.sport||'Running';
+  var level=ud.level||'Intermediate';
+  var duration=parseInt(ud.dur||60);
+  var sessions=await aiBuildWeek(sport,level,stubDays.length,duration,typeSequence,plan.week.weekNum||1,plan.week.phase||'foundation');
+  if(!sessions)return;
+  // Apply progression + map AI sessions back into the week's day slots
+  var bias=calcFeedbackBias();
+  var mult=progressionMultiplier(plan.week.weekNum||1,bias);
+  var aiIdx=0;
+  plan.week.days.forEach(function(d,i){
+    if(!d._needsAI)return;
+    var aiSes=sessions[aiIdx];aiIdx++;
+    if(!aiSes)return;
+    d.title=aiSes.title||d.title;
+    d.focus=aiSes.focus||'';
+    d.desc=aiSes.desc||'';
+    d.exercises=applyProgression(aiSes.exercises||[],mult);
+    delete d._needsAI;
+  });
+  saveSession();
+  // Re-render fitness tab if user is on it
+  if(currentView==='dashboard'&&dashTab==='fitness')showTab('fitness');
 }
 
 function fp(){return plan||{calories:2000,protein:150,carbs:200,fat:70,timeline:'12 weeks',headline:'Your transformation starts now',todayMeals:[{emoji:'🍳',name:'Scrambled eggs',time:'Breakfast',kcal:420,macro:'28g protein'},{emoji:'🥗',name:'Chicken & quinoa',time:'Lunch',kcal:550,macro:'45g protein'},{emoji:'🍽️',name:'Salmon',time:'Dinner',kcal:580,macro:'40g protein'},{emoji:'🍎',name:'Greek yoghurt',time:'Snack',kcal:180,macro:'15g protein'}],workout:{title:'Performance Session',focus:'Building athletic base',desc:'Progressive training session.',duration:60,exercises:[{name:'Warm-up',detail:'10 min'},{name:'Main set',detail:'35 min'},{name:'Cool-down',detail:'10 min'}]},recovery:{tip:'Sleep 7-8hrs.',sleep:'Consistent bedtime.',hydration:'2.5L water.'},shopping:['Chicken','Salmon','Quinoa','Yoghurt','Vegetables'],milestones:['Week 3','Week 7','Week 12']};}
@@ -1823,6 +1907,7 @@ async function advanceWeek(){
     var level=ud.level||'Intermediate';
     plan.week=synthWeekPlan(sport,level,parseInt(ud.sessions||3),parseInt(ud.dur||60),plan.workout);
     saveSession();
+    enrichWeekWithAI();
   }
   peakToast(de?('Woche '+(current+1)+' gestartet 💪'):('Week '+(current+1)+' started 💪'),{kind:'success'});
   showTab('fitness');
@@ -2219,6 +2304,9 @@ async function loadAuthProfile(){
     if(p.budget!==undefined&&p.budget!==null)ud.budget=p.budget;
     ud.tier=p.tier||'premium';
     updateAuthUI();
+
+    // Load training state from backend (overrides sessionStorage stub)
+    await loadTrainingStateFromBackend();
 
     // Merge any saved onboarding data from sessionStorage (full profile)
     try{
