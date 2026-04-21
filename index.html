@@ -517,19 +517,17 @@ function syncThemeButton(){
   }
 }
 function rerenderCurrent(){
-  // Check if we're in profile screen
-  var profileBtn=document.querySelector('[onclick*="saveProfile"],[onclick*="regenPlan"]');
-  if(profileBtn&&ud.email){showProfile();return;}
-  // Check if we're in dashboard
-  var nav=document.querySelector('.ntab.act');
-  if(nav){
-    var tabKey=nav.getAttribute('data-tab');
-    if(tabKey){showTab(tabKey);return;}
+  // Use explicit view tracking — DOM-sniffing was unreliable
+  if(currentView==='profile'&&ud.email){showProfile();return;}
+  if(currentView==='dashboard'){showTab(dashTab);return;}
+  if(currentView==='login'){showLogin();return;}
+  if(currentView==='intro'||currentView==='onboarding'){
+    if(step>=0&&step<=8){
+      ({0:s0,1:s1,2:s2,3:s3,4:s4,5:s5,6:s6,7:s7,8:s8})[step]();
+    }
+    return;
   }
-  // Check if we're in login screen
-  var loginBtn=document.getElementById('lem');
-  if(loginBtn){showLogin();return;}
-  // Check if we're in onboarding or intro
+  // Fallback
   if(step>=0&&step<=8){
     ({0:s0,1:s1,2:s2,3:s3,4:s4,5:s5,6:s6,7:s7,8:s8})[step]();
   }
@@ -549,7 +547,7 @@ function setP(s,tot){
   pbEl.style.width=((s-1)/(tot-1)*100)+'%';
   slEl.textContent=s<=tot?(lang==='de'?'Schritt '+s+' von '+tot:'Step '+s+' of '+tot):(lang==='de'?'Fast geschafft!':'Almost there!');
 }
-function render(){setP(step,TOTAL);var c=document.getElementById('mc');c.style.animation='none';c.offsetHeight;c.style.animation='up .32s ease';({0:s0,1:s1,2:s2,3:s3,4:s4,5:s5,6:s6,7:s7,8:s8})[step]();}
+function render(){currentView=step===0?'intro':'onboarding';setP(step,TOTAL);var c=document.getElementById('mc');c.style.animation='none';c.offsetHeight;c.style.animation='up .32s ease';({0:s0,1:s1,2:s2,3:s3,4:s4,5:s5,6:s6,7:s7,8:s8})[step]();}
 function card(h){document.getElementById('mc').innerHTML=h;}
 function foot(lbl,fn,bk){bk=bk===undefined;return '<div class="cf">'+((!bk)&&step>1?'<button class="bbk" onclick="step--;render()">← Back</button>':'')+'<button class="bnx" onclick="('+fn.toString()+')()">'+lbl+' →</button></div>';}
 function sel(el,key,val){el.closest('.tiles').querySelectorAll('.tile').forEach(function(x){x.classList.remove('sel');});el.classList.add('sel');ud[key]=val;}
@@ -749,6 +747,7 @@ function s8(){
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────
 function showDash(){
+  currentView='dashboard';
   document.getElementById('pb').style.width='100%';
   document.getElementById('sl').textContent=t('db');
   updateAuthUI();
@@ -1127,6 +1126,7 @@ function rateWk(cat,score,el){wrat[cat]=score;var row=el.parentElement;if(row)ro
 
 // ── LOGIN ─────────────────────────────────────────────────────────────
 function showLogin(){
+  currentView='login';
   document.getElementById('pb').style.width='0%';document.getElementById('sl').textContent='Login';
   var de=lang==='de';
   var subtitle=de?'Dein Plan wartet auf dich.':'Your plan is waiting.';
@@ -1393,6 +1393,7 @@ window.sb.auth.onAuthStateChange(function(event,session){
 
 // ── PROFILE SCREEN ────────────────────────────────────────────────────
 var profEditing=null; // welches Feld gerade im Edit-Modus ist
+var currentView=null; // 'intro','login','onboarding','dashboard','profile','recovery-detail'
 
 function profLabel(key){
   var de=lang==='de';
@@ -1443,6 +1444,7 @@ function profValue(key){
 
 function showProfile(){
   if(!ud.email){peakToast(lang==='de'?'Bitte erst einloggen.':'Please log in first.');return;}
+  currentView='profile';
   var de=lang==='de';
   var p=fp();
   // Clear progress bar, set header label
@@ -1596,7 +1598,15 @@ async function saveProfile(key){
       return;
     }
   }else if(key==='al'||key==='di'||key==='cu'){
-    newVal=raw?raw.split('||').map(function(s){return s.trim();}).filter(Boolean):[];
+    var rawArr=raw?raw.split('||').map(function(s){return s.trim();}).filter(Boolean):[];
+    // Dedupe case-insensitively: keep first occurrence (normalized casing from chips)
+    var seen={};
+    newVal=rawArr.filter(function(v){
+      var k=v.toLowerCase();
+      if(seen[k])return false;
+      seen[k]=true;
+      return true;
+    });
   }else{
     newVal=raw.trim();
   }
