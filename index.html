@@ -1438,6 +1438,113 @@ var TPL={
   }
 };
 
+// ═══════════════════════════════════════════════════════════════════════
+// SESSION TRANSLATION CACHE (DE) — translates EN templates on demand
+// ═══════════════════════════════════════════════════════════════════════
+var __sesCache=null;
+function getSesCache(){
+  if(__sesCache)return __sesCache;
+  try{var raw=sessionStorage.getItem('pk_ses_cache');__sesCache=raw?JSON.parse(raw):{};}
+  catch(e){__sesCache={};}
+  return __sesCache;
+}
+function saveSesCache(){
+  try{sessionStorage.setItem('pk_ses_cache',JSON.stringify(__sesCache||{}));}catch(e){}
+}
+
+// Translate one session object. Returns cached copy if available,
+// otherwise asks KI for a full-object translation and caches it.
+async function translateSessionToDE(session, cacheKey){
+  if(!session||!session.title)return session;
+  var cache=getSesCache();
+  if(cache[cacheKey]){
+    var c=cache[cacheKey];
+    return {
+      type:session.type,
+      title:c.title||session.title,
+      focus:c.focus||session.focus,
+      desc:c.desc||session.desc,
+      duration:session.duration,
+      exercises:(session.exercises||[]).map(function(ex,i){
+        if(typeof ex==='string')return ex;
+        var ct=c.exercises&&c.exercises[i];
+        return {
+          name:(ct&&ct.name)||ex.name,
+          detail:(ct&&ct.detail)||ex.detail,
+          tip:(ct&&ct.tip)||ex.tip||''
+        };
+      })
+    };
+  }
+  var payload={
+    title:session.title||'',
+    focus:session.focus||'',
+    desc:session.desc||'',
+    exercises:(session.exercises||[]).map(function(ex){
+      if(typeof ex==='string')return {name:ex,detail:'',tip:''};
+      return {name:ex.name||'',detail:ex.detail||'',tip:ex.tip||''};
+    })
+  };
+  try{
+    var prompt='Translate this fitness training session to natural German. '+
+      'Rules:\n'+
+      '- Exercise names translate naturally (Ball control → Ballkontrolle, Sprint intervals → Sprint-Intervalle, Plank series → Plank-Serie, Single-leg squats → Einbeinige Kniebeugen, Lateral agility ladder → Seitliche Agility-Leiter)\n'+
+      '- Keep numbers + units unchanged (3×10min, 6×30m, 3×45s, @ 75%)\n'+
+      '- Technical terms common in DE fitness: keep (Core, Plank, Rondo, Fartlek, Tempo, 1RM, FTP, VO2max)\n'+
+      '- Translate tip sentences naturally\n\n'+
+      'Respond ONLY with valid JSON matching this exact structure (same keys):\n'+
+      JSON.stringify(payload)+'\n\n'+
+      'Input to translate:\n'+JSON.stringify(payload);
+    var translated=await aiGenJSON(prompt,1400,'session_translate');
+    if(translated&&translated.title){
+      cache[cacheKey]=translated;
+      saveSesCache();
+      return {
+        type:session.type,
+        title:translated.title,
+        focus:translated.focus||session.focus,
+        desc:translated.desc||session.desc,
+        duration:session.duration,
+        exercises:(session.exercises||[]).map(function(ex,i){
+          if(typeof ex==='string')return ex;
+          var ct=translated.exercises&&translated.exercises[i];
+          return {
+            name:(ct&&ct.name)||ex.name,
+            detail:(ct&&ct.detail)||ex.detail,
+            tip:(ct&&ct.tip)||ex.tip||''
+          };
+        })
+      };
+    }
+  }catch(e){console.warn('Session translate failed:',e);}
+  return session; // Silent fallback: English stays
+}
+
+// Translate every non-rest session in a week plan in parallel.
+async function translateWeekPlanToDE(week, sport, level){
+  if(!week||!week.days)return week;
+  var lk=levelKey(level);
+  var tasks=week.days.map(function(d){
+    if(!d||d.type==='rest'||!d.title)return Promise.resolve(d);
+    var key=sport+'|'+d.type+'|'+lk;
+    return translateSessionToDE(d,key);
+  });
+  var translated=await Promise.all(tasks);
+  return {days:translated, weekNum:week.weekNum, phase:week.phase};
+}
+
+// Check if any non-rest session in week still needs DE translation
+function weekNeedsTranslation(week, sport, level){
+  if(!week||!week.days)return false;
+  var lk=levelKey(level);
+  var cache=getSesCache();
+  return week.days.some(function(d){
+    if(!d||d.type==='rest'||!d.title)return false;
+    var key=sport+'|'+d.type+'|'+lk;
+    return !cache[key];
+  });
+}
+
 // Find template for sport (case-insensitive, fuzzy)
 function getTpl(sport){
   if(!sport)return null;
@@ -1641,6 +1748,13 @@ async function enrichWeekWithAI(){
     delete d._needsAI;
   });
   saveSession();
+  // If user is on DE, translate the full week now (cached after first run)
+  if(lang==='de'&&plan&&plan.week){
+    try{
+      plan.week=await translateWeekPlanToDE(plan.week, ud.sport||'Running', ud.level||'Intermediate');
+      saveSession();
+    }catch(e){console.warn('DE week translation failed:',e);}
+  }
   // Re-render fitness tab if user is on it
   if(currentView==='dashboard'&&dashTab==='fitness')showTab('fitness');
 }
@@ -2103,6 +2217,14 @@ async function showMealDetail(idx){
 function tFi(p){
   var de=lang==='de';
   var sport=ud.sport||'—';var level=ud.level||'—';
+  // DE: trigger background translation of week templates if not yet cached.
+  // First render may show EN briefly; translation re-renders automatically.
+  if(de&&p&&p.week&&weekNeedsTranslation(p.week,sport,level)){
+    translateWeekPlanToDE(p.week,sport,level).then(function(translated){
+      if(plan){plan.week=translated;saveSession();}
+      if(currentView==='dashboard'&&dashTab==='fitness')showTab('fitness');
+    }).catch(function(e){console.warn('tFi translate:',e);});
+  }
   var c='<div class="sg"><div class="stat"><div class="stl">'+t('sp')+'</div><div class="stv">'+sport+'</div></div><div class="stat"><div class="stl">Level</div><div class="stv">'+level+'</div></div><div class="stat"><div class="stl">'+(de?'Einheiten':'Sessions')+'</div><div class="stv">'+(ud.sessions||'—')+t('sessionsUnit')+'</div></div><div class="stat"><div class="stl">'+(de?'Dauer':'Duration')+'</div><div class="stv">'+(ud.dur||'—')+' '+t('minutesLbl')+'</div></div></div>';
 
   // WEEKLY PLAN VIEW
