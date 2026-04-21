@@ -1532,8 +1532,75 @@ function s7(){
   var mP,yP;
   if(selTier==='basic'){mP='€9.99/month';yP='€59/year';}
   else{mP='€19.99/month';yP='€119/year';}
-  var priceTxt='7 days free. '+(selPlan==='annual'?'Then '+yP+'.':'Then '+mP+'.');
-  card('<div class="ch"><div class="chip">✦ '+t('s7')+'</div><div class="ct">'+t('os')+' <em>'+t('rs')+'</em></div><p class="cs">'+priceTxt+'</p></div><div class="cb"><div class="tbdg"><div class="tbi">✅</div><div class="tbt"><strong>'+t('nc')+'</strong> '+t('rn')+'</div></div><div id="ep" class="ebox"></div><div class="field"><label>'+t('el')+'</label><input type="email" id="em" placeholder="michael@example.com" value="'+(ud.email||'')+'"></div><p style="font-size:10px;color:var(--faint);margin-top:-4px;margin-bottom:12px">'+t('ph')+'</p><div class="cbox"><div class="cbox-t">'+t('cst')+'</div><label class="cbx"><input type="checkbox" id="cc1" onchange="updConsent()"><span>'+t('cs1')+'</span></label><label class="cbx"><input type="checkbox" id="cc2" onchange="updConsent()"><span>'+t('cs2')+' <a href="https://peak-mj-performance.app/impressum" target="_blank" rel="noopener">'+t('cs2l')+'</a> '+t('cs2a')+' <a href="https://peak-mj-performance.app/datenschutz" target="_blank" rel="noopener">'+t('cs2p')+'</a>'+t('cs2e')+'</span></label></div></div><div class="cf"><button class="bbk" onclick="step=6;render()">← Back</button><button class="bnx" id="pb2" onclick="doPay()" style="opacity:.5;cursor:not-allowed" disabled>🔒 '+t('tp')+' →</button></div>');
+  var de=lang==='de';
+  var defaultTrialTxt=de?'7 Tage kostenlos.':'7 days free.';
+  var priceTxt=defaultTrialTxt+' '+(selPlan==='annual'?(de?'Dann '+yP+'.':'Then '+yP+'.'):(de?'Dann '+mP+'.':'Then '+mP+'.'));
+  var vLbl=de?'Gutscheincode (optional)':'Voucher code (optional)';
+  var vPlh=de?'z.B. LAUNCH10':'e.g. LAUNCH10';
+  var vBtn=de?'Prüfen':'Check';
+  var prefillVoucher=ud.voucherCode||'';
+  card('<div class="ch"><div class="chip">✦ '+t('s7')+'</div><div class="ct">'+t('os')+' <em>'+t('rs')+'</em></div><p class="cs" id="s7price">'+priceTxt+'</p></div><div class="cb"><div class="tbdg"><div class="tbi">✅</div><div class="tbt"><strong>'+t('nc')+'</strong> '+t('rn')+'</div></div><div id="ep" class="ebox"></div><div class="field"><label>'+t('el')+'</label><input type="email" id="em" placeholder="michael@example.com" value="'+(ud.email||'')+'"></div><p style="font-size:10px;color:var(--faint);margin-top:-4px;margin-bottom:12px">'+t('ph')+'</p><div class="field"><label>'+vLbl+'</label><div style="display:flex;gap:6px"><input type="text" id="vc" placeholder="'+vPlh+'" value="'+prefillVoucher+'" style="flex:1;text-transform:uppercase"><button class="bnx" id="vcBtn" onclick="checkVoucher()" style="flex:0 0 auto;padding:0 18px;font-size:11px">'+vBtn+'</button></div><div id="vcMsg" style="font-size:11px;margin-top:6px;display:none"></div></div><div class="cbox"><div class="cbox-t">'+t('cst')+'</div><label class="cbx"><input type="checkbox" id="cc1" onchange="updConsent()"><span>'+t('cs1')+'</span></label><label class="cbx"><input type="checkbox" id="cc2" onchange="updConsent()"><span>'+t('cs2')+' <a href="https://peak-mj-performance.app/impressum" target="_blank" rel="noopener">'+t('cs2l')+'</a> '+t('cs2a')+' <a href="https://peak-mj-performance.app/datenschutz" target="_blank" rel="noopener">'+t('cs2p')+'</a>'+t('cs2e')+'</span></label></div></div><div class="cf"><button class="bbk" onclick="step=6;render()">← Back</button><button class="bnx" id="pb2" onclick="doPay()" style="opacity:.5;cursor:not-allowed" disabled>🔒 '+t('tp')+' →</button></div>');
+  // If voucher came from URL, auto-validate
+  if(prefillVoucher)setTimeout(checkVoucher,100);
+}
+
+// Validated voucher state for the current checkout session
+var __validVoucher=null;
+
+async function checkVoucher(){
+  var inp=document.getElementById('vc');
+  var msg=document.getElementById('vcMsg');
+  var btn=document.getElementById('vcBtn');
+  var priceEl=document.getElementById('s7price');
+  if(!inp||!msg)return;
+  var code=inp.value.trim().toUpperCase();
+  if(!code){
+    __validVoucher=null;
+    msg.style.display='none';
+    return;
+  }
+  var de=lang==='de';
+  inp.value=code; // normalise
+  btn.textContent=de?'Prüfe...':'Checking...';
+  btn.disabled=true;
+  msg.style.display='block';
+  msg.style.color='var(--dim)';
+  msg.textContent=de?'Wird geprüft...':'Validating...';
+  try{
+    var res=await fetch(BACKEND+'/voucher/validate',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({code:code,plan:selPlan,tier:selTier})
+    });
+    var data=await res.json();
+    btn.textContent=de?'Prüfen':'Check';
+    btn.disabled=false;
+    if(!data.valid){
+      __validVoucher=null;
+      msg.style.color='var(--red)';
+      msg.textContent='✗ '+(data.error||(de?'Ungültiger Code':'Invalid code'));
+      return;
+    }
+    __validVoucher=data;
+    ud.voucherCode=code;
+    saveSession();
+    msg.style.color='#4ade80';
+    var label=data.label||'';
+    if(data.type==='trial_extend'){
+      msg.textContent='✓ '+(de?(data.trialDays+' Tage kostenlos testen'):(data.trialDays+' days free trial'));
+      if(priceEl)priceEl.textContent=(de?data.trialDays+' Tage kostenlos.':data.trialDays+' days free.')+' '+(selPlan==='annual'?(de?'Dann weiter im Jahresabo.':'Then annual plan.'):(de?'Dann monatlich.':'Then monthly.'));
+    }else if(data.type==='trial_full'){
+      msg.textContent='🎁 '+(de?(data.trialDays+' Tage Premium kostenlos'):(data.trialDays+' days Premium free'));
+      if(priceEl)priceEl.textContent=de?(data.trialDays+' Tage Premium kostenlos, dann regulär.'):(data.trialDays+' days Premium free, then standard pricing.');
+    }else{
+      msg.textContent='✓ '+(de?'Gutschein aktiv: ':'Voucher active: ')+label;
+    }
+  }catch(err){
+    btn.textContent=de?'Prüfen':'Check';
+    btn.disabled=false;
+    msg.style.color='var(--red)';
+    msg.textContent='✗ '+(de?'Fehler beim Prüfen':'Could not verify');
+  }
 }
 
 function updConsent(){
@@ -1563,7 +1630,8 @@ async function doPay(){
       return;
     }
     // No existing account → proceed to Stripe Checkout
-    var res=await fetch(BACKEND+'/create-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,plan:selPlan,tier:selTier,userData:{name:ud.name,goal:ud.goal,sport:ud.sport},consent:{healthData:true,terms:true,at:ud.consentAt}})});
+    var voucherCode=document.getElementById('vc')?document.getElementById('vc').value.trim().toUpperCase():'';
+    var res=await fetch(BACKEND+'/create-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,plan:selPlan,tier:selTier,userData:{name:ud.name,goal:ud.goal,sport:ud.sport},consent:{healthData:true,terms:true,at:ud.consentAt},voucher:voucherCode||null})});
     var data=await res.json();
     if(data.url)window.location.href=data.url;
     else throw new Error(data.error||'Error');
@@ -2393,6 +2461,16 @@ async function bootApp(){
 
   // Restore onboarding draft (so interrupted users resume where they were)
   loadSession();
+
+  // Parse voucher code from URL parameter (?code=MICHI50 or ?voucher=MICHI50)
+  try{
+    var urlParams=new URLSearchParams(window.location.search);
+    var urlCode=urlParams.get('code')||urlParams.get('voucher');
+    if(urlCode){
+      ud.voucherCode=urlCode.trim().toUpperCase();
+      saveSession();
+    }
+  }catch(e){}
 
   // Stripe success redirect: session_id in URL means checkout just completed
   // → show success screen (step 8), user will get magic link via email
