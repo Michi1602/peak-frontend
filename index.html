@@ -590,6 +590,21 @@ function toggleLang(){
   document.getElementById('lb').textContent=lang==='en'?'DE':'EN';
   rerenderCurrent();
 
+  // Persist language to user profile (so backend sends emails in correct lang)
+  if(ud.email){
+    try{
+      window.sb.auth.getSession().then(function(sess){
+        var tok=sess?.data?.session?.access_token;
+        if(!tok)return;
+        fetch(BACKEND+'/user/update-profile',{
+          method:'POST',
+          headers:{'Content-Type':'application/json',Authorization:'Bearer '+tok},
+          body:JSON.stringify({lang:lang})
+        }).catch(function(e){console.warn('lang sync failed:',e);});
+      });
+    }catch(_){}
+  }
+
   // If a plan exists AND it was generated in a different language,
   // offer to rebuild it. Don't force — UI labels are already translated.
   if(plan&&plan._lang&&plan._lang!==lang&&ud.email){
@@ -1718,7 +1733,7 @@ async function doPay(){
     }
     // No existing account → proceed to Stripe Checkout
     var voucherCode=document.getElementById('vc')?document.getElementById('vc').value.trim().toUpperCase():'';
-    var res=await fetch(BACKEND+'/create-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,plan:selPlan,tier:selTier,userData:{name:ud.name,goal:ud.goal,goals:ud.goals||[],sport:ud.sport},consent:{healthData:true,terms:true,at:ud.consentAt},voucher:voucherCode||null})});
+    var res=await fetch(BACKEND+'/create-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,plan:selPlan,tier:selTier,userData:{name:ud.name,goal:ud.goal,goals:ud.goals||[],sport:ud.sport},consent:{healthData:true,terms:true,at:ud.consentAt},voucher:voucherCode||null,lang:lang})});
     var data=await res.json();
     if(data.url)window.location.href=data.url;
     else throw new Error(data.error||'Error');
@@ -1813,7 +1828,8 @@ async function doFreeSignup(){
       body:JSON.stringify({
         email:em,
         userData:{name:ud.name,goal:ud.goal,goals:ud.goals||[],sport:ud.sport},
-        consent:{healthData:true,terms:true,at:ud.consentAt}
+        consent:{healthData:true,terms:true,at:ud.consentAt},
+        lang:lang
       })
     });
     var data=await res.json();
