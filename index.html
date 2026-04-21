@@ -369,7 +369,7 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;hei
 const BACKEND='https://peak-backend-u52q.onrender.com';
 
 // AI Helper — routes all Anthropic calls through backend proxy
-async function aiGen(prompt, maxTokens){
+async function aiGen(prompt, maxTokens, purpose){
   var headers={'Content-Type':'application/json'};
   try{
     if(window.sb){
@@ -380,17 +380,25 @@ async function aiGen(prompt, maxTokens){
   }catch(_){}
   var r=await fetch(BACKEND+'/ai/generate',{
     method:'POST',headers:headers,
-    body:JSON.stringify({prompt:prompt,max_tokens:maxTokens||800})
+    body:JSON.stringify({prompt:prompt,max_tokens:maxTokens||800,purpose:purpose||null})
   });
   if(!r.ok){
     var err=await r.json().catch(function(){return {error:'AI request failed'};});
+    // Propagate free-tier limit with a specific flag so callers can show upgrade UI
+    if(err.code==='FREE_LIMIT_REACHED'){
+      var e=new Error(err.error||'Free limit reached');
+      e.freeLimitReached=true;
+      e.used=err.used;
+      e.max=err.max;
+      throw e;
+    }
     throw new Error(err.error||'AI request failed');
   }
   var data=await r.json();
   return data.text||'';
 }
-async function aiGenJSON(prompt, maxTokens){
-  var text=await aiGen(prompt, maxTokens);
+async function aiGenJSON(prompt, maxTokens, purpose){
+  var text=await aiGen(prompt, maxTokens, purpose);
   var clean=text.replace(/```json|```/g,'').trim();
   return JSON.parse(clean);
 }
@@ -597,7 +605,7 @@ function setP(s,tot){
   pbEl.style.width=((s-1)/(tot-1)*100)+'%';
   slEl.textContent=s<=tot?(lang==='de'?'Schritt '+s+' von '+tot:'Step '+s+' of '+tot):(lang==='de'?'Fast geschafft!':'Almost there!');
 }
-function render(){currentView=step===0?'intro':'onboarding';setP(step,TOTAL);var c=document.getElementById('mc');c.style.animation='none';c.offsetHeight;c.style.animation='up .32s ease';({0:s0,1:s1,2:s2,3:s3,4:s4,5:s5,6:s6,7:s7,8:s8})[step]();try{window.scrollTo({top:0,behavior:'instant'});}catch(e){window.scrollTo(0,0);}}
+function render(){currentView=step===0?'intro':'onboarding';setP(step,TOTAL);var c=document.getElementById('mc');c.style.animation='none';c.offsetHeight;c.style.animation='up .32s ease';({0:s0,1:s1,2:s2,3:s3,4:s4,5:s5,6:s6,7:s7,8:s8,70:s7f,71:s7fi})[step]();try{window.scrollTo({top:0,behavior:'instant'});}catch(e){window.scrollTo(0,0);}}
 function card(h){document.getElementById('mc').innerHTML=h;}
 function foot(lbl,fn,bk){bk=bk===undefined;return '<div class="cf">'+((!bk)&&step>1?'<button class="bbk" onclick="step--;render()">← Back</button>':'')+'<button class="bnx" onclick="('+fn.toString()+')()">'+lbl+' →</button></div>';}
 function sel(el,key,val){el.closest('.tiles').querySelectorAll('.tile').forEach(function(x){x.classList.remove('sel');});el.classList.add('sel');ud[key]=val;}
@@ -699,7 +707,7 @@ async function fetchPlan(){
   var langInstr=lang==='de'?'IMPORTANT: Respond entirely in GERMAN (Deutsch). All text fields including headline, meal names, workout names, exercise names, tips, shopping items, milestones must be in German. Keep meal time values as English labels "Breakfast","Lunch","Dinner","Snack" for app compatibility.':'IMPORTANT: Respond entirely in ENGLISH. All text fields must be in English.';
   var prompt='You are PEAK AI by MJ Performance.\n'+langInstr+'\nUser: '+ud.name+', age '+ud.age+', '+ud.weight+'kg→'+ud.dweight+'kg, '+ud.height+'cm, sleep '+ud.sleep+'hrs\nJob: '+ud.job+', stress '+ud.stress+'/10\nSport: '+sport+' ('+level+'), '+ud.sessions+'×/wk, '+ud.dur+'min, at '+ud.equip+'\nAllergies: '+(ud.al||[]).join(',')+'\nDiet: '+(ud.di||[]).join(',')+'\nCuisines: '+(ud.cu||[]).join(',')+'\nCooking: '+ud.cook+'\nGoal: '+ud.goal+', Calories: '+kcal+'\n\nCreate a personalised plan. For workout: create 4-5 SPECIFIC exercises for '+sport+' at '+level+' level that improve performance in '+sport+'. NOT generic gym. Include drills, technique, sport-specific conditioning. Each needs name + sets/reps/duration.\n\nRespond ONLY with valid JSON, no markdown:\n{"headline":"<12 words>","calories":'+kcal+',"protein":<g>,"carbs":<g>,"fat":<g>,"timeline":"<weeks>","todayMeals":[{"emoji":"🍳","name":"<meal>","time":"Breakfast","kcal":<n>,"macro":"<e.g. 28g protein>"},{"emoji":"🥗","name":"<meal>","time":"Lunch","kcal":<n>,"macro":"<e.g. 42g protein>"},{"emoji":"🍽️","name":"<meal>","time":"Dinner","kcal":<n>,"macro":"<e.g. 38g protein>"},{"emoji":"🍎","name":"<snack>","time":"Snack","kcal":<n>,"macro":"<e.g. 15g protein>"}],"workout":{"title":"<sport-specific title>","focus":"<what this improves in '+sport+'>","desc":"<2 sentences why>","duration":<min>,"exercises":[{"name":"<exercise>","detail":"<sets/reps/duration>"},{"name":"<exercise>","detail":"<sets/reps>"},{"name":"<exercise>","detail":"<sets/reps>"},{"name":"<exercise>","detail":"<duration>"}]},"recovery":{"tip":"<tip>","sleep":"<advice>","hydration":"<target>"},"shopping":["<item1>","<item2>","<item3>","<item4>","<item5>"],"milestones":["<wk2-3>","<wk5-7>","<final>"]}';
   try{
-    plan=await aiGenJSON(prompt,1600);
+    plan=await aiGenJSON(prompt,1600,'plan_generation');
     plan._lang=lang; // Track which language this plan was generated in
     if(plan.workout&&plan.workout.exercises&&typeof plan.workout.exercises[0]==='string'){plan.workout.exercises=plan.workout.exercises.map(function(e){return{name:e,detail:''};});}
     // Ensure weekly plan exists (Chat 1: synthesise from today's workout; Chat 2+ will use templates)
@@ -707,6 +715,10 @@ async function fetchPlan(){
     saveSession();
     enrichWeekWithAI();
   }catch(e){
+    // Free-tier cap reached — surface specific error so caller can show upgrade UI
+    if(e&&e.freeLimitReached){
+      throw e;
+    }
     var k=kcal||2000;
     plan={headline:'Your '+sport+' transformation starts now',calories:k,protein:Math.round(parseFloat(ud.weight||75)*1.8),carbs:Math.round(k*0.4/4),fat:Math.round(k*0.3/9),timeline:'12 weeks',todayMeals:[{emoji:'🍳',name:'Scrambled eggs with avocado',time:'Breakfast',kcal:420,macro:'28g protein'},{emoji:'🥗',name:'Grilled chicken & quinoa',time:'Lunch',kcal:550,macro:'45g protein'},{emoji:'🍽️',name:'Salmon with vegetables',time:'Dinner',kcal:580,macro:'40g protein'},{emoji:'🍎',name:'Greek yoghurt with berries',time:'Snack',kcal:180,macro:'15g protein'}],workout:{title:sport+' Performance Session',focus:'Improving '+sport+' performance',desc:'Sport-specific exercises chosen to make you a better '+sport+' athlete.',duration:parseInt(ud.dur||60),exercises:exFallback},recovery:{tip:'7-8hrs sleep tonight.',sleep:'Consistent bedtime.',hydration:'2.5-3L water today.'},shopping:['Chicken breast','Salmon','Quinoa','Greek yoghurt','Vegetables'],milestones:['Week 3 — Habits forming.','Week 7 — Visible progress.','Week 12 — Goal reached.']};
     plan.week=synthWeekPlan(sport,level,parseInt(ud.sessions||3),parseInt(ud.dur||60),plan.workout);
@@ -1480,6 +1492,9 @@ function s6(){
   document.getElementById('sl').textContent=lang==='de'?'Fast geschafft!':'Almost there!';
   var p=fp();
   var bf=t('tBasF'),pf=t('tPremF');
+  var de=lang==='de';
+  var freeLinkText=de?'Oder kostenlos starten ohne Kreditkarte →':'Or start free without a card →';
+  var freeSubtext=de?'7 Tage Essensplan, 1 Woche Training, 3 Plan-Updates. Jederzeit upgradebar.':'7-day meal plan, 1-week training preview, 3 plan updates. Upgrade any time.';
   function tierCard(tier,name,mPrice,yPrice,yPerMo,features,isPopular,showPlus){
     var sel=selTier===tier?'sel':'';
     var plnM=(selTier===tier&&selPlan==='monthly')?'sel':'';
@@ -1521,12 +1536,17 @@ function s6(){
         '</div>'+
         '<button class="bpay" onclick="step=7;render()">'+t('st')+'</button>'+
         '<div class="secn">'+t('sec')+'</div>'+
+        '<div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border);text-align:center">'+
+          '<a href="#" onclick="event.preventDefault();goFree()" style="color:var(--dim);font-size:12px;font-weight:600;letter-spacing:.5px;text-decoration:none;display:inline-block;padding:6px 0">'+freeLinkText+'</a>'+
+          '<div style="color:var(--faint);font-size:10px;margin-top:4px;line-height:1.4">'+freeSubtext+'</div>'+
+        '</div>'+
       '</div></div>'+
     '</div>'
   );
 }
 function st2(tier){selTier=tier;render();}
 function sp3(tier,p){selTier=tier;selPlan=p;render();}
+function goFree(){selTier='free';selPlan='free';step=70;render();}
 
 function s7(){
   var mP,yP;
@@ -1669,6 +1689,92 @@ async function doOpenPortal(){
     if(btn){showE('ep',err.message);btn.textContent='⚙️ '+t('aeC');btn.style.opacity='1';btn.onclick=doOpenPortal;}
     else peakToast(err.message);
   }
+}
+
+// ── FREE SIGNUP STEPS ──────────────────────────────────────────────────
+// s7f: Free signup form (email + consent)
+// s7fi: Inbox-check screen after successful signup
+function s7f(){
+  var de=lang==='de';
+  var title=de?'Kostenlos starten':'Start free';
+  var subtitle=de?'Ohne Kreditkarte, jederzeit upgradebar':'No card required, upgrade anytime';
+  var emailLabel=t('el');
+  var btnLabel=de?'Kostenlos loslegen':'Get started free';
+  var privacyText=de?'Wir mailen dir einen Login-Link.':'We\'ll email you a login link.';
+  card(
+    '<div class="ch"><div class="chip">✦ '+title+'</div><div class="ct">'+(de?'Dein ':'Your ')+'<em>'+(de?'Gratis-Plan':'free plan')+'</em></div><p class="cs">'+subtitle+'</p></div>'+
+    '<div class="cb">'+
+      '<div class="tbdg"><div class="tbi">🎯</div><div class="tbt"><strong>'+(de?'Essensplan':'Meal plan')+'</strong> — 7 '+(de?'Tage':'days')+'</div></div>'+
+      '<div class="tbdg"><div class="tbi">💪</div><div class="tbt"><strong>'+(de?'Training-Preview':'Training preview')+'</strong> — 1 '+(de?'Woche':'week')+'</div></div>'+
+      '<div class="tbdg"><div class="tbi">🔄</div><div class="tbt"><strong>3 '+(de?'Plan-Updates':'plan updates')+'</strong> '+(de?'insgesamt':'total')+'</div></div>'+
+      '<div id="epf" class="ebox"></div>'+
+      '<div class="field"><label>'+emailLabel+'</label><input type="email" id="emf" placeholder="michael@example.com" value="'+(ud.email||'')+'"></div>'+
+      '<p style="font-size:10px;color:var(--faint);margin-top:-4px;margin-bottom:12px">'+privacyText+'</p>'+
+      '<div class="cbox">'+
+        '<div class="cbox-t">'+t('cst')+'</div>'+
+        '<label class="cbx"><input type="checkbox" id="ccf1" onchange="updFreeConsent()"><span>'+t('cs1')+'</span></label>'+
+        '<label class="cbx"><input type="checkbox" id="ccf2" onchange="updFreeConsent()"><span>'+t('cs2')+' <a href="https://peak-mj-performance.app/impressum" target="_blank" rel="noopener">'+t('cs2l')+'</a> '+t('cs2a')+' <a href="https://peak-mj-performance.app/datenschutz" target="_blank" rel="noopener">'+t('cs2p')+'</a>'+t('cs2e')+'</span></label>'+
+      '</div>'+
+    '</div>'+
+    '<div class="cf">'+
+      '<button class="bbk" onclick="step=6;render()">← Back</button>'+
+      '<button class="bnx" id="pbf" onclick="doFreeSignup()" style="opacity:.5;cursor:not-allowed" disabled>'+btnLabel+' →</button>'+
+    '</div>'
+  );
+}
+
+function updFreeConsent(){
+  var c1=document.getElementById('ccf1'),c2=document.getElementById('ccf2'),btn=document.getElementById('pbf');
+  if(!c1||!c2||!btn)return;
+  var ok=c1.checked&&c2.checked;
+  btn.disabled=!ok;
+  btn.style.opacity=ok?'1':'.5';
+  btn.style.cursor=ok?'pointer':'not-allowed';
+}
+
+async function doFreeSignup(){
+  var em=document.getElementById('emf').value,btn=document.getElementById('pbf');
+  var c1=document.getElementById('ccf1'),c2=document.getElementById('ccf2');
+  var de=lang==='de';
+  if(!c1||!c1.checked||!c2||!c2.checked){showE('epf',t('csE'));return;}
+  if(!em||!em.includes('@')){showE('epf',de?'Bitte gültige E-Mail eingeben.':'Please enter a valid email.');return;}
+  ud.email=em;ud.consentHealthData=true;ud.consentTerms=true;ud.consentAt=new Date().toISOString();saveSession();
+  btn.textContent=de?'Senden...':'Sending...';btn.style.opacity='.6';btn.onclick=null;
+  document.getElementById('epf').style.display='none';
+  try{
+    var res=await fetch(BACKEND+'/auth/signup-free',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        email:em,
+        userData:{name:ud.name,goal:ud.goal,sport:ud.sport},
+        consent:{healthData:true,terms:true,at:ud.consentAt}
+      })
+    });
+    var data=await res.json();
+    if(!res.ok)throw new Error(data.error||'Signup failed');
+    step=71;render();
+  }catch(err){
+    showE('epf',err.message);
+    btn.textContent=(de?'Kostenlos loslegen':'Get started free')+' →';
+    btn.style.opacity='1';
+    btn.onclick=doFreeSignup;
+  }
+}
+
+function s7fi(){
+  var de=lang==='de';
+  var title=de?'Check deine E-Mails':'Check your inbox';
+  var subtitle=de?'Wir haben dir einen Login-Link geschickt':'We\'ve sent you a login link';
+  card(
+    '<div class="ch"><div class="chip">📧 '+(de?'Fast da':'Almost there')+'</div><div class="ct">'+title+'</div><p class="cs">'+subtitle+'</p></div>'+
+    '<div class="cb" style="text-align:center;padding:28px 20px">'+
+      '<div style="font-size:48px;margin-bottom:14px">📬</div>'+
+      '<div style="font-family:var(--head);font-weight:900;font-size:15px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px">'+(ud.email||'')+'</div>'+
+      '<div style="color:var(--dim);font-size:13px;line-height:1.6;margin-bottom:20px">'+(de?'Klick auf den Link in der E-Mail, um dich einzuloggen und deinen Plan zu sehen.':'Click the link in the email to sign in and see your plan.')+'</div>'+
+      '<div style="background:var(--light,#f7f7f7);border-left:3px solid var(--red);padding:12px 16px;font-size:12px;color:var(--dim);text-align:left;line-height:1.5">'+(de?'Keine Mail bekommen? Schau im Spam-Ordner nach oder':'No email? Check spam, or')+' <a href="#" onclick="event.preventDefault();step=70;render()" style="color:var(--red);font-weight:700">'+(de?'E-Mail ändern':'change email')+'</a>.</div>'+
+    '</div>'
+  );
 }
 
 function s8(){
@@ -2387,6 +2493,7 @@ async function loadAuthProfile(){
     if(p.cook)ud.cook=p.cook;
     if(p.budget!==undefined&&p.budget!==null)ud.budget=p.budget;
     ud.tier=p.tier||'premium';
+    ud.plan_generations_used=p.plan_generations_used||0;
     updateAuthUI();
 
     // Load training state from backend (overrides sessionStorage stub)
