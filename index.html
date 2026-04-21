@@ -403,6 +403,17 @@ async function aiGenJSON(prompt, maxTokens, purpose){
   return JSON.parse(clean);
 }
 
+// Build goal string for AI prompts — includes primary + secondary goals
+// if user selected multiple. Format: "Primary: X | Secondary: Y, Z"
+function goalStr(){
+  var primary=ud.goal||'';
+  if(!primary)return '';
+  if(!Array.isArray(ud.goals)||ud.goals.length<=1)return primary;
+  var secondary=ud.goals.slice(1).filter(function(g){return g&&g!==primary;});
+  if(secondary.length===0)return primary;
+  return 'Primary: '+primary+' | Also optimise for: '+secondary.join(', ');
+}
+
 // ── FREE TIER FEATURE GATES ────────────────────────────────────────────
 // isFree(): true if current user is on free tier
 // gateFree(featureKey): shows upgrade prompt + returns true if should block
@@ -759,7 +770,7 @@ async function fetchPlan(){
   var sportTips={Running:['Interval runs 6×400m at tempo','Hill repeats 5×uphill','Core: Dead bugs 3×12, Bird dogs 3×10','Single-leg deadlifts 3×8 each','Calf raises 3×20'],Football:['Ball control 3×10min','Sprint intervals 6×30m','Core: Plank series 3×45s','Single-leg squats 3×10 each','Lateral agility ladder 3×2min'],Weights:['Compound lifts: Squat/Bench/Deadlift','Progressive overload +2.5kg','Accessory: Face pulls, Band pull-aparts','Core: Hanging leg raises 3×12','Mobility 10min post'],Swimming:['Pull buoy drill 400m','4×100m at race pace','Rotator cuff exercises','Swiss ball rollouts 3×12','Shoulder mobility warm-up 10min'],Cycling:['Threshold 3×10min at FTP','High-cadence drills 100+RPM','Core: Plank variations','Hip flexor stretch post-ride','Single-leg pedalling'],Yoga:['Sun salutation ×10','Balance: Tree, Warrior III','Hip opening: Pigeon series','Shoulder openers','Box breathing 5min'],Tennis:['Footwork: Split-step drills','50 focused serves','Core rotation: Cable woodchops 3×12','Shoulder: External rotation','Agility: T-drill ×6'],Basketball:['100 shot makes','Ball handling: Crossover series','Vertical: Depth jumps 3×8','Core: Medicine ball rotations','Defensive slides 4×1min'],'Martial Arts':['Shadow boxing 4×3min rounds','Stance and footwork drills','Core: Russian twists, Wood chops','Hip flexor, hamstring flexibility','Reaction mirror drills']};
   var exFallback=(sportTips[sport]||['Warm-up 10 min','Main set 35 min','Cool-down 10 min']).map(function(e){return {name:e,detail:''};});
   var langInstr=lang==='de'?'IMPORTANT: Respond entirely in GERMAN (Deutsch). All text fields including headline, meal names, workout names, exercise names, tips, shopping items, milestones must be in German. Keep meal time values as English labels "Breakfast","Lunch","Dinner","Snack" for app compatibility.':'IMPORTANT: Respond entirely in ENGLISH. All text fields must be in English.';
-  var prompt='You are PEAK AI by MJ Performance.\n'+langInstr+'\nUser: '+ud.name+', age '+ud.age+', '+ud.weight+'kg→'+ud.dweight+'kg, '+ud.height+'cm, sleep '+ud.sleep+'hrs\nJob: '+ud.job+', stress '+ud.stress+'/10\nSport: '+sport+' ('+level+'), '+ud.sessions+'×/wk, '+ud.dur+'min, at '+ud.equip+'\nAllergies: '+(ud.al||[]).join(',')+'\nDiet: '+(ud.di||[]).join(',')+'\nCuisines: '+(ud.cu||[]).join(',')+'\nCooking: '+ud.cook+'\nGoal: '+ud.goal+', Calories: '+kcal+'\n\nCreate a personalised plan. For workout: create 4-5 SPECIFIC exercises for '+sport+' at '+level+' level that improve performance in '+sport+'. NOT generic gym. Include drills, technique, sport-specific conditioning. Each needs name + sets/reps/duration.\n\nRespond ONLY with valid JSON, no markdown:\n{"headline":"<12 words>","calories":'+kcal+',"protein":<g>,"carbs":<g>,"fat":<g>,"timeline":"<weeks>","todayMeals":[{"emoji":"🍳","name":"<meal>","time":"Breakfast","kcal":<n>,"macro":"<e.g. 28g protein>"},{"emoji":"🥗","name":"<meal>","time":"Lunch","kcal":<n>,"macro":"<e.g. 42g protein>"},{"emoji":"🍽️","name":"<meal>","time":"Dinner","kcal":<n>,"macro":"<e.g. 38g protein>"},{"emoji":"🍎","name":"<snack>","time":"Snack","kcal":<n>,"macro":"<e.g. 15g protein>"}],"workout":{"title":"<sport-specific title>","focus":"<what this improves in '+sport+'>","desc":"<2 sentences why>","duration":<min>,"exercises":[{"name":"<exercise>","detail":"<sets/reps/duration>"},{"name":"<exercise>","detail":"<sets/reps>"},{"name":"<exercise>","detail":"<sets/reps>"},{"name":"<exercise>","detail":"<duration>"}]},"recovery":{"tip":"<tip>","sleep":"<advice>","hydration":"<target>"},"shopping":["<item1>","<item2>","<item3>","<item4>","<item5>"],"milestones":["<wk2-3>","<wk5-7>","<final>"]}';
+  var prompt='You are PEAK AI by MJ Performance.\n'+langInstr+'\nUser: '+ud.name+', age '+ud.age+', '+ud.weight+'kg→'+ud.dweight+'kg, '+ud.height+'cm, sleep '+ud.sleep+'hrs\nJob: '+ud.job+', stress '+ud.stress+'/10\nSport: '+sport+' ('+level+'), '+ud.sessions+'×/wk, '+ud.dur+'min, at '+ud.equip+'\nAllergies: '+(ud.al||[]).join(',')+'\nDiet: '+(ud.di||[]).join(',')+'\nCuisines: '+(ud.cu||[]).join(',')+'\nCooking: '+ud.cook+'\nGoal: '+goalStr()+', Calories: '+kcal+'\n\nCreate a personalised plan. For workout: create 4-5 SPECIFIC exercises for '+sport+' at '+level+' level that improve performance in '+sport+'. NOT generic gym. Include drills, technique, sport-specific conditioning. Each needs name + sets/reps/duration.\n\nRespond ONLY with valid JSON, no markdown:\n{"headline":"<12 words>","calories":'+kcal+',"protein":<g>,"carbs":<g>,"fat":<g>,"timeline":"<weeks>","todayMeals":[{"emoji":"🍳","name":"<meal>","time":"Breakfast","kcal":<n>,"macro":"<e.g. 28g protein>"},{"emoji":"🥗","name":"<meal>","time":"Lunch","kcal":<n>,"macro":"<e.g. 42g protein>"},{"emoji":"🍽️","name":"<meal>","time":"Dinner","kcal":<n>,"macro":"<e.g. 38g protein>"},{"emoji":"🍎","name":"<snack>","time":"Snack","kcal":<n>,"macro":"<e.g. 15g protein>"}],"workout":{"title":"<sport-specific title>","focus":"<what this improves in '+sport+'>","desc":"<2 sentences why>","duration":<min>,"exercises":[{"name":"<exercise>","detail":"<sets/reps/duration>"},{"name":"<exercise>","detail":"<sets/reps>"},{"name":"<exercise>","detail":"<sets/reps>"},{"name":"<exercise>","detail":"<duration>"}]},"recovery":{"tip":"<tip>","sleep":"<advice>","hydration":"<target>"},"shopping":["<item1>","<item2>","<item3>","<item4>","<item5>"],"milestones":["<wk2-3>","<wk5-7>","<final>"]}';
   try{
     plan=await aiGenJSON(prompt,1600,'plan_generation');
     plan._lang=lang; // Track which language this plan was generated in
@@ -1707,7 +1718,7 @@ async function doPay(){
     }
     // No existing account → proceed to Stripe Checkout
     var voucherCode=document.getElementById('vc')?document.getElementById('vc').value.trim().toUpperCase():'';
-    var res=await fetch(BACKEND+'/create-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,plan:selPlan,tier:selTier,userData:{name:ud.name,goal:ud.goal,sport:ud.sport},consent:{healthData:true,terms:true,at:ud.consentAt},voucher:voucherCode||null})});
+    var res=await fetch(BACKEND+'/create-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,plan:selPlan,tier:selTier,userData:{name:ud.name,goal:ud.goal,goals:ud.goals||[],sport:ud.sport},consent:{healthData:true,terms:true,at:ud.consentAt},voucher:voucherCode||null})});
     var data=await res.json();
     if(data.url)window.location.href=data.url;
     else throw new Error(data.error||'Error');
@@ -1801,7 +1812,7 @@ async function doFreeSignup(){
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         email:em,
-        userData:{name:ud.name,goal:ud.goal,sport:ud.sport},
+        userData:{name:ud.name,goal:ud.goal,goals:ud.goals||[],sport:ud.sport},
         consent:{healthData:true,terms:true,at:ud.consentAt}
       })
     });
@@ -1948,7 +1959,7 @@ async function pickMood(cuisine){
   var de=lang==='de';
   a.innerHTML='<div class="aib" style="margin-top:8px"><div class="ailbl"><div class="aidot"></div>PEAK AI</div><p>'+(de?'Passe Tagesplan an '+cuisine+' an...':'Adapting day plan to '+cuisine+'...')+'</p><div class="spin" style="width:22px;height:22px;margin:8px 0 0;border-width:2px"></div></div>';
   var p=fp();
-  var prompt='Rework today\'s meal plan in '+cuisine+' style. Language: '+lang+'. Goal: '+ud.goal+', total ~'+p.calories+' kcal, ~'+p.protein+'g protein. Allergies: '+(ud.al||[]).join(',')+'. Cooking level: '+ud.cook+'.\nKeep the same structure (Breakfast, Lunch, Dinner, Snack) but all dishes should be authentic '+cuisine+' cuisine. Respect macros.\nRespond ONLY with valid JSON, no markdown:\n{"todayMeals":[{"emoji":"<emoji>","name":"<breakfast dish>","time":"Breakfast","kcal":<n>,"macro":"<e.g. 28g protein>"},{"emoji":"<emoji>","name":"<lunch dish>","time":"Lunch","kcal":<n>,"macro":"<e.g. 42g protein>"},{"emoji":"<emoji>","name":"<dinner dish>","time":"Dinner","kcal":<n>,"macro":"<e.g. 38g protein>"},{"emoji":"<emoji>","name":"<snack>","time":"Snack","kcal":<n>,"macro":"<e.g. 15g protein>"}]}';
+  var prompt='Rework today\'s meal plan in '+cuisine+' style. Language: '+lang+'. Goal: '+goalStr()+', total ~'+p.calories+' kcal, ~'+p.protein+'g protein. Allergies: '+(ud.al||[]).join(',')+'. Cooking level: '+ud.cook+'.\nKeep the same structure (Breakfast, Lunch, Dinner, Snack) but all dishes should be authentic '+cuisine+' cuisine. Respect macros.\nRespond ONLY with valid JSON, no markdown:\n{"todayMeals":[{"emoji":"<emoji>","name":"<breakfast dish>","time":"Breakfast","kcal":<n>,"macro":"<e.g. 28g protein>"},{"emoji":"<emoji>","name":"<lunch dish>","time":"Lunch","kcal":<n>,"macro":"<e.g. 42g protein>"},{"emoji":"<emoji>","name":"<dinner dish>","time":"Dinner","kcal":<n>,"macro":"<e.g. 38g protein>"},{"emoji":"<emoji>","name":"<snack>","time":"Snack","kcal":<n>,"macro":"<e.g. 15g protein>"}]}';
   try{
     var result=await aiGenJSON(prompt,800);
     if(!result.todayMeals||!Array.isArray(result.todayMeals)||result.todayMeals.length===0)throw new Error('Invalid data');
@@ -1974,7 +1985,7 @@ async function showMealDetail(idx){
   var tabs=[{k:'nutrition',l:t('nu')},{k:'fitness',l:t('fi')},{k:'recovery',l:t('re')},{k:'scanner',l:t('sc')},{k:'log',l:t('lg')},{k:'recipes',l:t('rp')}];
   card('<div class="dhead"><div class="dgreet">'+m.emoji+' '+m.name.toUpperCase()+'</div><div class="dsub">'+m.time+' · '+m.kcal+' kcal · '+m.macro+'</div></div><div class="dnav">'+tabs.map(function(tb){return '<button class="ntab '+(tb.k==='nutrition'?'act':'')+'" data-tab="'+tb.k+'" onclick="showTab(\''+tb.k+'\')">'+tb.l+'</button>';}).join('')+'</div><div class="dbody" id="db"><div class="lw"><div class="spin"></div><p style="font-size:12px;color:var(--faint)">'+(de?'Rezept wird geladen...':'Loading recipe...')+'</p></div></div>');
   try{
-    var prompt='Detailed recipe for "'+m.name+'" in language: '+lang+'. Target: '+m.kcal+' kcal, '+m.macro+'. Goal: '+ud.goal+', allergies: '+(ud.al||[]).join(',')+'. Include macros and key micronutrients (iron, calcium, vitC, zinc).\nJSON only:\n{"name":"'+m.name+'","kcal":'+m.kcal+',"protein":<g>,"carbs":<g>,"fat":<g>,"micros":{"iron":"<mg>","calcium":"<mg>","vitC":"<mg>","zinc":"<mg>"},"prepTime":<min>,"cookTime":<min>,"ingredients":["<i1 with quantity>","<i2>","<i3>","<i4>","<i5>","<i6>"],"steps":["<s1>","<s2>","<s3>","<s4>"],"shoppingList":["<item1>","<item2>","<item3>","<item4>","<item5>"],"tip":"<chef tip>"}';
+    var prompt='Detailed recipe for "'+m.name+'" in language: '+lang+'. Target: '+m.kcal+' kcal, '+m.macro+'. Goal: '+goalStr()+', allergies: '+(ud.al||[]).join(',')+'. Include macros and key micronutrients (iron, calcium, vitC, zinc).\nJSON only:\n{"name":"'+m.name+'","kcal":'+m.kcal+',"protein":<g>,"carbs":<g>,"fat":<g>,"micros":{"iron":"<mg>","calcium":"<mg>","vitC":"<mg>","zinc":"<mg>"},"prepTime":<min>,"cookTime":<min>,"ingredients":["<i1 with quantity>","<i2>","<i3>","<i4>","<i5>","<i6>"],"steps":["<s1>","<s2>","<s3>","<s4>"],"shoppingList":["<item1>","<item2>","<item3>","<item4>","<item5>"],"tip":"<chef tip>"}';
     var rec=await aiGenJSON(prompt,800);
     var c='<div onclick="showTab(\'nutrition\')" style="display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--dim);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:14px">← '+(de?'Zurück':'Back')+'</div>';
     c+='<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:var(--red);text-transform:uppercase;margin-bottom:8px">'+(de?'Makros & Mikros':'Macros & Micros')+'</div>';
@@ -2417,7 +2428,7 @@ async function genRec(){
   var el=document.getElementById('rr');
   if(el)el.innerHTML='<div class="aib"><div class="ailbl"><div class="aidot"></div>'+(lang==='de'?'Generiere...':'Generating...')+'</div><p>"'+mood+'"...</p><div class="spin" style="width:22px;height:22px;margin:8px 0 0;border-width:2px"></div></div>';
   var p=fp();var de=lang==='de';
-  var prompt='Create a recipe for "'+mood+'" in language: '+lang+'. Goal: '+ud.goal+', ~'+Math.round(p.calories/3)+' kcal, ~'+Math.round(p.protein/3)+'g protein. Allergies: '+(ud.al||[]).join(',')+', cooking: '+ud.cook+'.\nONLY valid JSON, no markdown:\n{"name":"<recipe name>","kcal":<number>,"protein":<number>,"carbs":<number>,"fat":<number>,"time":<minutes as number>,"ingredients":["<i1 with quantity>","<i2>","<i3>","<i4>","<i5>"],"steps":["<s1>","<s2>","<s3>","<s4>"],"shoppingList":["<item1>","<item2>","<item3>","<item4>"],"tip":"<one chef tip>"}';
+  var prompt='Create a recipe for "'+mood+'" in language: '+lang+'. Goal: '+goalStr()+', ~'+Math.round(p.calories/3)+' kcal, ~'+Math.round(p.protein/3)+'g protein. Allergies: '+(ud.al||[]).join(',')+', cooking: '+ud.cook+'.\nONLY valid JSON, no markdown:\n{"name":"<recipe name>","kcal":<number>,"protein":<number>,"carbs":<number>,"fat":<number>,"time":<minutes as number>,"ingredients":["<i1 with quantity>","<i2>","<i3>","<i4>","<i5>"],"steps":["<s1>","<s2>","<s3>","<s4>"],"shoppingList":["<item1>","<item2>","<item3>","<item4>"],"tip":"<one chef tip>"}';
   try{
     var rec=await aiGenJSON(prompt,700);
     if(!rec.name)throw new Error('bad');
@@ -2572,6 +2583,8 @@ async function loadAuthProfile(){
     ud.email=p.email||'';
     ud.name=p.name||ud.name||'';
     if(p.goal)ud.goal=p.goal;
+    if(Array.isArray(p.goals)&&p.goals.length)ud.goals=p.goals;
+    else if(p.goal)ud.goals=[p.goal];
     if(p.sport)ud.sport=p.sport;
     if(p.age!==undefined&&p.age!==null)ud.age=p.age;
     if(p.gender)ud.gender=p.gender;
