@@ -682,6 +682,12 @@ function setP(s,tot){
   var pbEl=document.getElementById('pb');
   var slEl=document.getElementById('sl');
   if(s===0){pbEl.style.width='0%';slEl.textContent=lang==='de'?'Willkommen':'Welcome';return;}
+  // Free signup steps (70=form, 71=inbox-check) map to end of onboarding
+  if(s>=70){
+    pbEl.style.width=s===70?'90%':'100%';
+    slEl.textContent=lang==='de'?(s===70?'Fast fertig':'Check deine E-Mails'):(s===70?'Almost done':'Check your inbox');
+    return;
+  }
   pbEl.style.width=((s-1)/(tot-1)*100)+'%';
   slEl.textContent=s<=tot?(lang==='de'?'Schritt '+s+' von '+tot:'Step '+s+' of '+tot):(lang==='de'?'Fast geschafft!':'Almost there!');
 }
@@ -1624,8 +1630,8 @@ function s6(){
     '</div>'
   );
 }
-function st2(tier){selTier=tier;render();}
-function sp3(tier,p){selTier=tier;selPlan=p;render();}
+function st2(tier){selTier=tier;__validVoucher=null;render();}
+function sp3(tier,p){selTier=tier;selPlan=p;__validVoucher=null;render();}
 function goFree(){selTier='free';selPlan='free';step=70;render();}
 
 function s7(){
@@ -1797,7 +1803,7 @@ function s7f(){
       '</div>'+
     '</div>'+
     '<div class="cf">'+
-      '<button class="bbk" onclick="step=6;render()">← Back</button>'+
+      '<button class="bbk" onclick="selTier=\'premium\';selPlan=\'annual\';step=6;render()">← Back</button>'+
       '<button class="bnx" id="pbf" onclick="doFreeSignup()" style="opacity:.5;cursor:not-allowed" disabled>'+btnLabel+' →</button>'+
     '</div>'
   );
@@ -2987,6 +2993,21 @@ async function saveProfile(key){
     }
     // Update local state
     ud[key]=newVal;
+    // If the primary goal changed, keep goals[0] in sync so AI prompts see
+    // the updated primary first.
+    if(key==='goal'){
+      if(!Array.isArray(ud.goals))ud.goals=[];
+      if(ud.goals.length===0)ud.goals.push(newVal);
+      else ud.goals[0]=newVal;
+      // Persist updated goals array to backend
+      try{
+        await fetch(BACKEND+'/user/update-profile',{
+          method:'POST',
+          headers:{'Content-Type':'application/json',Authorization:'Bearer '+tok},
+          body:JSON.stringify({goals:ud.goals})
+        });
+      }catch(_){}
+    }
     saveSession();
     if(key==='name')updateAuthUI(); // Initials might change
     profEditing=null;
@@ -3000,6 +3021,11 @@ async function saveProfile(key){
 
 async function regenPlan(){
   var de=lang==='de';
+  // Free cap pre-check: show upgrade immediately instead of generic error
+  if(isFree()&&(ud.plan_generations_used||0)>=3){
+    showUpgradePrompt('plan_limit');
+    return;
+  }
   var ok=await peakConfirm(de?'Plan mit deinen aktuellen Daten neu generieren?':'Rebuild plan using your current data?');
   if(!ok)return;
   // Reset ratings, clear old plan
@@ -3010,6 +3036,10 @@ async function regenPlan(){
     peakToast(de?'Neuer Plan bereit ✓':'New plan ready ✓',{kind:'success'});
     showTab('nutrition');
   }catch(e){
+    if(e&&e.freeLimitReached){
+      showUpgradePrompt('plan_limit');
+      return;
+    }
     console.error('regenPlan error:',e);
     peakToast(de?'Fehler. Bitte später erneut versuchen.':'Could not rebuild. Try again later.');
   }
