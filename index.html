@@ -1350,6 +1350,17 @@ function profValue(key){
   var v=ud[key];
   if(Array.isArray(v))return v.length?v.join(', '):'—';
   if(v===''||v===null||v===undefined)return '—';
+  // Goal: translate stored value to current language
+  if(key==='goal'){
+    var GOALS={
+      en:{g1:'Lose weight',g2:'Build muscle',g3:'Improve performance',g4:'Eat cleaner',g5:'Recover better',g6:'Daily habits'},
+      de:{g1:'Abnehmen',g2:'Muskelaufbau',g3:'Performance steigern',g4:'Gesünder essen',g5:'Besser regenerieren',g6:'Tägliche Gewohnheiten'}
+    };
+    for(var gk in GOALS.en){
+      if(v===GOALS.en[gk]||v===GOALS.de[gk])return t(gk);
+    }
+    return String(v);
+  }
   // Unit suffixes
   if(key==='weight'||key==='dweight')return v+' kg';
   if(key==='height')return v+' cm';
@@ -1400,12 +1411,36 @@ function showProfile(){
         var opts7=['Running','Weights','Football','Cycling','Swimming','Yoga','Martial Arts','Basketball','Tennis','Volleyball','Skiing','Golf','Gymnastics','Rowing','Equestrian','Other'];
         inputHtml='<select id="pe_'+key+'">'+opts7.map(function(o){return '<option value="'+o+'"'+(current===o?' selected':'')+'>'+o+'</option>';}).join('')+'</select>';
       }else if(key==='goal'){
+        // Goals are stored as translated strings. To match across language switches,
+        // we check both EN and DE values for each key.
         var gkeys=['g1','g2','g3','g4','g5','g6'];
-        inputHtml='<select id="pe_'+key+'">'+gkeys.map(function(k){var v=t(k);return '<option value="'+v+'"'+(current===v?' selected':'')+'>'+v+'</option>';}).join('')+'</select>';
+        var GOALS={
+          en:{g1:'Lose weight',g2:'Build muscle',g3:'Improve performance',g4:'Eat cleaner',g5:'Recover better',g6:'Daily habits'},
+          de:{g1:'Abnehmen',g2:'Muskelaufbau',g3:'Performance steigern',g4:'Gesünder essen',g5:'Besser regenerieren',g6:'Tägliche Gewohnheiten'}
+        };
+        inputHtml='<select id="pe_'+key+'">'+gkeys.map(function(k){
+          var v=t(k);
+          // Match if current equals either the EN or DE version of this goal
+          var isSel=(current===v||current===GOALS.en[k]||current===GOALS.de[k]);
+          return '<option value="'+v+'"'+(isSel?' selected':'')+'>'+v+'</option>';
+        }).join('')+'</select>';
       }else if(key==='al'||key==='di'||key==='cu'){
-        // Multi-value: allow comma-separated text input
-        var arr=Array.isArray(current)?current.join(', '):'';
-        inputHtml='<input type="text" id="pe_'+key+'" value="'+arr.replace(/"/g,'&quot;')+'" placeholder="'+(de?'z.B. Italian, Asian':'e.g. Italian, Asian')+'">';
+        // Multi-select chips — same options as onboarding step 4
+        var allOpts;
+        if(key==='al'){
+          allOpts=['Gluten','Dairy','Nuts','Peanuts','Shellfish','Eggs','Soy','Fish','Pork','Sesame','Mustard','Lactose','Fructose','Histamine'];
+        }else if(key==='di'){
+          allOpts=['🥩 Keto','🌱 Vegan','🥗 Vegetarian','🐟 Pescatarian','🫙 Paleo','🍖 Carnivore','🌾 Gluten-free','🧘 Mediterranean','⚡ Intermittent Fasting','💊 Diabetic-friendly'];
+        }else{
+          allOpts=['🇲🇽 Mexican','🍝 Italian','🍜 Asian','🥗 Mediterranean','🍔 American','🍛 Indian','🇯🇵 Japanese','🥙 Middle Eastern','🇹🇭 Thai','🇬🇷 Greek'];
+        }
+        var selected=Array.isArray(current)?current.slice():[];
+        // Store in hidden field for saveProfile to read
+        inputHtml='<input type="hidden" id="pe_'+key+'" value="'+selected.join('||')+'">';
+        inputHtml+='<div class="chips" id="peChips_'+key+'">'+allOpts.map(function(o){
+          var isSel=selected.indexOf(o)>=0;
+          return '<div class="chip2 '+(isSel?'sel':'')+'" onclick="toggleProfChip(\''+key+'\',\''+o.replace(/'/g,"\\'")+'\',this)">'+o+'</div>';
+        }).join('')+'</div>';
       }else if(['age','weight','dweight','height','sleep','sessions','dur','stress','budget'].indexOf(key)>=0){
         inputHtml='<input type="number" id="pe_'+key+'" value="'+(current||'')+'">';
       }else{
@@ -1455,6 +1490,21 @@ function showProfile(){
     '<div class="dbody">'+c+'</div>');
 }
 
+function toggleProfChip(key, value, el){
+  var hidden=document.getElementById('pe_'+key);
+  if(!hidden)return;
+  var arr=hidden.value?hidden.value.split('||').filter(Boolean):[];
+  var idx=arr.indexOf(value);
+  if(idx>=0){
+    arr.splice(idx,1);
+    el.classList.remove('sel');
+  }else{
+    arr.push(value);
+    el.classList.add('sel');
+  }
+  hidden.value=arr.join('||');
+}
+
 function editProfileField(key){
   profEditing=key;
   showProfile();
@@ -1477,7 +1527,7 @@ async function saveProfile(key){
       return;
     }
   }else if(key==='al'||key==='di'||key==='cu'){
-    newVal=raw.split(',').map(function(s){return s.trim();}).filter(Boolean);
+    newVal=raw?raw.split('||').map(function(s){return s.trim();}).filter(Boolean):[];
   }else{
     newVal=raw.trim();
   }
