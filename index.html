@@ -15,11 +15,13 @@
 <meta name="application-name" content="PEAK">
 
 <!-- Icons -->
-<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png">
-<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
-<link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.png">
-<link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png?v=2">
+<link rel="shortcut icon" href="/icons/favicon-32.png?v=2">
+<link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png?v=2">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png?v=2">
+<link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.png?v=2">
+<link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png?v=2">
 
 <!-- Open Graph (for when URL is shared) -->
 <meta property="og:type" content="website">
@@ -70,7 +72,7 @@
 /* Smooth transition when toggling */
 html,body,.topbar,.card,.tile,input,textarea,button{transition:background-color .25s ease,color .25s ease,border-color .25s ease}
 html,body{height:100%;background:var(--bg);font-family:'Barlow',sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
-.topbar{display:flex;align-items:center;gap:12px;padding:0 22px;height:58px;background:var(--s1);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.topbar{display:flex;align-items:center;gap:12px;padding:0 22px;height:58px;background:var(--s1);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;padding-top:env(safe-area-inset-top);height:calc(58px + env(safe-area-inset-top))}
 .logo{flex-shrink:0;cursor:pointer}.logo-n{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:23px;letter-spacing:5px;color:var(--white);display:block}.logo-l{height:2px;background:var(--red);margin:1px 0}.logo-b{font-size:7px;font-weight:700;letter-spacing:2.5px;color:var(--dim);text-transform:uppercase;display:block}
 .pbw{flex:1;max-width:220px}.pbt{height:2px;background:var(--s3)}.pbf{height:2px;background:var(--red);transition:width .5s}
 .tr{display:flex;align-items:center;gap:7px;margin-left:auto;flex-shrink:0}
@@ -362,7 +364,7 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;hei
 .proto-row:last-child{border-bottom:none}
 .proto-l{color:var(--dim)}.proto-v{color:var(--white);font-weight:700}
 @media(max-width:768px){
-  .topbar{padding:0 13px;height:54px}.main{padding:14px 11px}
+  .topbar{padding:0 13px;height:calc(54px + env(safe-area-inset-top))}.main{padding:14px 11px}
   .ch{padding:20px 18px 0}.cb{padding:14px 18px}.cf{padding:4px 18px 20px;flex-direction:column}
   .bbk,.bnx{width:100%}
   .irow,.tiles.c3,.tiles.c4{grid-template-columns:1fr 1fr}
@@ -571,6 +573,21 @@ var T={en:{
   tm:"Today's Meals",tw:"Today's Workout",lo:'Logout',gd:'Good day,',
   ql:'Quick Log',lp:'e.g. 2 beers, peanuts...',lb3:'Log it',rb:'Recipe Builder',gr:'Generate with AI',
   dt:'Daily Target',pg:'Protein',tl:'Timeline',sp:'Sport',
+  mealBreakfast:'Breakfast',mealLunch:'Lunch',mealDinner:'Dinner',mealSnack:'Snack',
+  macroProtein:'protein',macroCarbs:'carbs',macroFat:'fat',
+  sessionsUnit:'×/wk',minutesLbl:'min',
+  tipSleep:'Consistent bedtime.',tipHydration:'2.5-3L water today.',tipToday:'7-8hrs sleep tonight.',
+  fbHeadline:'Your transformation starts now',
+  fbMealEggs:'Scrambled eggs with avocado',fbMealChicken:'Grilled chicken & quinoa',
+  fbMealSalmon:'Salmon with vegetables',fbMealYoghurt:'Greek yoghurt with berries',
+  fbWorkTitle:'Performance Session',fbWorkFocus:'Improving performance',
+  fbWorkDesc:'Sport-specific exercises chosen to make you a better athlete.',
+  fbShopChicken:'Chicken breast',fbShopSalmon:'Salmon',fbShopQuinoa:'Quinoa',
+  fbShopYoghurt:'Greek yoghurt',fbShopVeg:'Vegetables',
+  fbMileW3:'Week 3 — Habits forming.',fbMileW7:'Week 7 — Visible progress.',fbMileW12:'Week 12 — Goal reached.',
+  exBallControl:'Ball control 3×10min',exSprintInt:'Sprint intervals 6×30m',
+  exCorePlank:'Core: Plank series 3×45s',exSingleSquat:'Single-leg squats 3×10 each',
+  exLateralAgi:'Lateral agility ladder 3×2min',
 },de:{
   s1:'Dein Profil',s1t:'Fangen wir an mit',s1e:'DIR',s1s:'4 Minuten. Je ehrlicher, desto besser dein Plan.',
   s0t:'DEIN PERSÖNLICHER',s0e:'PERFORMANCE-PLAN',s0s:'Ernährung, Training und Regeneration — auf deinen Sport, deine Ziele und dein Leben zugeschnitten.',
@@ -605,8 +622,41 @@ var T={en:{
   tm:'Heutige Mahlzeiten',tw:'Heutiges Workout',lo:'Abmelden',gd:'Guten Tag,',
   ql:'Schnell-Protokoll',lp:'z.B. 2 Bier, Erdnüsse...',lb3:'Eintragen',rb:'Rezept-Builder',gr:'Mit KI generieren',
   dt:'Tagesziel',pg:'Protein',tl:'Zeitplan',sp:'Sportart',
+  mealBreakfast:'Frühstück',mealLunch:'Mittagessen',mealDinner:'Abendessen',mealSnack:'Snack',
+  macroProtein:'Eiweiß',macroCarbs:'Kohlenhydrate',macroFat:'Fett',
+  sessionsUnit:'×/Wo',minutesLbl:'Min',
+  tipSleep:'Feste Schlafenszeit.',tipHydration:'2,5-3L Wasser heute.',tipToday:'7-8 Std Schlaf heute Nacht.',
+  fbHeadline:'Deine Transformation beginnt jetzt',
+  fbMealEggs:'Rührei mit Avocado',fbMealChicken:'Gegrilltes Hähnchen & Quinoa',
+  fbMealSalmon:'Lachs mit Gemüse',fbMealYoghurt:'Griechischer Joghurt mit Beeren',
+  fbWorkTitle:'Performance-Session',fbWorkFocus:'Verbesserung der Leistung',
+  fbWorkDesc:'Sportspezifische Übungen, die dich zu einem besseren Athleten machen.',
+  fbShopChicken:'Hähnchenbrust',fbShopSalmon:'Lachs',fbShopQuinoa:'Quinoa',
+  fbShopYoghurt:'Griechischer Joghurt',fbShopVeg:'Gemüse',
+  fbMileW3:'Woche 3 — Gewohnheiten bilden sich.',fbMileW7:'Woche 7 — Sichtbarer Fortschritt.',fbMileW12:'Woche 12 — Ziel erreicht.',
+  exBallControl:'Ballkontrolle 3×10 Min',exSprintInt:'Sprint-Intervalle 6×30m',
+  exCorePlank:'Core: Plank-Serie 3×45s',exSingleSquat:'Einbeinige Kniebeuge 3×10 je Seite',
+  exLateralAgi:'Seitliche Agility-Leiter 3×2 Min',
 }};
 function t(k){return T[lang][k]||T.en[k]||k;}
+
+// Translate meal time labels (used in both AI-generated and fallback plans)
+function mealTimeLabel(time){
+  var map={
+    'Breakfast':t('mealBreakfast'),'Lunch':t('mealLunch'),
+    'Dinner':t('mealDinner'),'Snack':t('mealSnack')
+  };
+  return map[time]||time;
+}
+
+// Translate macro strings like "40g protein" → "40g Eiweiß"
+function translateMacro(macroStr){
+  if(!macroStr)return '';
+  return macroStr
+    .replace(/\bprotein\b/gi,t('macroProtein'))
+    .replace(/\bcarbs\b/gi,t('macroCarbs'))
+    .replace(/\bfat\b/gi,t('macroFat'));
+}
 
 // ── HELPERS ───────────────────────────────────────────────────────────
 function toggleLang(){
@@ -830,7 +880,8 @@ async function fetchPlan(){
       throw e;
     }
     var k=kcal||2000;
-    plan={headline:'Your '+sport+' transformation starts now',calories:k,protein:Math.round(parseFloat(ud.weight||75)*1.8),carbs:Math.round(k*0.4/4),fat:Math.round(k*0.3/9),timeline:'12 weeks',todayMeals:[{emoji:'🍳',name:'Scrambled eggs with avocado',time:'Breakfast',kcal:420,macro:'28g protein'},{emoji:'🥗',name:'Grilled chicken & quinoa',time:'Lunch',kcal:550,macro:'45g protein'},{emoji:'🍽️',name:'Salmon with vegetables',time:'Dinner',kcal:580,macro:'40g protein'},{emoji:'🍎',name:'Greek yoghurt with berries',time:'Snack',kcal:180,macro:'15g protein'}],workout:{title:sport+' Performance Session',focus:'Improving '+sport+' performance',desc:'Sport-specific exercises chosen to make you a better '+sport+' athlete.',duration:parseInt(ud.dur||60),exercises:exFallback},recovery:{tip:'7-8hrs sleep tonight.',sleep:'Consistent bedtime.',hydration:'2.5-3L water today.'},shopping:['Chicken breast','Salmon','Quinoa','Greek yoghurt','Vegetables'],milestones:['Week 3 — Habits forming.','Week 7 — Visible progress.','Week 12 — Goal reached.']};
+    var deF=lang==='de';
+    plan={headline:(deF?'Deine ':'Your ')+sport+(deF?'-Transformation beginnt jetzt':' transformation starts now'),_lang:lang,calories:k,protein:Math.round(parseFloat(ud.weight||75)*1.8),carbs:Math.round(k*0.4/4),fat:Math.round(k*0.3/9),timeline:(deF?'12 Wochen':'12 weeks'),todayMeals:[{emoji:'🍳',name:t('fbMealEggs'),time:'Breakfast',kcal:420,macro:'28g '+t('macroProtein')},{emoji:'🥗',name:t('fbMealChicken'),time:'Lunch',kcal:550,macro:'45g '+t('macroProtein')},{emoji:'🍽️',name:t('fbMealSalmon'),time:'Dinner',kcal:580,macro:'40g '+t('macroProtein')},{emoji:'🍎',name:t('fbMealYoghurt'),time:'Snack',kcal:180,macro:'15g '+t('macroProtein')}],workout:{title:sport+' '+t('fbWorkTitle'),focus:t('fbWorkFocus'),desc:(deF?'Sportspezifische Übungen für einen besseren ':'Sport-specific exercises to make you a better ')+sport+(deF?'-Athleten.':' athlete.'),duration:parseInt(ud.dur||60),exercises:exFallback},recovery:{tip:t('tipToday'),sleep:t('tipSleep'),hydration:t('tipHydration')},shopping:[t('fbShopChicken'),t('fbShopSalmon'),t('fbShopQuinoa'),t('fbShopYoghurt'),t('fbShopVeg')],milestones:[t('fbMileW3'),t('fbMileW7'),t('fbMileW12')]};
     plan.week=synthWeekPlan(sport,level,parseInt(ud.sessions||3),parseInt(ud.dur||60),plan.workout);
     saveSession();
     enrichWeekWithAI();
@@ -1594,7 +1645,7 @@ async function enrichWeekWithAI(){
   if(currentView==='dashboard'&&dashTab==='fitness')showTab('fitness');
 }
 
-function fp(){return plan||{calories:2000,protein:150,carbs:200,fat:70,timeline:'12 weeks',headline:'Your transformation starts now',todayMeals:[{emoji:'🍳',name:'Scrambled eggs',time:'Breakfast',kcal:420,macro:'28g protein'},{emoji:'🥗',name:'Chicken & quinoa',time:'Lunch',kcal:550,macro:'45g protein'},{emoji:'🍽️',name:'Salmon',time:'Dinner',kcal:580,macro:'40g protein'},{emoji:'🍎',name:'Greek yoghurt',time:'Snack',kcal:180,macro:'15g protein'}],workout:{title:'Performance Session',focus:'Building athletic base',desc:'Progressive training session.',duration:60,exercises:[{name:'Warm-up',detail:'10 min'},{name:'Main set',detail:'35 min'},{name:'Cool-down',detail:'10 min'}]},recovery:{tip:'Sleep 7-8hrs.',sleep:'Consistent bedtime.',hydration:'2.5L water.'},shopping:['Chicken','Salmon','Quinoa','Yoghurt','Vegetables'],milestones:['Week 3','Week 7','Week 12']};}
+function fp(){if(plan)return plan;var deE=lang==='de';return{calories:2000,protein:150,carbs:200,fat:70,timeline:(deE?'12 Wochen':'12 weeks'),headline:t('fbHeadline'),todayMeals:[{emoji:'🍳',name:t('fbMealEggs'),time:'Breakfast',kcal:420,macro:'28g '+t('macroProtein')},{emoji:'🥗',name:t('fbMealChicken'),time:'Lunch',kcal:550,macro:'45g '+t('macroProtein')},{emoji:'🍽️',name:t('fbMealSalmon'),time:'Dinner',kcal:580,macro:'40g '+t('macroProtein')},{emoji:'🍎',name:t('fbMealYoghurt'),time:'Snack',kcal:180,macro:'15g '+t('macroProtein')}],workout:{title:t('fbWorkTitle'),focus:(deE?'Athletische Grundlagen':'Building athletic base'),desc:(deE?'Progressive Trainingseinheit.':'Progressive training session.'),duration:60,exercises:[{name:(deE?'Aufwärmen':'Warm-up'),detail:'10 min'},{name:(deE?'Hauptsatz':'Main set'),detail:'35 min'},{name:(deE?'Cool-down':'Cool-down'),detail:'10 min'}]},recovery:{tip:t('tipToday'),sleep:t('tipSleep'),hydration:t('tipHydration')},shopping:[t('fbShopChicken'),t('fbShopSalmon'),t('fbShopQuinoa'),t('fbShopYoghurt'),t('fbShopVeg')],milestones:[t('fbMileW3'),t('fbMileW7'),t('fbMileW12')]};}
 
 // ── PAYWALL ───────────────────────────────────────────────────────────
 function s6(){
@@ -1981,7 +2032,7 @@ function tNu(p){
   c+='<div class="mbw"><div class="mbl"><span>'+(de?'Kohlenhydrate':'Carbs')+'</span><span>'+p.carbs+'g</span></div><div class="mb"><div class="mf" style="width:58%;background:#4A90D9"></div></div></div>';
   c+='<div class="mbw"><div class="mbl"><span>'+(de?'Fette':'Fat')+'</span><span>'+p.fat+'g</span></div><div class="mb"><div class="mf" style="width:48%;background:var(--dim)"></div></div></div>';
   c+='<div class="dst">'+t('tm')+'</div>';
-  c+=p.todayMeals.map(function(m,i){var r=mrat[i];return '<div class="mc" onclick="showMealDetail('+i+')"><span class="me">'+m.emoji+'</span><div class="mi"><div class="mn">'+m.name+'</div><div class="mm">'+m.time+' · '+m.macro+'</div>'+(!r?'<div class="rrow" onclick="event.stopPropagation()">'+[1,2,3,4,5].map(function(s){return '<span class="star" onclick="rateMeal('+i+','+s+',this)">⭐</span>';}).join('')+'</div>':'<div style="font-size:10px;color:var(--red);margin-top:3px">'+(de?'BEWERTET':'RATED')+' '+r+'/5 ✓</div>')+'</div><span class="mk">'+m.kcal+' kcal</span><span style="color:var(--faint);font-size:10px;margin-left:5px">→</span></div>';}).join('');
+  c+=p.todayMeals.map(function(m,i){var r=mrat[i];return '<div class="mc" onclick="showMealDetail('+i+')"><span class="me">'+m.emoji+'</span><div class="mi"><div class="mn">'+m.name+'</div><div class="mm">'+mealTimeLabel(m.time)+' · '+translateMacro(m.macro)+'</div>'+(!r?'<div class="rrow" onclick="event.stopPropagation()">'+[1,2,3,4,5].map(function(s){return '<span class="star" onclick="rateMeal('+i+','+s+',this)">⭐</span>';}).join('')+'</div>':'<div style="font-size:10px;color:var(--red);margin-top:3px">'+(de?'BEWERTET':'RATED')+' '+r+'/5 ✓</div>')+'</div><span class="mk">'+m.kcal+' kcal</span><span style="color:var(--faint);font-size:10px;margin-left:5px">→</span></div>';}).join('');
   if(!isBasic()&&!isFree()){c+='<div class="aib" style="margin-top:11px"><div class="ailbl"><div class="aidot"></div>PEAK AI</div><p>'+(de?'Nicht nach Plan? ':'Not feeling the plan? ')+'<span style="color:var(--red);cursor:pointer;font-weight:700" onclick="showMoodPicker()">'+(de?'Küche wählen →':'Pick a cuisine →')+'</span></p></div><div id="moodA"></div>';}
   if(p&&p.shopping&&p.shopping.length){c+='<div class="dst" style="margin-top:14px">'+(de?'Einkaufsliste':'Shopping List')+'</div>';c+='<div class="aib">'+p.shopping.map(function(s){return '<div style="font-size:12px;padding:4px 0;color:var(--ink2);border-bottom:1px solid var(--border)">🛒 '+s+'</div>';}).join('')+'</div>';}
   dshell('nutrition',c);
@@ -2029,7 +2080,7 @@ async function showMealDetail(idx){
   var p=fp();var m=p.todayMeals[idx];if(!m)return;
   var de=lang==='de';
   var tabs=[{k:'nutrition',l:t('nu')},{k:'fitness',l:t('fi')},{k:'recovery',l:t('re')},{k:'scanner',l:t('sc')},{k:'log',l:t('lg')},{k:'recipes',l:t('rp')}];
-  card('<div class="dhead"><div class="dgreet">'+m.emoji+' '+m.name.toUpperCase()+'</div><div class="dsub">'+m.time+' · '+m.kcal+' kcal · '+m.macro+'</div></div><div class="dnav">'+tabs.map(function(tb){return '<button class="ntab '+(tb.k==='nutrition'?'act':'')+'" data-tab="'+tb.k+'" onclick="showTab(\''+tb.k+'\')">'+tb.l+'</button>';}).join('')+'</div><div class="dbody" id="db"><div class="lw"><div class="spin"></div><p style="font-size:12px;color:var(--faint)">'+(de?'Rezept wird geladen...':'Loading recipe...')+'</p></div></div>');
+  card('<div class="dhead"><div class="dgreet">'+m.emoji+' '+m.name.toUpperCase()+'</div><div class="dsub">'+mealTimeLabel(m.time)+' · '+m.kcal+' kcal · '+translateMacro(m.macro)+'</div></div><div class="dnav">'+tabs.map(function(tb){return '<button class="ntab '+(tb.k==='nutrition'?'act':'')+'" data-tab="'+tb.k+'" onclick="showTab(\''+tb.k+'\')">'+tb.l+'</button>';}).join('')+'</div><div class="dbody" id="db"><div class="lw"><div class="spin"></div><p style="font-size:12px;color:var(--faint)">'+(de?'Rezept wird geladen...':'Loading recipe...')+'</p></div></div>');
   try{
     var prompt='Detailed recipe for "'+m.name+'" in language: '+lang+'. Target: '+m.kcal+' kcal, '+m.macro+'. Goal: '+goalStr()+', allergies: '+(ud.al||[]).join(',')+'. Include macros and key micronutrients (iron, calcium, vitC, zinc).\nJSON only:\n{"name":"'+m.name+'","kcal":'+m.kcal+',"protein":<g>,"carbs":<g>,"fat":<g>,"micros":{"iron":"<mg>","calcium":"<mg>","vitC":"<mg>","zinc":"<mg>"},"prepTime":<min>,"cookTime":<min>,"ingredients":["<i1 with quantity>","<i2>","<i3>","<i4>","<i5>","<i6>"],"steps":["<s1>","<s2>","<s3>","<s4>"],"shoppingList":["<item1>","<item2>","<item3>","<item4>","<item5>"],"tip":"<chef tip>"}';
     var rec=await aiGenJSON(prompt,800);
@@ -2052,7 +2103,7 @@ async function showMealDetail(idx){
 function tFi(p){
   var de=lang==='de';
   var sport=ud.sport||'—';var level=ud.level||'—';
-  var c='<div class="sg"><div class="stat"><div class="stl">'+t('sp')+'</div><div class="stv">'+sport+'</div></div><div class="stat"><div class="stl">Level</div><div class="stv">'+level+'</div></div><div class="stat"><div class="stl">'+(de?'Einheiten':'Sessions')+'</div><div class="stv">'+(ud.sessions||'—')+'×/wk</div></div><div class="stat"><div class="stl">'+(de?'Dauer':'Duration')+'</div><div class="stv">'+(ud.dur||'—')+' min</div></div></div>';
+  var c='<div class="sg"><div class="stat"><div class="stl">'+t('sp')+'</div><div class="stv">'+sport+'</div></div><div class="stat"><div class="stl">Level</div><div class="stv">'+level+'</div></div><div class="stat"><div class="stl">'+(de?'Einheiten':'Sessions')+'</div><div class="stv">'+(ud.sessions||'—')+t('sessionsUnit')+'</div></div><div class="stat"><div class="stl">'+(de?'Dauer':'Duration')+'</div><div class="stv">'+(ud.dur||'—')+' '+t('minutesLbl')+'</div></div></div>';
 
   // WEEKLY PLAN VIEW
   if(p&&p.week&&p.week.days&&p.week.days.length){
@@ -3084,7 +3135,7 @@ async function logout(){
 bootApp().finally(function(){__bootDone=true;});
 syncThemeButton();
 </script>
-<link rel="manifest" href="/manifest.json">
+<link rel="manifest" href="/manifest.json?v=2">
 <script>
 // ── PWA: Service Worker Registration ─────────────────────────────────────
 if('serviceWorker' in navigator){
