@@ -528,6 +528,106 @@ function peakConfirm(msg, opts){
   });
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// HEALTH DISCLAIMER MODAL
+// ═══════════════════════════════════════════════════════════════════════
+// Gatekeeper before onboarding. Collects 3 explicit consents:
+//   1. GDPR Art. 9 — health data processing
+//   2. Medical disclaimer — no doctor substitute
+//   3. Terms & privacy policy acceptance
+// Without all 3, onboarding cannot start. Decisions persist in ud object
+// and sync to backend on signup via consent_health_data + consent_terms.
+// ═══════════════════════════════════════════════════════════════════════
+function showHealthDisclaimer(){
+  var de=lang==='de';
+  // If already accepted in this session, skip straight to onboarding
+  if(ud.consent_health_data&&ud.consent_medical&&ud.consent_terms){
+    step=1;render();return;
+  }
+  var wrap=document.createElement('div');
+  wrap.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:10001;display:flex;align-items:center;justify-content:center;padding:16px;font-family:Barlow,sans-serif;overflow-y:auto';
+  var box=document.createElement('div');
+  box.style.cssText='background:var(--s1);border-left:3px solid var(--red);padding:26px 24px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto;color:var(--white)';
+
+  var title=de?'Bevor es losgeht':'Before we start';
+  var intro=de
+    ?'PEAK nutzt deine Angaben (Körperdaten, Ziele, Schlaf) um einen personalisierten Plan zu erstellen. Bitte lies und akzeptiere folgende Punkte.'
+    :'PEAK uses your data (body metrics, goals, sleep) to generate a personalised plan. Please read and accept the points below.';
+
+  var c1Title=de?'Einwilligung zur Verarbeitung von Gesundheitsdaten':'Consent to processing health data';
+  var c1Body=de
+    ?'Ich willige ein, dass PEAK meine Gesundheitsdaten (u.a. Gewicht, Größe, Ziele, Schlaf, Sportart, Verletzungen) gemäß Art. 9 Abs. 2 lit. a DSGVO verarbeitet. Diese Daten werden ausschließlich zur Erstellung und Anpassung meines Trainings-, Ernährungs- und Regenerationsplans verwendet.'
+    :'I consent to PEAK processing my health data (incl. weight, height, goals, sleep, sport, injuries) according to GDPR Art. 9(2)(a). This data is used solely to create and adapt my training, nutrition and recovery plan.';
+
+  var c2Title=de?'Kein Ersatz für medizinischen Rat':'Not a substitute for medical advice';
+  var c2Body=de
+    ?'Mir ist bewusst, dass PEAK eine Trainings- und Lifestyle-App ist und keinen ärztlichen Rat, keine Diagnose oder medizinische Behandlung ersetzt. Bei Vorerkrankungen, Beschwerden, Verletzungen, Schwangerschaft oder Unsicherheiten konsultiere ich vor Trainingsbeginn einen Arzt oder qualifizierten Therapeuten.'
+    :'I understand that PEAK is a training & lifestyle app and does not replace medical advice, diagnosis or treatment. In case of pre-existing conditions, symptoms, injuries, pregnancy or uncertainty, I will consult a doctor or qualified therapist before starting.';
+
+  var c3Title=de?'AGB & Datenschutz':'Terms & privacy';
+  var c3Body=de
+    ?'Ich akzeptiere die <a href="https://peak-backend-u52q.onrender.com/datenschutz" target="_blank" style="color:var(--red);font-weight:700;text-decoration:underline">Datenschutzerklärung</a> und die Nutzungsbedingungen von PEAK.'
+    :'I accept the <a href="https://peak-backend-u52q.onrender.com/privacy" target="_blank" style="color:var(--red);font-weight:700;text-decoration:underline">privacy policy</a> and terms of service of PEAK.';
+
+  var okBtn=de?'AKZEPTIEREN & WEITER →':'ACCEPT & CONTINUE →';
+  var caBtn=de?'Abbrechen':'Cancel';
+  var needAll=de?'Alle drei Punkte müssen bestätigt werden, um fortzufahren.':'All three points must be confirmed to continue.';
+
+  function chk(id,ti,bo){
+    return '<label for="'+id+'" style="display:flex;gap:12px;padding:14px;margin-bottom:10px;background:var(--s0);border:1px solid var(--border);border-left:3px solid var(--border);cursor:pointer;transition:border-color .15s">'+
+      '<input type="checkbox" id="'+id+'" style="margin-top:3px;flex-shrink:0;width:18px;height:18px;accent-color:var(--red);cursor:pointer">'+
+      '<div>'+
+        '<div style="font-family:\'Barlow Condensed\',sans-serif;font-weight:900;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--white);margin-bottom:5px">'+ti+'</div>'+
+        '<div style="font-size:12px;line-height:1.5;color:var(--dim)">'+bo+'</div>'+
+      '</div>'+
+    '</label>';
+  }
+
+  box.innerHTML=
+    '<div style="font-family:\'Barlow Condensed\',sans-serif;font-weight:900;font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:var(--red);margin-bottom:8px">🔒 '+title+'</div>'+
+    '<div style="font-size:14px;line-height:1.5;color:var(--dim);margin-bottom:18px">'+intro+'</div>'+
+    chk('hc1',c1Title,c1Body)+
+    chk('hc2',c2Title,c2Body)+
+    chk('hc3',c3Title,c3Body)+
+    '<div id="hcErr" style="font-size:12px;color:var(--red);margin:8px 0 12px;display:none">'+needAll+'</div>'+
+    '<div style="display:flex;gap:8px;margin-top:16px">'+
+      '<button id="hcOk" style="flex:2;background:var(--red);color:var(--white);border:none;padding:13px;font-family:\'Barlow Condensed\',sans-serif;font-weight:900;font-size:13px;letter-spacing:2.5px;text-transform:uppercase;cursor:pointer">'+okBtn+'</button>'+
+      '<button id="hcCa" style="flex:1;background:var(--s3);color:var(--dim);border:1px solid var(--border);padding:13px;font-family:\'Barlow Condensed\',sans-serif;font-weight:900;font-size:12px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">'+caBtn+'</button>'+
+    '</div>';
+
+  wrap.appendChild(box);
+  document.body.appendChild(wrap);
+
+  // Highlight checkbox labels when checked
+  ['hc1','hc2','hc3'].forEach(function(id){
+    var cb=document.getElementById(id);
+    cb.addEventListener('change',function(){
+      cb.closest('label').style.borderLeftColor=cb.checked?'var(--red)':'var(--border)';
+      document.getElementById('hcErr').style.display='none';
+    });
+  });
+
+  document.getElementById('hcOk').onclick=function(){
+    var a=document.getElementById('hc1').checked;
+    var b=document.getElementById('hc2').checked;
+    var c=document.getElementById('hc3').checked;
+    if(!(a&&b&&c)){
+      document.getElementById('hcErr').style.display='block';
+      return;
+    }
+    ud.consent_health_data=true;
+    ud.consent_medical=true;
+    ud.consent_terms=true;
+    ud.consent_at=new Date().toISOString();
+    saveSession();
+    wrap.parentNode.removeChild(wrap);
+    step=1;render();
+  };
+  document.getElementById('hcCa').onclick=function(){
+    wrap.parentNode.removeChild(wrap);
+  };
+}
+
 var step=0,TOTAL=8,lang='en';
 var ud={name:'',age:'',gender:'',weight:'',dweight:'',height:'',sleep:'',job:'',commute:'',stress:'5',sport:'',level:'',sessions:'',dur:'',equip:'',al:[],di:[],cu:[],cook:'',budget:'',goal:''};
 var plan=null,selPlan='annual',selTier='premium',flog=[],mrat={},wrat={};
@@ -847,7 +947,7 @@ function s0(){
       '<div class="intro-k">PEAK</div>'+
       '<h1 class="intro-h">'+t('s0t')+' <em>'+t('s0e')+'</em></h1>'+
       '<p class="intro-s">'+t('s0s')+'</p>'+
-      '<button class="intro-cta" onclick="step=1;render()">'+(de?'PLAN ERSTELLEN':'CREATE MY PLAN')+' →</button>'+
+      '<button class="intro-cta" onclick="showHealthDisclaimer()">'+(de?'PLAN ERSTELLEN':'CREATE MY PLAN')+' →</button>'+
       '<div class="intro-meta">'+t('s0dur')+'</div>'+
       '<div style="margin-top:26px;padding-top:18px;border-top:1px solid var(--border);max-width:340px;margin-left:auto;margin-right:auto">'+
         '<div style="font-size:11px;color:var(--faint);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;margin-bottom:8px">'+(de?'Schon Kunde?':'Already a member?')+'</div>'+
@@ -1852,9 +1952,11 @@ function s7(){
   var vPlh=de?'z.B. LAUNCH10':'e.g. LAUNCH10';
   var vBtn=de?'Prüfen':'Check';
   var prefillVoucher=ud.voucherCode||'';
-  card('<div class="ch"><div class="chip">✦ '+t('s7')+'</div><div class="ct">'+t('os')+' <em>'+t('rs')+'</em></div><p class="cs" id="s7price">'+priceTxt+'</p></div><div class="cb"><div class="tbdg"><div class="tbi">✅</div><div class="tbt"><strong>'+t('nc')+'</strong> '+t('rn')+'</div></div><div id="ep" class="ebox"></div><div class="field"><label>'+t('el')+'</label><input type="email" id="em" placeholder="michael@example.com" value="'+(ud.email||'')+'"></div><p style="font-size:10px;color:var(--faint);margin-top:-4px;margin-bottom:12px">'+t('ph')+'</p><div class="field"><label>'+vLbl+'</label><div style="display:flex;gap:6px"><input type="text" id="vc" placeholder="'+vPlh+'" value="'+prefillVoucher+'" style="flex:1;text-transform:uppercase"><button class="bnx" id="vcBtn" onclick="checkVoucher()" style="flex:0 0 auto;padding:0 18px;font-size:11px">'+vBtn+'</button></div><div id="vcMsg" style="font-size:11px;margin-top:6px;display:none"></div></div><div class="cbox"><div class="cbox-t">'+t('cst')+'</div><label class="cbx"><input type="checkbox" id="cc1" onchange="updConsent()"><span>'+t('cs1')+'</span></label><label class="cbx"><input type="checkbox" id="cc2" onchange="updConsent()"><span>'+t('cs2')+' <a href="https://peak-mj-performance.app/impressum" target="_blank" rel="noopener">'+t('cs2l')+'</a> '+t('cs2a')+' <a href="https://peak-mj-performance.app/datenschutz" target="_blank" rel="noopener">'+t('cs2p')+'</a>'+t('cs2e')+'</span></label></div></div><div class="cf"><button class="bbk" onclick="step=6;render()">← Back</button><button class="bnx" id="pb2" onclick="doPay()" style="opacity:.5;cursor:not-allowed" disabled>🔒 '+t('tp')+' →</button></div>');
+  card('<div class="ch"><div class="chip">✦ '+t('s7')+'</div><div class="ct">'+t('os')+' <em>'+t('rs')+'</em></div><p class="cs" id="s7price">'+priceTxt+'</p></div><div class="cb"><div class="tbdg"><div class="tbi">✅</div><div class="tbt"><strong>'+t('nc')+'</strong> '+t('rn')+'</div></div><div id="ep" class="ebox"></div><div class="field"><label>'+t('el')+'</label><input type="email" id="em" placeholder="michael@example.com" value="'+(ud.email||'')+'"></div><p style="font-size:10px;color:var(--faint);margin-top:-4px;margin-bottom:12px">'+t('ph')+'</p><div class="field"><label>'+vLbl+'</label><div style="display:flex;gap:6px"><input type="text" id="vc" placeholder="'+vPlh+'" value="'+prefillVoucher+'" style="flex:1;text-transform:uppercase"><button class="bnx" id="vcBtn" onclick="checkVoucher()" style="flex:0 0 auto;padding:0 18px;font-size:11px">'+vBtn+'</button></div><div id="vcMsg" style="font-size:11px;margin-top:6px;display:none"></div></div><div class="cbox"><div class="cbox-t">'+t('cst')+'</div><label class="cbx"><input type="checkbox" id="cc1" '+(ud.consent_health_data?'checked':'')+' onchange="updConsent()"><span>'+t('cs1')+'</span></label><label class="cbx"><input type="checkbox" id="cc2" '+(ud.consent_terms?'checked':'')+' onchange="updConsent()"><span>'+t('cs2')+' <a href="https://peak-mj-performance.app/impressum" target="_blank" rel="noopener">'+t('cs2l')+'</a> '+t('cs2a')+' <a href="https://peak-mj-performance.app/datenschutz" target="_blank" rel="noopener">'+t('cs2p')+'</a>'+t('cs2e')+'</span></label></div></div><div class="cf"><button class="bbk" onclick="step=6;render()">← Back</button><button class="bnx" id="pb2" onclick="doPay()" style="opacity:.5;cursor:not-allowed" disabled>🔒 '+t('tp')+' →</button></div>');
   // If voucher came from URL, auto-validate
   if(prefillVoucher)setTimeout(checkVoucher,100);
+  // If consent was already given via health disclaimer modal, activate button
+  setTimeout(updConsent,50);
 }
 
 // Validated voucher state for the current checkout session
@@ -2005,8 +2107,8 @@ function s7f(){
       '<p style="font-size:10px;color:var(--faint);margin-top:-4px;margin-bottom:12px">'+privacyText+'</p>'+
       '<div class="cbox">'+
         '<div class="cbox-t">'+t('cst')+'</div>'+
-        '<label class="cbx"><input type="checkbox" id="ccf1" onchange="updFreeConsent()"><span>'+t('cs1')+'</span></label>'+
-        '<label class="cbx"><input type="checkbox" id="ccf2" onchange="updFreeConsent()"><span>'+t('cs2')+' <a href="https://peak-mj-performance.app/impressum" target="_blank" rel="noopener">'+t('cs2l')+'</a> '+t('cs2a')+' <a href="https://peak-mj-performance.app/datenschutz" target="_blank" rel="noopener">'+t('cs2p')+'</a>'+t('cs2e')+'</span></label>'+
+        '<label class="cbx"><input type="checkbox" id="ccf1" '+(ud.consent_health_data?'checked':'')+' onchange="updFreeConsent()"><span>'+t('cs1')+'</span></label>'+
+        '<label class="cbx"><input type="checkbox" id="ccf2" '+(ud.consent_terms?'checked':'')+' onchange="updFreeConsent()"><span>'+t('cs2')+' <a href="https://peak-mj-performance.app/impressum" target="_blank" rel="noopener">'+t('cs2l')+'</a> '+t('cs2a')+' <a href="https://peak-mj-performance.app/datenschutz" target="_blank" rel="noopener">'+t('cs2p')+'</a>'+t('cs2e')+'</span></label>'+
       '</div>'+
     '</div>'+
     '<div class="cf">'+
@@ -2014,6 +2116,8 @@ function s7f(){
       '<button class="bnx" id="pbf" onclick="doFreeSignup()" style="opacity:.5;cursor:not-allowed" disabled>'+btnLabel+' →</button>'+
     '</div>'
   );
+  // If consent was already given via health disclaimer modal, activate button
+  setTimeout(updFreeConsent,50);
 }
 
 function updFreeConsent(){
@@ -3349,17 +3453,143 @@ if('serviceWorker' in navigator){
   });
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// COOKIE CONSENT BANNER
+// ═══════════════════════════════════════════════════════════════════════
+// Full GDPR/TTDSG-compliant banner with Accept All / Reject / Settings.
+// Essential cookies (auth/session) cannot be rejected. Optional categories:
+//   - Analytics (off by default)
+//   - Marketing (off by default)
+// Choice persists in localStorage key 'peak-cookie-consent' as JSON.
+// Schema: { essential:true, analytics:bool, marketing:bool, at:ISODate }
+// ═══════════════════════════════════════════════════════════════════════
+(function(){
+  var CONSENT_KEY='peak-cookie-consent';
+  function getConsent(){
+    try{var raw=localStorage.getItem(CONSENT_KEY);return raw?JSON.parse(raw):null;}
+    catch(e){return null;}
+  }
+  function setConsent(c){
+    try{localStorage.setItem(CONSENT_KEY,JSON.stringify(Object.assign({essential:true,at:new Date().toISOString()},c)));}
+    catch(e){}
+  }
+  window.getCookieConsent=getConsent;
+  window.openCookieSettings=showBanner;
+
+  function showBanner(){
+    if(document.getElementById('pkCookie'))return;
+    var de=(typeof lang!=='undefined'&&lang==='de');
+    var existing=getConsent()||{analytics:false,marketing:false};
+
+    var t={
+      title:de?'🍪 Cookies & Datenschutz':'🍪 Cookies & privacy',
+      intro:de
+        ?'Wir verwenden Cookies, um dir die beste Erfahrung zu bieten. Essentielle Cookies sind für den Betrieb notwendig (Login, Session). Du entscheidest über die anderen.'
+        :'We use cookies to give you the best experience. Essential cookies are required for operation (login, session). You decide about the rest.',
+      essential:de?'Essentiell':'Essential',
+      essentialDesc:de?'Login, Session, Warenkorb. Immer aktiv.':'Login, session, cart. Always on.',
+      analytics:de?'Analyse':'Analytics',
+      analyticsDesc:de?'Anonyme Nutzungsstatistiken zur Verbesserung der App.':'Anonymous usage statistics to improve the app.',
+      marketing:de?'Marketing':'Marketing',
+      marketingDesc:de?'Personalisierte Angebote und Werbung.':'Personalised offers and advertising.',
+      acceptAll:de?'Alle akzeptieren':'Accept all',
+      rejectOpt:de?'Nur essentielle':'Essential only',
+      save:de?'Auswahl speichern':'Save choice',
+      settings:de?'Einstellungen':'Settings',
+      legal:de?'Mehr in der ':'More in our ',
+      legalLink:de?'Datenschutzerklärung':'privacy policy'
+    };
+    var legalHref=de
+      ?'https://peak-backend-u52q.onrender.com/datenschutz'
+      :'https://peak-backend-u52q.onrender.com/privacy';
+
+    var wrap=document.createElement('div');
+    wrap.id='pkCookie';
+    wrap.style.cssText='position:fixed;inset:auto 0 0 0;z-index:10002;background:rgba(14,14,14,.97);backdrop-filter:blur(8px);color:#fff;border-top:3px solid #E8001A;font-family:Barlow,Arial,sans-serif;box-shadow:0 -10px 30px rgba(0,0,0,.4);max-height:90vh;overflow-y:auto';
+
+    // Compact view
+    var compact=
+      '<div id="pkCookieCompact" style="padding:18px 22px;max-width:880px;margin:0 auto">'+
+        '<div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between">'+
+          '<div style="flex:1;min-width:240px">'+
+            '<div style="font-family:\'Barlow Condensed\',Arial,sans-serif;font-weight:900;font-size:13px;letter-spacing:2px;text-transform:uppercase;color:#E8001A;margin-bottom:4px">'+t.title+'</div>'+
+            '<div style="font-size:13px;line-height:1.5;color:#d0d0d0">'+t.intro+' <a href="'+legalHref+'" target="_blank" style="color:#E8001A;text-decoration:underline">'+t.legalLink+'</a></div>'+
+          '</div>'+
+          '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+            '<button id="pkCkSet" style="background:transparent;border:1px solid #555;color:#ddd;padding:10px 14px;font-family:\'Barlow Condensed\',sans-serif;font-weight:900;font-size:11px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">'+t.settings+'</button>'+
+            '<button id="pkCkRej" style="background:#2a2a2a;border:1px solid #555;color:#fff;padding:10px 14px;font-family:\'Barlow Condensed\',sans-serif;font-weight:900;font-size:11px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">'+t.rejectOpt+'</button>'+
+            '<button id="pkCkAcc" style="background:#E8001A;border:none;color:#fff;padding:10px 16px;font-family:\'Barlow Condensed\',sans-serif;font-weight:900;font-size:12px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">'+t.acceptAll+'</button>'+
+          '</div>'+
+        '</div>'+
+      '</div>';
+
+    // Detailed view
+    function row(key,ti,ds,checked,disabled){
+      return '<label for="pkCk_'+key+'" style="display:flex;gap:12px;padding:12px;margin-bottom:8px;background:rgba(255,255,255,.04);border:1px solid #333;cursor:'+(disabled?'default':'pointer')+'">'+
+        '<input type="checkbox" id="pkCk_'+key+'" '+(checked?'checked':'')+' '+(disabled?'disabled':'')+' style="margin-top:3px;width:18px;height:18px;accent-color:#E8001A;flex-shrink:0">'+
+        '<div>'+
+          '<div style="font-family:\'Barlow Condensed\',sans-serif;font-weight:900;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:#fff;margin-bottom:3px">'+ti+(disabled?' <span style="color:#E8001A;font-size:10px">('+(de?'erforderlich':'required')+')</span>':'')+'</div>'+
+          '<div style="font-size:12px;color:#aaa;line-height:1.4">'+ds+'</div>'+
+        '</div>'+
+      '</label>';
+    }
+    var detail=
+      '<div id="pkCookieDetail" style="display:none;padding:22px;max-width:540px;margin:0 auto">'+
+        '<div style="font-family:\'Barlow Condensed\',Arial,sans-serif;font-weight:900;font-size:13px;letter-spacing:2px;text-transform:uppercase;color:#E8001A;margin-bottom:12px">🔒 '+t.settings+'</div>'+
+        row('es',t.essential,t.essentialDesc,true,true)+
+        row('an',t.analytics,t.analyticsDesc,!!existing.analytics,false)+
+        row('mk',t.marketing,t.marketingDesc,!!existing.marketing,false)+
+        '<div style="display:flex;gap:8px;margin-top:14px">'+
+          '<button id="pkCkSave" style="flex:1;background:#E8001A;border:none;color:#fff;padding:12px;font-family:\'Barlow Condensed\',sans-serif;font-weight:900;font-size:12px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">'+t.save+'</button>'+
+          '<button id="pkCkAcc2" style="flex:1;background:transparent;border:1px solid #555;color:#ddd;padding:12px;font-family:\'Barlow Condensed\',sans-serif;font-weight:900;font-size:11px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">'+t.acceptAll+'</button>'+
+        '</div>'+
+      '</div>';
+
+    wrap.innerHTML=compact+detail;
+    document.body.appendChild(wrap);
+
+    function close(){if(wrap.parentNode)wrap.parentNode.removeChild(wrap);}
+    document.getElementById('pkCkAcc').onclick=function(){setConsent({analytics:true,marketing:true});close();};
+    document.getElementById('pkCkRej').onclick=function(){setConsent({analytics:false,marketing:false});close();};
+    document.getElementById('pkCkSet').onclick=function(){
+      document.getElementById('pkCookieCompact').style.display='none';
+      document.getElementById('pkCookieDetail').style.display='block';
+    };
+    document.getElementById('pkCkSave').onclick=function(){
+      setConsent({
+        analytics:document.getElementById('pkCk_an').checked,
+        marketing:document.getElementById('pkCk_mk').checked
+      });
+      close();
+    };
+    document.getElementById('pkCkAcc2').onclick=function(){setConsent({analytics:true,marketing:true});close();};
+  }
+
+  // Show on first load if no decision yet
+  if(!getConsent()){
+    window.addEventListener('load',function(){
+      setTimeout(showBanner,800); // Short delay so page paints first
+    });
+  }
+})();
+
 // ── PWA: Install Prompt ──────────────────────────────────────────────────
-// Chrome/Edge/Android: fire beforeinstallprompt event → show button
-// iOS Safari: no event, show manual instructions instead
+// Chrome/Edge/Android: fire beforeinstallprompt event → one-tap install
+// iOS Safari: no event, show step-by-step visual instructions
+// All users: big prominent install button + full instruction modal
+// ─────────────────────────────────────────────────────────────────────────
 (function(){
   var deferredPrompt=null;
-  var isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;
+  var ua=navigator.userAgent;
+  var isIOS=/iPad|iPhone|iPod/.test(ua)&&!window.MSStream;
+  var isAndroid=/Android/i.test(ua);
   var isStandalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
+  var DISMISS_KEY='peak-install-dismissed';
 
   // Don't show install UI if already installed
   if(isStandalone)return;
 
+  // Capture Chrome/Android prompt
   window.addEventListener('beforeinstallprompt',function(e){
     e.preventDefault();
     deferredPrompt=e;
@@ -3379,22 +3609,42 @@ if('serviceWorker' in navigator){
     }catch(_){}
   });
 
+  // iOS has no beforeinstallprompt → show badge after short delay
+  if(isIOS&&!localStorage.getItem(DISMISS_KEY)){
+    setTimeout(function(){
+      if(isStandalone)return;
+      showInstallBadge();
+    },5000);
+  }
+
+  // Expose manual trigger (e.g. bindable from a settings menu button)
+  window.openInstallPrompt=showInstallModal;
+
   function showInstallBadge(){
     if(document.getElementById('pwaInstallBadge'))return;
+    if(localStorage.getItem(DISMISS_KEY))return;
     var de=typeof lang!=='undefined'&&lang==='de';
     var badge=document.createElement('div');
     badge.id='pwaInstallBadge';
-    badge.style.cssText='position:fixed;bottom:20px;right:20px;z-index:9999;background:#E8001A;color:#fff;padding:12px 18px;font-family:"Barlow Condensed",Arial,sans-serif;font-weight:900;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.25);display:flex;align-items:center;gap:10px;user-select:none;';
-    badge.innerHTML='<span style="font-size:16px">⬇</span>'+(de?'App installieren':'Install app')+'<span style="opacity:.7;margin-left:6px;font-size:14px;cursor:pointer" onclick="event.stopPropagation();document.getElementById(\'pwaInstallBadge\').remove();">×</span>';
-    badge.onclick=function(){
-      if(!deferredPrompt)return;
-      deferredPrompt.prompt();
-      deferredPrompt.userChoice.then(function(){
-        deferredPrompt=null;
-        hideInstallBadge();
-      });
+    badge.style.cssText='position:fixed;bottom:22px;right:22px;z-index:9998;background:linear-gradient(135deg,#E8001A 0%,#B80015 100%);color:#fff;padding:14px 18px 14px 14px;font-family:"Barlow Condensed",Arial,sans-serif;font-weight:900;font-size:13px;letter-spacing:1.8px;text-transform:uppercase;cursor:pointer;box-shadow:0 8px 24px rgba(232,0,26,.35),0 2px 8px rgba(0,0,0,.2);display:flex;align-items:center;gap:12px;user-select:none;max-width:calc(100vw - 44px);border:2px solid #fff';
+    badge.innerHTML=
+      '<div style="background:#fff;color:#E8001A;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;flex-shrink:0">📲</div>'+
+      '<div style="line-height:1.25">'+
+        '<div style="font-size:11px;opacity:.85;letter-spacing:2px">PEAK</div>'+
+        '<div>'+(de?'App installieren':'Install app')+'</div>'+
+      '</div>'+
+      '<span id="pwaBadgeClose" style="opacity:.75;margin-left:4px;font-size:18px;cursor:pointer;padding:2px 6px;line-height:1;align-self:flex-start">×</span>';
+    badge.onclick=function(e){
+      if(e.target&&e.target.id==='pwaBadgeClose')return;
+      showInstallModal();
     };
     document.body.appendChild(badge);
+    // Close button dismisses permanently
+    document.getElementById('pwaBadgeClose').onclick=function(e){
+      e.stopPropagation();
+      localStorage.setItem(DISMISS_KEY,'1');
+      hideInstallBadge();
+    };
   }
 
   function hideInstallBadge(){
@@ -3402,32 +3652,100 @@ if('serviceWorker' in navigator){
     if(b)b.remove();
   }
 
-  // iOS: show manual-install hint once (stored in localStorage)
-  if(isIOS&&!localStorage.getItem('peak-ios-install-shown')){
-    setTimeout(function(){
-      if(isStandalone)return;
-      showIOSInstallHint();
-    },8000); // Wait 8s so user sees some app first
-  }
-
-  function showIOSInstallHint(){
+  function showInstallModal(){
+    if(document.getElementById('pwaInstallModal'))return;
     var de=typeof lang!=='undefined'&&lang==='de';
-    var hint=document.createElement('div');
-    hint.id='pwaIosHint';
-    hint.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#0E0E0E;color:#fff;padding:18px 22px 22px;font-family:Barlow,Arial,sans-serif;font-size:14px;line-height:1.5;border-top:3px solid #E8001A;box-shadow:0 -6px 20px rgba(0,0,0,0.3);';
-    hint.innerHTML=
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">'+
-        '<div>'+
-          '<div style="font-family:\'Barlow Condensed\',Arial,sans-serif;font-weight:900;font-size:13px;letter-spacing:2px;text-transform:uppercase;color:#E8001A;margin-bottom:6px">'+(de?'📱 PEAK App installieren':'📱 Install PEAK as app')+'</div>'+
-          '<div>'+
-            (de
-              ?'Tippe auf <strong>Teilen</strong> <span style="display:inline-block;padding:0 4px;border:1px solid #fff3;border-radius:3px">⬆︎</span> und wähle <strong>"Zum Home-Bildschirm"</strong>.'
-              :'Tap the <strong>Share</strong> icon <span style="display:inline-block;padding:0 4px;border:1px solid #fff3;border-radius:3px">⬆︎</span> and pick <strong>"Add to Home Screen"</strong>.')+
-          '</div>'+
+
+    var title=de?'PEAK als App installieren':'Install PEAK as an app';
+    var sub=de
+      ?'Schneller starten, Vollbild-Modus, offline-fähig — wie eine echte App auf deinem Gerät.'
+      :'Faster start, full-screen mode, works offline — like a real app on your device.';
+    var benefits=de
+      ?['⚡ Schnellerer Start','📱 Vollbild ohne Browser','🔔 Push-Benachrichtigungen','💾 Offline verfügbar']
+      :['⚡ Faster startup','📱 Full-screen no browser','🔔 Push notifications','💾 Works offline'];
+
+    // Device-specific instruction blocks
+    var iosSteps=de?[
+      {n:'1',t:'Tippe auf "Teilen"',d:'Das Symbol unten mittig in Safari ⬆︎'},
+      {n:'2',t:'Wähle "Zum Home-Bildschirm"',d:'Scroll nach unten im Menü'},
+      {n:'3',t:'Tippe "Hinzufügen"',d:'Oben rechts bestätigen'}
+    ]:[
+      {n:'1',t:'Tap "Share"',d:'The icon at bottom-center in Safari ⬆︎'},
+      {n:'2',t:'Pick "Add to Home Screen"',d:'Scroll down in the menu'},
+      {n:'3',t:'Tap "Add"',d:'Confirm top-right'}
+    ];
+
+    var androidSteps=de?[
+      {n:'1',t:'Tippe auf "Installieren"',d:'Der rote Button unten'},
+      {n:'2',t:'Bestätige im Dialog',d:'Chrome fragt nach Bestätigung'},
+      {n:'3',t:'Fertig!',d:'PEAK erscheint auf deinem Home-Bildschirm'}
+    ]:[
+      {n:'1',t:'Tap "Install"',d:'The red button below'},
+      {n:'2',t:'Confirm in dialog',d:'Chrome will ask for confirmation'},
+      {n:'3',t:'Done!',d:'PEAK appears on your home screen'}
+    ];
+
+    var desktopSteps=de?[
+      {n:'1',t:'Klick auf "Installieren"',d:'Der rote Button unten'},
+      {n:'2',t:'Bestätige im Dialog',d:'Der Browser fragt nach Erlaubnis'},
+      {n:'3',t:'Fertig!',d:'PEAK erscheint als eigene App'}
+    ]:[
+      {n:'1',t:'Click "Install"',d:'The red button below'},
+      {n:'2',t:'Confirm in dialog',d:'Your browser will ask for permission'},
+      {n:'3',t:'Done!',d:'PEAK launches as its own app'}
+    ];
+
+    var steps=isIOS?iosSteps:(deferredPrompt||isAndroid?androidSteps:desktopSteps);
+
+    var stepHtml=steps.map(function(s){
+      return '<div style="display:flex;gap:14px;margin-bottom:14px;align-items:flex-start">'+
+        '<div style="background:#E8001A;color:#fff;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-family:\'Barlow Condensed\',sans-serif;font-weight:900;font-size:15px;flex-shrink:0">'+s.n+'</div>'+
+        '<div style="flex:1">'+
+          '<div style="font-family:\'Barlow Condensed\',sans-serif;font-weight:900;font-size:14px;letter-spacing:1px;text-transform:uppercase;color:var(--white);margin-bottom:3px">'+s.t+'</div>'+
+          '<div style="font-size:12px;color:var(--dim);line-height:1.45">'+s.d+'</div>'+
         '</div>'+
-        '<button onclick="document.getElementById(\'pwaIosHint\').remove();localStorage.setItem(\'peak-ios-install-shown\',\'1\');" style="background:transparent;border:none;color:#fff;font-size:24px;cursor:pointer;padding:0;line-height:1">×</button>'+
       '</div>';
-    document.body.appendChild(hint);
+    }).join('');
+
+    var benefitsHtml=benefits.map(function(b){
+      return '<div style="background:var(--s0);border-left:2px solid var(--red);padding:9px 12px;font-size:12px;color:var(--white)">'+b+'</div>';
+    }).join('');
+
+    // Primary action: one-tap install on Chrome/Android, nothing for iOS
+    var primaryBtn='';
+    if(deferredPrompt){
+      primaryBtn='<button id="pwaModalInstall" style="flex:1;background:#E8001A;color:#fff;border:none;padding:14px;font-family:\'Barlow Condensed\',sans-serif;font-weight:900;font-size:13px;letter-spacing:2.5px;text-transform:uppercase;cursor:pointer">'+(de?'📲 Jetzt installieren':'📲 Install now')+'</button>';
+    }
+    var closeBtn='<button id="pwaModalClose" style="flex:'+(deferredPrompt?'1':'2')+';background:var(--s3);color:var(--dim);border:1px solid var(--border);padding:14px;font-family:\'Barlow Condensed\',sans-serif;font-weight:900;font-size:12px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">'+(de?'Schließen':'Close')+'</button>';
+
+    var wrap=document.createElement('div');
+    wrap.id='pwaInstallModal';
+    wrap.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:10003;display:flex;align-items:center;justify-content:center;padding:16px;font-family:Barlow,sans-serif;overflow-y:auto';
+    wrap.innerHTML=
+      '<div style="background:var(--s1);border-left:3px solid var(--red);padding:26px 24px;max-width:440px;width:100%;max-height:90vh;overflow-y:auto;color:var(--white)">'+
+        '<div style="font-family:\'Barlow Condensed\',sans-serif;font-weight:900;font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:var(--red);margin-bottom:6px">📲 PEAK</div>'+
+        '<div style="font-family:\'Barlow Condensed\',sans-serif;font-weight:900;font-size:22px;letter-spacing:.5px;line-height:1.1;color:var(--white);margin-bottom:8px;text-transform:uppercase">'+title+'</div>'+
+        '<div style="font-size:13px;color:var(--dim);line-height:1.5;margin-bottom:18px">'+sub+'</div>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:20px">'+benefitsHtml+'</div>'+
+        '<div style="font-family:\'Barlow Condensed\',sans-serif;font-weight:900;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--red);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)">'+(de?'So geht\'s':'How to')+'</div>'+
+        stepHtml+
+        '<div style="display:flex;gap:8px;margin-top:18px">'+primaryBtn+closeBtn+'</div>'+
+      '</div>';
+    document.body.appendChild(wrap);
+
+    function close(){if(wrap.parentNode)wrap.parentNode.removeChild(wrap);}
+    if(deferredPrompt){
+      document.getElementById('pwaModalInstall').onclick=function(){
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(function(){
+          deferredPrompt=null;
+          close();
+          hideInstallBadge();
+        });
+      };
+    }
+    document.getElementById('pwaModalClose').onclick=close;
+    wrap.onclick=function(e){if(e.target===wrap)close();};
   }
 })();
 </script>
