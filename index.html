@@ -485,7 +485,10 @@ function showUpgradePrompt(featureKey){
     workout_adjustment: de?'Pass dein Training per AI an deinen Status an. Mit Premium.':'Let AI adjust your training to how you feel. Premium only.',
     session_complete: de?'Hak Sessions ab, gib Feedback und lass den Plan lernen. Premium.':'Check off sessions, rate them, let the plan learn. Premium.',
     meal_rating: de?'Bewerte Mahlzeiten damit PEAK deinen Plan optimiert. Premium.':'Rate meals so PEAK can tune your plan. Premium.',
-    plan_limit: de?'Du hast 3/3 kostenlose Pläne verwendet. Upgrade für unbegrenzt.':'You\'ve used 3/3 free plans. Upgrade for unlimited.',
+    plan_limit: de?'Du hast dein monatliches Plan-Limit erreicht. Upgrade für mehr Anpassungen pro Monat.':'You\'ve reached your monthly plan-change limit. Upgrade for more changes per month.',
+    log: de?'Das Protokoll ist Premium. Tracke Essen, Stimmung und Training an einem Ort.':'The Log is Premium. Track food, mood and training in one place.',
+    recipes: de?'Rezepte sind Premium. KI-Rezepte passend zu deinen Makros & Zielen.':'Recipes are Premium. AI recipes matching your macros & goals.',
+    scanner: de?'Der Scanner ist Premium. Barcode & Menü scannen für smartes Tracking.':'Scanner is Premium. Scan barcodes & menus for smart tracking.',
   };
   var t_=titles[featureKey]||(de?'Upgrade erforderlich':'Upgrade required');
   var d_=descs[featureKey]||(de?'Dieses Feature ist Premium.':'This feature is Premium.');
@@ -1001,7 +1004,7 @@ function s5(){var goals=[{e:'⚖️',k:'g1',d:'g1d'},{e:'💪',k:'g2',d:'g2d'},{
 // ── AI LOADING + PLAN FETCH ───────────────────────────────────────────
 function showLoad(){var de=lang==='de';var sportLbl=sportLabel(ud.sport);card('<div class="lw"><div class="spin"></div><div class="lt">'+(de?'Baue deinen Plan...':'Building your plan...')+'</div><p style="font-size:11px;color:var(--faint);margin-bottom:18px">'+(de?'Einzigartig für dich — sonst bekommt das niemand.':'Unique to you — nobody else gets this.')+'</p><div style="text-align:left">'+[['⚡',de?'Berechne Kalorien-Ziel':'Calculating calorie targets'],['🥗',de?'Rezepte nach deinem Geschmack':'Selecting recipes for your taste'],['💪',(de?'Baue ':'Building ')+sportLbl+(de?'-Übungen':' exercises')],['🔋',de?'Regenerations-Protokoll':'Designing recovery protocol'],['✦',de?'Finalisiere deinen Plan':'Finalising your roadmap']].map(function(l,i){return '<div class="lsi" id="li'+i+'"><span style="width:18px;text-align:center;flex-shrink:0">'+l[0]+'</span> '+l[1]+'</div>';}).join('')+'</div></div>');var i=0;var ti=setInterval(function(){if(i>0){var prev=document.getElementById('li'+(i-1));if(prev)prev.className='lsi done';}if(i<5){var cur=document.getElementById('li'+i);if(cur)cur.className='lsi active';i++;}else{clearInterval(ti);fetchPlan().then(function(){step=6;render();});}},700);}
 
-async function fetchPlan(){
+async function fetchPlan(isRegen){
   var bmr=ud.weight&&ud.height&&ud.age?Math.round(88.362+13.397*parseFloat(ud.weight)+4.799*parseFloat(ud.height)-5.677*parseFloat(ud.age)):1800;
   var mult=1.375;if(parseFloat(ud.sessions||3)>=5)mult=1.55;
   var tdee=Math.round(bmr*mult);
@@ -1012,7 +1015,9 @@ async function fetchPlan(){
   var langInstr=lang==='de'?'IMPORTANT: Respond entirely in GERMAN (Deutsch). All text fields including headline, meal names, workout names, exercise names, tips, shopping items, milestones must be in German. Keep meal time values as English labels "Breakfast","Lunch","Dinner","Snack" for app compatibility.':'IMPORTANT: Respond entirely in ENGLISH. All text fields must be in English.';
   var prompt='You are PEAK AI by MJ Performance.\n'+langInstr+'\nUser: '+ud.name+', age '+ud.age+', '+ud.weight+'kg→'+ud.dweight+'kg, '+ud.height+'cm, sleep '+ud.sleep+'hrs\nJob: '+ud.job+', stress '+ud.stress+'/10\nSport: '+sport+' ('+level+'), '+ud.sessions+'×/wk, '+ud.dur+'min, at '+ud.equip+'\nAllergies: '+(ud.al||[]).join(',')+'\nDiet: '+(ud.di||[]).join(',')+'\nCuisines: '+(ud.cu||[]).join(',')+'\nCooking: '+ud.cook+'\nGoal: '+goalStr()+', Calories: '+kcal+'\n\nCreate a personalised plan. For workout: create 4-5 SPECIFIC exercises for '+sport+' at '+level+' level that improve performance in '+sport+'. NOT generic gym. Include drills, technique, sport-specific conditioning. Each needs name + sets/reps/duration.\n\nRespond ONLY with valid JSON, no markdown:\n{"headline":"<12 words>","calories":'+kcal+',"protein":<g>,"carbs":<g>,"fat":<g>,"timeline":"<weeks>","todayMeals":[{"emoji":"🍳","name":"<meal>","time":"Breakfast","kcal":<n>,"macro":"<e.g. 28g protein>"},{"emoji":"🥗","name":"<meal>","time":"Lunch","kcal":<n>,"macro":"<e.g. 42g protein>"},{"emoji":"🍽️","name":"<meal>","time":"Dinner","kcal":<n>,"macro":"<e.g. 38g protein>"},{"emoji":"🍎","name":"<snack>","time":"Snack","kcal":<n>,"macro":"<e.g. 15g protein>"}],"workout":{"title":"<sport-specific title>","focus":"<what this improves in '+sport+'>","desc":"<2 sentences why>","duration":<min>,"exercises":[{"name":"<exercise>","detail":"<sets/reps/duration>"},{"name":"<exercise>","detail":"<sets/reps>"},{"name":"<exercise>","detail":"<sets/reps>"},{"name":"<exercise>","detail":"<duration>"}]},"recovery":{"tip":"<tip>","sleep":"<advice>","hydration":"<target>"},"shopping":["<item1>","<item2>","<item3>","<item4>","<item5>"],"milestones":["<wk2-3>","<wk5-7>","<final>"]}';
   try{
-    plan=await aiGenJSON(prompt,1600,'plan_generation');
+    // Initial onboarding plan is FREE (comes with signup). Only regenerations count toward monthly quota.
+    var planPurpose=isRegen?'plan_generation':'plan_generation_initial';
+    plan=await aiGenJSON(prompt,1600,planPurpose);
     plan._lang=lang; // Track which language this plan was generated in
     if(plan.workout&&plan.workout.exercises&&typeof plan.workout.exercises[0]==='string'){plan.workout.exercises=plan.workout.exercises.map(function(e){return{name:e,detail:''};});}
     // Ensure weekly plan exists (Chat 1: synthesise from today's workout; Chat 2+ will use templates)
@@ -1908,7 +1913,107 @@ async function enrichWeekWithAI(){
   if(currentView==='dashboard'&&dashTab==='fitness')showTab('fitness');
 }
 
-function fp(){if(plan)return plan;var deE=lang==='de';return{calories:2000,protein:150,carbs:200,fat:70,timeline:(deE?'12 Wochen':'12 weeks'),headline:t('fbHeadline'),todayMeals:[{emoji:'🍳',name:t('fbMealEggs'),time:'Breakfast',kcal:420,macro:'28g '+t('macroProtein')},{emoji:'🥗',name:t('fbMealChicken'),time:'Lunch',kcal:550,macro:'45g '+t('macroProtein')},{emoji:'🍽️',name:t('fbMealSalmon'),time:'Dinner',kcal:580,macro:'40g '+t('macroProtein')},{emoji:'🍎',name:t('fbMealYoghurt'),time:'Snack',kcal:180,macro:'15g '+t('macroProtein')}],workout:{title:t('fbWorkTitle'),focus:(deE?'Athletische Grundlagen':'Building athletic base'),desc:(deE?'Progressive Trainingseinheit.':'Progressive training session.'),duration:60,exercises:[{name:(deE?'Aufwärmen':'Warm-up'),detail:'10 min'},{name:(deE?'Hauptsatz':'Main set'),detail:'35 min'},{name:(deE?'Cool-down':'Cool-down'),detail:'10 min'}]},recovery:{tip:t('tipToday'),sleep:t('tipSleep'),hydration:t('tipHydration')},shopping:[t('fbShopChicken'),t('fbShopSalmon'),t('fbShopQuinoa'),t('fbShopYoghurt'),t('fbShopVeg')],milestones:[t('fbMileW3'),t('fbMileW7'),t('fbMileW12')]};}
+function fp(){
+  if(plan)return plan;
+  var deE=lang==='de';
+  var sport=ud.sport||'Running';
+  var level=ud.level||'Intermediate';
+  var duration=parseInt(ud.dur||60);
+  // Sport-specific fallback exercises. Matches the set in fetchPlan() so the
+  // dashboard still shows a real, credible workout if the KI call failed.
+  var sportTips={
+    Running:[
+      {name:deE?'Intervall-Läufe':'Interval runs',detail:'6×400m @ Tempo'},
+      {name:deE?'Berg-Wiederholungen':'Hill repeats',detail:'5×bergauf'},
+      {name:deE?'Core: Dead Bugs':'Core: Dead bugs',detail:'3×12'},
+      {name:deE?'Einbeiniges Kreuzheben':'Single-leg deadlifts',detail:'3×8 pro Seite'},
+      {name:deE?'Wadenheben':'Calf raises',detail:'3×20'}
+    ],
+    Football:[
+      {name:deE?'Ballkontrolle':'Ball control',detail:'3×10min'},
+      {name:deE?'Sprint-Intervalle':'Sprint intervals',detail:'6×30m'},
+      {name:deE?'Core: Plank-Serie':'Core: Plank series',detail:'3×45s'},
+      {name:deE?'Einbeinige Kniebeugen':'Single-leg squats',detail:'3×10 pro Seite'},
+      {name:deE?'Seitliche Koordinationsleiter':'Lateral agility ladder',detail:'3×2min'}
+    ],
+    Weights:[
+      {name:deE?'Grundübungen: Kniebeuge, Bankdrücken, Kreuzheben':'Compound lifts: Squat/Bench/Deadlift',detail:deE?'5×5 bei 75-80%':'5×5 @ 75-80%'},
+      {name:deE?'Progressive Überlastung':'Progressive overload',detail:deE?'+2,5kg pro Woche':'+2.5kg/week'},
+      {name:deE?'Nebenübungen':'Accessory work',detail:deE?'Face Pulls, Band Pull-Aparts 3×15':'Face pulls, band pull-aparts 3×15'},
+      {name:deE?'Core: Hängendes Beinheben':'Core: Hanging leg raises',detail:'3×12'},
+      {name:deE?'Mobility':'Mobility',detail:'10min post-workout'}
+    ],
+    Swimming:[
+      {name:deE?'Pull-Buoy Drill':'Pull buoy drill',detail:'400m'},
+      {name:deE?'Intervalle':'Intervals',detail:deE?'4×100m im Renntempo':'4×100m at race pace'},
+      {name:deE?'Rotatorenmanschette':'Rotator cuff',detail:'3×12'},
+      {name:deE?'Swiss Ball Rollouts':'Swiss ball rollouts',detail:'3×12'},
+      {name:deE?'Schulter-Mobilität':'Shoulder mobility',detail:'10min Warm-up'}
+    ],
+    Cycling:[
+      {name:deE?'Schwellen-Intervalle':'Threshold intervals',detail:'3×10min @ FTP'},
+      {name:deE?'Hochfrequenz-Drills':'High-cadence drills',detail:'100+ RPM'},
+      {name:deE?'Core: Plank-Varianten':'Core: Plank variations',detail:'3×45s'},
+      {name:deE?'Hüftbeuger-Dehnung':'Hip flexor stretch',detail:deE?'nach der Fahrt':'post-ride'},
+      {name:deE?'Einbeiniges Treten':'Single-leg pedalling',detail:'2×3min pro Seite'}
+    ],
+    Yoga:[
+      {name:deE?'Sonnengruß':'Sun salutation',detail:'×10'},
+      {name:deE?'Balance: Baum, Krieger III':'Balance: Tree, Warrior III',detail:'3×30s'},
+      {name:deE?'Hüft-Öffner: Taube':'Hip opening: Pigeon series',detail:'2min pro Seite'},
+      {name:deE?'Schulter-Öffner':'Shoulder openers',detail:'5min'},
+      {name:deE?'Box-Atmung':'Box breathing',detail:'5min'}
+    ],
+    Tennis:[
+      {name:deE?'Beinarbeit: Split-Step':'Footwork: Split-step',detail:'10min'},
+      {name:deE?'Fokussierte Aufschläge':'Focused serves',detail:'50 Wiederholungen'},
+      {name:deE?'Core-Rotation: Kabel-Holzhacker':'Core: Cable woodchops',detail:'3×12 pro Seite'},
+      {name:deE?'Schulter: Außenrotation':'Shoulder: External rotation',detail:'3×15'},
+      {name:deE?'Agilität: T-Drill':'Agility: T-drill',detail:'×6'}
+    ],
+    Basketball:[
+      {name:deE?'100 Treffer':'100 shot makes',detail:deE?'Tempo frei':''},
+      {name:deE?'Ball-Handling: Crossover':'Ball handling: Crossover',detail:'3×1min'},
+      {name:deE?'Sprungkraft: Depth Jumps':'Vertical: Depth jumps',detail:'3×8'},
+      {name:deE?'Core: Medizinball-Rotation':'Core: Medicine ball rotations',detail:'3×10 pro Seite'},
+      {name:deE?'Defensiv-Slides':'Defensive slides',detail:'4×1min'}
+    ],
+    'Martial Arts':[
+      {name:deE?'Schattenboxen':'Shadow boxing',detail:'4×3min Runden'},
+      {name:deE?'Stand + Beinarbeit':'Stance + footwork',detail:'10min'},
+      {name:deE?'Core: Russian Twists':'Core: Russian twists',detail:'3×20'},
+      {name:deE?'Hüft- + Hamstring-Flexibilität':'Hip + hamstring flexibility',detail:'10min'},
+      {name:deE?'Reaktions-Spiegel-Drills':'Reaction mirror drills',detail:'3×2min'}
+    ]
+  };
+  var fallbackEx=sportTips[sport]||[
+    {name:deE?'Aufwärmen':'Warm-up',detail:'10 min'},
+    {name:deE?'Hauptsatz':'Main set',detail:(duration-20)+' min'},
+    {name:deE?'Cool-down':'Cool-down',detail:'10 min'}
+  ];
+  var sportLbl=sportLabel(sport);
+  return {
+    calories:2000,protein:150,carbs:200,fat:70,
+    timeline:(deE?'12 Wochen':'12 weeks'),
+    headline:t('fbHeadline'),
+    todayMeals:[
+      {emoji:'🍳',name:t('fbMealEggs'),time:'Breakfast',kcal:420,macro:'28g '+t('macroProtein')},
+      {emoji:'🥗',name:t('fbMealChicken'),time:'Lunch',kcal:550,macro:'45g '+t('macroProtein')},
+      {emoji:'🍽️',name:t('fbMealSalmon'),time:'Dinner',kcal:580,macro:'40g '+t('macroProtein')},
+      {emoji:'🍎',name:t('fbMealYoghurt'),time:'Snack',kcal:180,macro:'15g '+t('macroProtein')}
+    ],
+    workout:{
+      title:sportLbl+' '+t('fbWorkTitle'),
+      focus:(deE?'Sportspezifische Leistung':'Sport-specific performance'),
+      desc:(deE?'Zielgerichtete Übungen für besseren '+sportLbl+'-Athleten.':'Targeted exercises to make you a better '+sport+' athlete.'),
+      duration:duration,
+      exercises:fallbackEx
+    },
+    recovery:{tip:t('tipToday'),sleep:t('tipSleep'),hydration:t('tipHydration')},
+    shopping:[t('fbShopChicken'),t('fbShopSalmon'),t('fbShopQuinoa'),t('fbShopYoghurt'),t('fbShopVeg')],
+    milestones:[t('fbMileW3'),t('fbMileW7'),t('fbMileW12')]
+  };
+}
 
 // ── PAYWALL ───────────────────────────────────────────────────────────
 function s6(){
@@ -2285,14 +2390,15 @@ function dshell(tab,content){
   var p=fp();
   var tabs=[{k:'nutrition',l:t('nu')},{k:'fitness',l:t('fi')},{k:'recovery',l:t('re')},{k:'scanner',l:t('sc')},{k:'log',l:t('lg')},{k:'recipes',l:t('rp')}];
   var defaultTimeline=lang==='de'?'12 Wochen':'12 weeks';
-  // Free-tier header banner — shows plan-gen usage + upgrade CTA
+  // Tier banner — shows monthly plan-gen usage + upgrade CTA
   var freeBanner='';
-  if(isFree()){
+  if(isFree()||isBasic()){
     var de=lang==='de';
     var used=ud.plan_generations_used||0;
-    var usageTxt=(de?'Plans: ':'Plans: ')+used+'/3';
-    var label=de?'GRATIS':'FREE';
-    var cta=de?'Upgrade':'Upgrade';
+    var tierLimit=isFree()?1:5;
+    var label=isFree()?(de?'GRATIS':'FREE'):(de?'BASIC':'BASIC');
+    var usageTxt=(de?'Plan-Änderungen: ':'Plan changes: ')+used+'/'+tierLimit+(de?' (30 Tage)':' (30 days)');
+    var cta=isFree()?(de?'Upgrade':'Upgrade'):(de?'Premium':'Premium');
     freeBanner='<div style="background:var(--s1);border-left:3px solid var(--red);padding:10px 14px;display:flex;align-items:center;gap:12px;margin:0 0 10px;font-family:Barlow,sans-serif">'+
       '<div style="font-family:Barlow Condensed,sans-serif;font-weight:900;font-size:10px;letter-spacing:2px;color:var(--red)">'+label+'</div>'+
       '<div style="flex:1;font-size:11px;color:var(--dim)">'+usageTxt+'</div>'+
@@ -3443,18 +3549,13 @@ async function saveProfile(key){
 
 async function regenPlan(){
   var de=lang==='de';
-  // Free cap pre-check: show upgrade immediately instead of generic error
-  if(isFree()&&(ud.plan_generations_used||0)>=3){
-    showUpgradePrompt('plan_limit');
-    return;
-  }
-  var ok=await peakConfirm(de?'Plan mit deinen aktuellen Daten neu generieren?':'Rebuild plan using your current data?');
+  var ok=await peakConfirm(de?'Plan mit deinen aktuellen Daten neu generieren? Das zählt als Plan-Änderung für diesen Monat.':'Rebuild plan using your current data? This counts as a plan change for this month.');
   if(!ok)return;
   // Reset ratings, clear old plan
   mrat={};wrat={};
   peakToast(de?'Baue neuen Plan...':'Building new plan...',{duration:2500});
   try{
-    await fetchPlan();
+    await fetchPlan(true); // isRegen=true → counts toward monthly quota
     peakToast(de?'Neuer Plan bereit ✓':'New plan ready ✓',{kind:'success'});
     showTab('nutrition');
   }catch(e){
