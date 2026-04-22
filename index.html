@@ -99,12 +99,6 @@ html,body{height:100%;background:var(--bg);font-family:'Barlow',sans-serif;color
 .loginbtn:hover{background:var(--rdk)}
 .profbtn{width:32px;height:32px;border:1.5px solid var(--red);background:var(--bg);color:var(--red);font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:900;letter-spacing:.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:all .15s}
 .profbtn:hover{background:var(--red);color:var(--white)}
-/* Tier status bar — compact horizontal strip below dashboard header */
-.tier-bar{display:flex;align-items:center;gap:10px;padding:8px 12px;background:transparent;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin:0 0 12px;font-family:Barlow,sans-serif}
-.tier-label{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:10px;letter-spacing:2px;color:var(--red);padding:2px 8px;border:1px solid var(--red);text-transform:uppercase}
-.tier-usage{flex:1;font-size:11px;color:var(--dim);letter-spacing:.3px}
-.tier-cta{background:var(--red);color:var(--white);border:none;padding:5px 11px;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:background .15s}
-.tier-cta:hover{background:var(--rdk)}
 /* Profile screen sections */
 .prf-sec{margin-bottom:18px}
 .prf-sec-t{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:11px;color:var(--red);letter-spacing:2.5px;text-transform:uppercase;padding-bottom:6px;border-bottom:1px solid var(--border);margin-bottom:10px}
@@ -270,6 +264,12 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;hei
 .dhead{background:var(--s1);border-bottom:2px solid var(--red);padding:18px 20px 14px}
 .dgreet{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:24px;letter-spacing:1px;text-transform:uppercase}
 .dsub{font-size:11px;color:var(--dim);margin-top:2px}
+/* Tier status row — lives inside .dhead, shares its background, no borders */
+.tier-bar{display:flex;align-items:center;gap:10px;margin-top:12px;padding-top:10px;border-top:1px dashed var(--border);font-family:Barlow,sans-serif}
+.tier-label{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:10px;letter-spacing:2px;color:var(--red);padding:2px 8px;border:1px solid var(--red);text-transform:uppercase;flex-shrink:0}
+.tier-usage{flex:1;font-size:11px;color:var(--dim);letter-spacing:.3px;min-width:0}
+.tier-cta{background:var(--red);color:var(--white);border:none;padding:5px 11px;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:background .15s;flex-shrink:0}
+.tier-cta:hover{background:var(--rdk)}
 .dnav{display:flex;gap:2px;padding:7px 14px;background:var(--s1);border-bottom:1px solid var(--border);overflow-x:auto}
 .dnav::-webkit-scrollbar{display:none}
 .ntab{padding:6px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;color:var(--faint);border:none;background:none;font-family:'Barlow',sans-serif;letter-spacing:1px;text-transform:uppercase;transition:color .15s}
@@ -898,6 +898,10 @@ async function goHome(){
 function setP(s,tot){
   var pbEl=document.getElementById('pb');
   var slEl=document.getElementById('sl');
+  var pbw=document.querySelector('.pbw');
+  // Always show progress bar & step label during render() — showDash() hides them
+  if(pbw)pbw.style.visibility='';
+  if(slEl)slEl.style.visibility='';
   if(s===0){pbEl.style.width='0%';slEl.textContent=lang==='de'?'Willkommen':'Welcome';return;}
   // Free signup steps (70=form, 71=inbox-check) map to end of onboarding
   if(s>=70){
@@ -2504,8 +2508,13 @@ function s8(){
 // ── DASHBOARD ─────────────────────────────────────────────────────────
 function showDash(){
   currentView='dashboard';
-  document.getElementById('pb').style.width='100%';
-  document.getElementById('sl').textContent=t('db');
+  // Progress bar + "Step X of 8" label only make sense during onboarding.
+  // In the dashboard, hide them — they look like random decoration.
+  var pbw=document.querySelector('.pbw');
+  var slEl=document.getElementById('sl');
+  if(pbw)pbw.style.visibility='hidden';
+  if(slEl)slEl.textContent=t('db'); // kept for a11y but hidden below
+  if(slEl)slEl.style.visibility='hidden';
   updateAuthUI();
   showTab(dashTab);
 }
@@ -2564,7 +2573,7 @@ function dshell(tab,content){
       '<button class="tier-cta" onclick="goUpgrade()">'+cta+' →</button>'+
     '</div>';
   }
-  card('<div class="dhead"><div class="dgreet">'+t('gd')+' '+(ud.name||'ATHLETE').toUpperCase()+' ⚡</div><div class="dsub">'+(ud.goal||'PEAK')+' · '+(p.timeline||defaultTimeline)+' · '+(p.headline||'')+'</div></div>'+freeBanner+'<div class="dnav">'+tabs.map(function(tb){return '<button class="ntab '+(tab===tb.k?'act':'')+'" data-tab="'+tb.k+'" onclick="showTab(\''+tb.k+'\')">'+tb.l+'</button>';}).join('')+'</div><div class="dbody" id="db">'+content+'</div>');
+  card('<div class="dhead"><div class="dgreet">'+t('gd')+' '+(ud.name||'ATHLETE').toUpperCase()+' ⚡</div><div class="dsub">'+(ud.goal||'PEAK')+' · '+(p.timeline||defaultTimeline)+' · '+(p.headline||'')+'</div>'+freeBanner+'</div><div class="dnav">'+tabs.map(function(tb){return '<button class="ntab '+(tab===tb.k?'act':'')+'" data-tab="'+tb.k+'" onclick="showTab(\''+tb.k+'\')">'+tb.l+'</button>';}).join('')+'</div><div class="dbody" id="db">'+content+'</div>');
 }
 
 function showTab(tab){
@@ -3634,9 +3643,11 @@ function showProfile(){
   currentView='profile';
   var de=lang==='de';
   var p=fp();
-  // Clear progress bar, set header label
-  document.getElementById('pb').style.width='0%';
-  document.getElementById('sl').textContent=de?'Profil':'Profile';
+  // Hide progress bar + step label — not relevant on profile page
+  var pbw=document.querySelector('.pbw');
+  var slEl=document.getElementById('sl');
+  if(pbw)pbw.style.visibility='hidden';
+  if(slEl){slEl.textContent=de?'Profil':'Profile';slEl.style.visibility='hidden';}
 
   var tabs=[{k:'nutrition',l:t('nu')},{k:'fitness',l:t('fi')},{k:'recovery',l:t('re')},{k:'scanner',l:t('sc')},{k:'log',l:t('lg')},{k:'recipes',l:t('rp')}];
 
