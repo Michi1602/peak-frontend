@@ -99,6 +99,12 @@ html,body{height:100%;background:var(--bg);font-family:'Barlow',sans-serif;color
 .loginbtn:hover{background:var(--rdk)}
 .profbtn{width:32px;height:32px;border:1.5px solid var(--red);background:var(--bg);color:var(--red);font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:900;letter-spacing:.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:all .15s}
 .profbtn:hover{background:var(--red);color:var(--white)}
+/* Tier status bar — compact horizontal strip below dashboard header */
+.tier-bar{display:flex;align-items:center;gap:10px;padding:8px 12px;background:transparent;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin:0 0 12px;font-family:Barlow,sans-serif}
+.tier-label{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:10px;letter-spacing:2px;color:var(--red);padding:2px 8px;border:1px solid var(--red);text-transform:uppercase}
+.tier-usage{flex:1;font-size:11px;color:var(--dim);letter-spacing:.3px}
+.tier-cta{background:var(--red);color:var(--white);border:none;padding:5px 11px;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:background .15s}
+.tier-cta:hover{background:var(--rdk)}
 /* Profile screen sections */
 .prf-sec{margin-bottom:18px}
 .prf-sec-t{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:11px;color:var(--red);letter-spacing:2.5px;text-transform:uppercase;padding-bottom:6px;border-bottom:1px solid var(--border);margin-bottom:10px}
@@ -656,7 +662,16 @@ function showHealthDisclaimer(){
   };
 }
 
-var step=0,TOTAL=8,lang='en';
+var step=0,TOTAL=8;
+// Auto-detect language from browser. German browsers default to DE, everything else EN.
+// User can still toggle via the DE/EN button. This prevents the "plan is in EN but UI is DE" mismatch.
+var lang=(function(){
+  try{
+    var bl=(navigator.language||navigator.userLanguage||'en').toLowerCase();
+    if(bl.indexOf('de')===0)return 'de';
+  }catch(_){}
+  return 'en';
+})();
 var ud={name:'',age:'',gender:'',weight:'',dweight:'',height:'',sleep:'',job:'',commute:'',stress:'5',sport:'',level:'',sessions:'',dur:'',equip:'',al:[],di:[],cu:[],cook:'',budget:'',goal:''};
 var plan=null,selPlan='annual',selTier='premium',flog=[],mrat={},wrat={};
 // Training progression state.
@@ -1674,6 +1689,22 @@ async function translateSessionToDE(session, cacheKey){
       'Input to translate:\n'+JSON.stringify(payload);
     var translated=await aiGenJSON(prompt,1400,'session_translate');
     if(translated&&translated.title){
+      // Post-processing: AI sometimes leaves English words even with explicit
+      // instructions. This deterministic dictionary sweep catches the most
+      // common cases so the dashboard never shows English in DE mode.
+      translated.title=deCleanup(translated.title);
+      translated.focus=deCleanup(translated.focus);
+      translated.desc=deCleanup(translated.desc);
+      if(Array.isArray(translated.exercises)){
+        translated.exercises=translated.exercises.map(function(ex){
+          if(!ex||typeof ex!=='object')return ex;
+          return {
+            name:deCleanup(ex.name),
+            detail:deCleanup(ex.detail),
+            tip:deCleanup(ex.tip),
+          };
+        });
+      }
       cache[cacheKey]=translated;
       saveSesCache();
       return {
@@ -1695,6 +1726,56 @@ async function translateSessionToDE(session, cacheKey){
     }
   }catch(e){console.warn('Session translate failed:',e);}
   return session; // Silent fallback: English stays
+}
+
+// Post-translation cleanup for DE — catches English leftovers the AI missed.
+// Applied only when lang === 'de'. Case-insensitive, matches whole words only.
+function deCleanup(s){
+  if(!s||typeof s!=='string')return s;
+  if(lang!=='de')return s;
+  var fixes=[
+    // Title-level
+    [/\bexplosive unterk(ö|o)rper\b/gi,'Explosive Beinkraft'],
+    [/\blower body\b/gi,'Unterkörper'],
+    [/\bupper body\b/gi,'Oberkörper'],
+    [/\bfull body\b/gi,'Ganzkörper'],
+    [/\bmatch-?specific conditioning\b/gi,'Spielspezifische Kondition'],
+    [/\bsport-?specific conditioning\b/gi,'Sportspezifische Kondition'],
+    [/\bspielfeldgerechtes conditioning\b/gi,'Spielfeldgerechte Kondition'],
+    [/\bconditioning\b/gi,'Kondition'],
+    [/\badvanced ball mastery\b/gi,'Fortgeschrittene Ballbeherrschung'],
+    [/\bball mastery\b/gi,'Ballbeherrschung'],
+    [/\bball control\b/gi,'Ballkontrolle'],
+    [/\btechnique\b/gi,'Technik'],
+    [/\bendurance\b/gi,'Ausdauer'],
+    [/\bstrength\b/gi,'Kraft'],
+    [/\bpower\b/gi,'Explosivkraft'],
+    [/\bspeed\b/gi,'Schnelligkeit'],
+    [/\brecovery\b/gi,'Regeneration'],
+    [/\bfoundation\b/gi,'Grundlage'],
+    [/\bbuild phase\b/gi,'Aufbauphase'],
+    [/\bpeak phase\b/gi,'Peak-Phase'],
+    // Exercise names
+    [/\bsprint intervals?\b/gi,'Sprint-Intervalle'],
+    [/\bplank series\b/gi,'Plank-Serie'],
+    [/\bsingle-?leg squats?\b/gi,'Einbeinige Kniebeugen'],
+    [/\blateral agility ladder\b/gi,'Seitliche Agility-Leiter'],
+    [/\bagility ladder\b/gi,'Agility-Leiter'],
+    [/\bhill repeats?\b/gi,'Berg-Wiederholungen'],
+    [/\bshuttle runs?\b/gi,'Shuttle-Läufe'],
+    [/\bcool ?down\b/gi,'Cool-down'],
+    [/\bwarm ?up\b/gi,'Aufwärmen'],
+    // Details
+    [/\bsets?\b/gi,'Sätze'],
+    [/\breps?\b/gi,'Wiederholungen'],
+    [/\bminutes?\b/gi,'Minuten'],
+    [/\bseconds?\b/gi,'Sekunden'],
+    [/\beach side\b/gi,'pro Seite'],
+    [/\brest\b/gi,'Pause'],
+  ];
+  var out=s;
+  fixes.forEach(function(f){ out=out.replace(f[0],f[1]); });
+  return out;
 }
 
 // Translate every non-rest session in a week plan in parallel.
@@ -2291,7 +2372,19 @@ async function doOpenPortal(){
   try{
     var res=await fetch(BACKEND+'/customer-portal',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email})});
     var data=await res.json();
-    if(!res.ok)throw new Error(data.error||'Error');
+    if(!res.ok){
+      // HTTP 410: Stripe customer was deleted, backend has cleaned up our DB.
+      // Refresh user state and show a friendly message.
+      if(res.status===410&&data.code==='SUBSCRIPTION_NOT_FOUND'){
+        ud.tier='free';
+        ud.stripe_customer_id=null;
+        var de=lang==='de';
+        peakToast(de?'Dein Abo existiert nicht mehr. Du bist jetzt auf Free.':'Your subscription no longer exists. You\'re now on Free.',{kind:'info',duration:5000});
+        setTimeout(function(){window.location.reload();},1500);
+        return;
+      }
+      throw new Error(data.error||'Error');
+    }
     window.location.href=data.url;
   }catch(err){
     if(btn){showE('ep',err.message);btn.textContent='⚙️ '+t('aeC');btn.style.opacity='1';btn.onclick=doOpenPortal;}
@@ -2459,10 +2552,10 @@ function dshell(tab,content){
     var label=isFree()?(de?'GRATIS':'FREE'):(de?'BASIC':'BASIC');
     var usageTxt=(de?'Plan-Änderungen: ':'Plan changes: ')+used+'/'+tierLimit+(de?' (30 Tage)':' (30 days)');
     var cta=isFree()?(de?'Upgrade':'Upgrade'):(de?'Premium':'Premium');
-    freeBanner='<div style="background:var(--s1);border-left:3px solid var(--red);padding:10px 14px;display:flex;align-items:center;gap:12px;margin:0 0 10px;font-family:Barlow,sans-serif">'+
-      '<div style="font-family:Barlow Condensed,sans-serif;font-weight:900;font-size:10px;letter-spacing:2px;color:var(--red)">'+label+'</div>'+
-      '<div style="flex:1;font-size:11px;color:var(--dim)">'+usageTxt+'</div>'+
-      '<button onclick="goUpgrade()" style="background:var(--red);color:var(--white);border:none;padding:6px 12px;font-family:Barlow Condensed,sans-serif;font-weight:900;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer">'+cta+' →</button>'+
+    freeBanner='<div class="tier-bar">'+
+      '<span class="tier-label">'+label+'</span>'+
+      '<span class="tier-usage">'+usageTxt+'</span>'+
+      '<button class="tier-cta" onclick="goUpgrade()">'+cta+' →</button>'+
     '</div>';
   }
   card('<div class="dhead"><div class="dgreet">'+t('gd')+' '+(ud.name||'ATHLETE').toUpperCase()+' ⚡</div><div class="dsub">'+(ud.goal||'PEAK')+' · '+(p.timeline||defaultTimeline)+' · '+(p.headline||'')+'</div></div>'+freeBanner+'<div class="dnav">'+tabs.map(function(tb){return '<button class="ntab '+(tab===tb.k?'act':'')+'" data-tab="'+tb.k+'" onclick="showTab(\''+tb.k+'\')">'+tb.l+'</button>';}).join('')+'</div><div class="dbody" id="db">'+content+'</div>');
@@ -3410,6 +3503,13 @@ function showNeedSubscription(email){
 
 // Boot — decides where the user lands based on URL and session state.
 async function bootApp(){
+  // Update language toggle button label to reflect auto-detected language.
+  // If we detected DE, the button should show "EN" (switch TO English).
+  try{
+    var lbEl=document.getElementById('lb');
+    if(lbEl)lbEl.textContent=lang==='en'?'DE':'EN';
+  }catch(_){}
+
   // Show loading indicator immediately — prevents blank screen / login flash
   // on reload while we check for existing session
   var de=lang==='de';
