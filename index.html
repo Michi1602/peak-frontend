@@ -3040,10 +3040,10 @@ function showLogin(){
   var de=lang==='de';
   var subtitle=de?'Dein Plan wartet auf dich.':'Your plan is waiting.';
   var emailLabel=de?'E-Mail':'Email';
-  var sendBtn=de?'LOGIN-LINK SENDEN →':'SEND LOGIN LINK →';
+  var sendBtn=de?'CODE ANFORDERN →':'SEND CODE →';
   var orText=de?'oder':'or';
   var googleBtn=de?'Mit Google fortfahren':'Continue with Google';
-  var hint=de?'Wir senden dir einen sicheren Login-Link per E-Mail. Kein Passwort nötig.':'We send you a secure login link by email. No password needed.';
+  var hint=de?'Wir senden dir einen 6-stelligen Code per E-Mail. Kein Passwort nötig — funktioniert überall, auch in der installierten App.':'We send you a 6-digit code by email. No password needed — works everywhere, including in the installed app.';
   var noAccount=de?'Noch kein Konto? ':'No account? ';
   var startFree=de?'Kostenlos starten →':'Start free →';
   card(
@@ -3068,6 +3068,8 @@ function showLogin(){
 }
 
 async function doMagicLink(){
+  // Renamed-but-kept for backwards compat: this now sends an OTP code
+  // rather than a magic link. OTP works in any PWA/browser context.
   var em=document.getElementById('lem').value.trim();
   var de=lang==='de';
   if(!em){showE('el2',de?'Bitte E-Mail eingeben.':'Please enter your email.');return;}
@@ -3075,20 +3077,138 @@ async function doMagicLink(){
   btn.textContent=de?'Wird gesendet...':'Sending...';
   btn.style.opacity='.6';btn.disabled=true;
   try{
-    // Use backend endpoint so user receives the branded PEAK magic-link email
-    // (instead of Supabase's plain default template)
-    var res=await fetch(BACKEND+'/auth/send-login-link',{
+    var res=await fetch(BACKEND+'/auth/send-otp',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({email:em,lang:lang})
     });
     var data=await res.json();
-    if(!res.ok)throw new Error(data.error||(de?'Link konnte nicht gesendet werden.':'Could not send login link.'));
-    showInboxCheck(em);
+    if(!res.ok)throw new Error(data.message||data.error||(de?'Code konnte nicht gesendet werden.':'Could not send code.'));
+    ud.pendingLoginEmail=em;
+    showOtpInput(em);
   }catch(err){
-    showE('el2',err.message||(de?'Fehler. Erneut versuchen.':'Could not send login link.'));
-    btn.textContent=de?'LOGIN-LINK SENDEN →':'SEND LOGIN LINK →';
+    showE('el2',err.message||(de?'Fehler. Erneut versuchen.':'Something went wrong. Try again.'));
+    btn.textContent=de?'CODE ANFORDERN →':'SEND CODE →';
     btn.style.opacity='1';btn.disabled=false;
+  }
+}
+
+function showOtpInput(email){
+  var de=lang==='de';
+  document.getElementById('sl').textContent=de?'Code eingeben':'Enter code';
+  var title=de?'Dein Login-Code':'Your login code';
+  var sub=de
+    ?'Wir haben einen 6-stelligen Code an <strong>'+email+'</strong> geschickt. Gib ihn hier ein.'
+    :'We sent a 6-digit code to <strong>'+email+'</strong>. Enter it below to sign in.';
+  var codeLabel=de?'6-STELLIGER CODE':'6-DIGIT CODE';
+  var verifyBtn=de?'EINLOGGEN →':'SIGN IN →';
+  var resend=de?'Code erneut senden':'Resend code';
+  var back=de?'← Andere E-Mail':'← Use different email';
+  var expiry=de?'Der Code ist 10 Minuten gültig.':'Code expires in 10 minutes.';
+  card(
+    '<div class="ch"><div class="chip">✦ '+(de?'Fast geschafft':'Almost there')+'</div>'+
+    '<div class="ct">'+title+'</div>'+
+    '<p class="cs">'+sub+'</p></div>'+
+    '<div class="cb"><div id="eotp" class="ebox"></div>'+
+    '<div class="field"><label>'+codeLabel+'</label>'+
+      '<input type="text" id="otpIn" inputmode="numeric" pattern="[0-9]*" maxlength="7" autocomplete="one-time-code" '+
+      'placeholder="123 456" '+
+      'style="font-family:\'Courier New\',monospace;font-size:26px;letter-spacing:8px;text-align:center;padding:14px">'+
+    '</div>'+
+    '<p style="font-size:11px;color:var(--faint);margin:-4px 0 12px;text-align:center">⏱ '+expiry+'</p>'+
+    '</div>'+
+    '<div class="cf" style="gap:8px">'+
+    '<button class="bbk" onclick="showLogin()">'+back+'</button>'+
+    '<button class="bnx" id="otpVerifyBtn" onclick="doVerifyOtp()" style="flex:1">'+verifyBtn+'</button>'+
+    '</div>'+
+    '<div style="padding:0 30px 18px;text-align:center;font-size:11px;color:var(--faint)">'+
+    '<span style="color:var(--red);cursor:pointer;font-weight:700" onclick="doMagicLink2()">'+resend+'</span>'+
+    '</div>'
+  );
+  // Auto-focus + format-as-you-type (insert space after 3 digits)
+  setTimeout(function(){
+    var inp=document.getElementById('otpIn');
+    if(!inp)return;
+    inp.focus();
+    inp.addEventListener('input',function(){
+      var v=inp.value.replace(/\D/g,'').slice(0,6);
+      inp.value=v.length>3?v.slice(0,3)+' '+v.slice(3):v;
+      // Auto-submit when 6 digits entered
+      if(v.length===6)doVerifyOtp();
+    });
+    // Submit on Enter
+    inp.addEventListener('keydown',function(e){if(e.key==='Enter')doVerifyOtp();});
+  },50);
+}
+
+// Re-send code using the email we stored at request time
+async function doMagicLink2(){
+  var em=ud.pendingLoginEmail;if(!em)return;
+  var de=lang==='de';
+  peakToast(de?'Sende neuen Code...':'Sending new code...',{duration:1500});
+  try{
+    var res=await fetch(BACKEND+'/auth/send-otp',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email:em,lang:lang})
+    });
+    var data=await res.json();
+    if(!res.ok)throw new Error(data.message||data.error||'Error');
+    peakToast(de?'Neuer Code gesendet ✓':'New code sent ✓',{kind:'success',duration:2000});
+  }catch(err){
+    peakToast(err.message||(de?'Fehler.':'Error.'));
+  }
+}
+
+async function doVerifyOtp(){
+  var em=ud.pendingLoginEmail;
+  var inp=document.getElementById('otpIn');
+  if(!inp||!em)return;
+  var code=inp.value.replace(/\D/g,'');
+  var de=lang==='de';
+  if(code.length!==6){
+    showE('eotp',de?'Bitte 6 Ziffern eingeben.':'Please enter 6 digits.');
+    return;
+  }
+  var btn=document.getElementById('otpVerifyBtn');
+  btn.textContent=de?'Prüfe...':'Verifying...';btn.style.opacity='.6';btn.disabled=true;
+  try{
+    var res=await fetch(BACKEND+'/auth/verify-otp',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email:em,code:code})
+    });
+    var data=await res.json();
+    if(!res.ok){
+      var msg=data.error||(de?'Falscher Code':'Wrong code');
+      if(data.code==='WRONG_CODE'&&typeof data.attemptsLeft==='number'){
+        msg=de?('Falscher Code. Noch '+data.attemptsLeft+' Versuche.'):('Wrong code. '+data.attemptsLeft+' tries left.');
+      }else if(data.code==='CODE_EXPIRED'){
+        msg=de?'Code abgelaufen. Fordere einen neuen an.':'Code expired. Request a new one.';
+      }else if(data.code==='TOO_MANY_ATTEMPTS'){
+        msg=de?'Zu viele Versuche. Fordere einen neuen Code an.':'Too many attempts. Request a new code.';
+      }
+      throw new Error(msg);
+    }
+    if(!data.session||!data.session.access_token){
+      throw new Error(de?'Login-Fehler.':'Login error.');
+    }
+    // Hand the tokens to the Supabase client — it will persist them and fire
+    // the SIGNED_IN event which triggers loadAuthProfile.
+    var setRes=await window.sb.auth.setSession({
+      access_token:data.session.access_token,
+      refresh_token:data.session.refresh_token,
+    });
+    if(setRes.error)throw new Error(setRes.error.message);
+    ud.pendingLoginEmail=null;
+    // Load profile + render dashboard
+    var ok=await loadAuthProfile();
+    if(!ok){
+      peakToast(de?'Angemeldet ✓':'Signed in ✓',{kind:'success'});
+    }
+  }catch(err){
+    showE('eotp',err.message);
+    btn.textContent=de?'EINLOGGEN →':'SIGN IN →';btn.style.opacity='1';btn.disabled=false;
   }
 }
 
