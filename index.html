@@ -182,7 +182,7 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;hei
 .gr{width:15px;height:15px;border:1.5px solid var(--b2);position:relative;flex-shrink:0}
 .gr::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:5px;height:5px;background:var(--white);opacity:0;transition:opacity .15s}
 .lw{padding:44px 30px;text-align:center}
-.spin{width:32px;height:32px;border:2px solid var(--s3);border-top-color:var(--red);animation:spin .7s linear infinite;margin:0 auto 12px}
+.spin{width:32px;height:32px;border:2px solid var(--s3);border-top-color:var(--red);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .lt{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:18px;color:var(--white);margin-bottom:4px;letter-spacing:2px;text-transform:uppercase}
 .lsi{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--border);font-size:11px;color:var(--faint);transition:color .25s}
@@ -2226,10 +2226,16 @@ function startFreeFlow(){
 }
 
 function s7(){
-  var mP,yP;
-  if(selTier==='basic'){mP='€9.99/month';yP='€59/year';}
-  else{mP='€19.99/month';yP='€119/year';}
   var de=lang==='de';
+  var mP,yP;
+  // Localized price strings — "Monat"/"Jahr" for DE, "month"/"year" for EN
+  if(selTier==='basic'){
+    mP=de?'€9.99/Monat':'€9.99/month';
+    yP=de?'€59/Jahr':'€59/year';
+  } else {
+    mP=de?'€19.99/Monat':'€19.99/month';
+    yP=de?'€119/Jahr':'€119/year';
+  }
   var defaultTrialTxt=de?'7 Tage kostenlos.':'7 days free.';
   var priceTxt=defaultTrialTxt+' '+(selPlan==='annual'?(de?'Dann '+yP+'.':'Then '+yP+'.'):(de?'Dann '+mP+'.':'Then '+mP+'.'));
   var vLbl=de?'Gutscheincode (optional)':'Voucher code (optional)';
