@@ -1,14 +1,16 @@
 {
-  "name": "⠀",
-  "short_name": "⠀",
+  "name": "PEAK — by MJ Performance",
+  "short_name": "PEAK",
   "description": "PEAK by MJ Performance — your personalised nutrition, training & recovery plan.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
   "background_color": "#0E0E0E",
   "theme_color": "#0E0E0E",
   "lang": "en",
+  "dir": "ltr",
   "categories": ["health", "fitness", "lifestyle"],
   "icons": [
     { "src": "/icons/icon-72.png",  "sizes": "72x72",   "type": "image/png", "purpose": "any" },
@@ -25,13 +27,18 @@
   "shortcuts": [
     {
       "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Open your performance dashboard",
       "url": "/?view=dashboard",
-      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
-      "name": "Training",
+      "name": "Today's Workout",
+      "short_name": "Workout",
+      "description": "Jump to today's training session",
       "url": "/?view=training",
-      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     }
-  ]
+  ],
+  "prefer_related_applications": false
 }
