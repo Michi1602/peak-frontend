@@ -896,6 +896,21 @@ function card(h){document.getElementById('mc').innerHTML=h;}
 function foot(lbl,fn,bk){bk=bk===undefined;return '<div class="cf">'+((!bk)&&step>1?'<button class="bbk" onclick="step--;render()">← Back</button>':'')+'<button class="bnx" onclick="('+fn.toString()+')()">'+lbl+' →</button></div>';}
 function sel(el,key,val){el.closest('.tiles').querySelectorAll('.tile').forEach(function(x){x.classList.remove('sel');});el.classList.add('sel');ud[key]=val;}
 function selSp(el,n){el.closest('.tiles').querySelectorAll('.stile').forEach(function(x){x.classList.remove('sel');});el.classList.add('sel');ud.sport=n;}
+
+// Sport name translation. Internal key stays English, DE label is display-only.
+var SPORT_DE={
+  'Running':'Laufen','Weights':'Krafttraining','Football':'Fußball',
+  'Cycling':'Radsport','Swimming':'Schwimmen','Yoga':'Yoga',
+  'Martial Arts':'Kampfsport','Basketball':'Basketball','Tennis':'Tennis',
+  'Volleyball':'Volleyball','Skiing':'Skifahren','Golf':'Golf',
+  'Gymnastics':'Turnen','Rowing':'Rudern','Equestrian':'Reiten','Other':'Sport'
+};
+function sportLabel(sport,forLang){
+  if(!sport)return '—';
+  var l=forLang||lang;
+  if(l==='de')return SPORT_DE[sport]||sport;
+  return sport;
+}
 function selGoal(el,k){
   // Multi-select: toggle. Keep ud.goal as primary (first), ud.goals as array.
   if(!Array.isArray(ud.goals))ud.goals=[];
@@ -984,7 +999,7 @@ function s4(){var al=['Gluten','Dairy','Nuts','Peanuts','Shellfish','Eggs','Soy'
 function s5(){var goals=[{e:'⚖️',k:'g1',d:'g1d'},{e:'💪',k:'g2',d:'g2d'},{e:'🏃',k:'g3',d:'g3d'},{e:'🥗',k:'g4',d:'g4d'},{e:'🔋',k:'g5',d:'g5d'},{e:'🧘',k:'g6',d:'g6d'}];var diff=ud.weight&&ud.dweight?(parseFloat(ud.weight)-parseFloat(ud.dweight)).toFixed(1):null;var de=lang==='de';var hint=de?'Wähle bis zu 3 Ziele — in Reihenfolge ihrer Priorität.':'Pick up to 3 goals — in order of priority.';if(!Array.isArray(ud.goals))ud.goals=ud.goal?[ud.goal]:[];card('<div class="ch"><div class="chip">✦ '+t('s5')+'</div><div class="ct">'+t('s5t')+' <em>'+t('s5e')+'</em></div><p class="cs">'+hint+'</p></div><div class="cb"><div class="aib"><div class="ailbl"><div class="aidot"></div>PEAK AI</div><p>Hi '+ud.name+'! Profile ready'+(diff>0?' — goal: lose '+diff+'kg':'')+'  . What matters most to you?</p></div>'+goals.map(function(g){var sel=ud.goals.indexOf(t(g.k))>=0;return '<div class="gc '+(sel?'sel':'')+'" onclick="selGoal(this,\''+g.k+'\')"><span class="ge">'+g.e+'</span><div class="gi"><div class="gt">'+t(g.k)+'</div><div class="gd">'+t(g.d)+'</div></div><div class="gr"></div></div>';}).join('')+'</div>'+foot(t('bld'),function(){if(!ud.goals||ud.goals.length===0){peakToast(de?'Bitte mindestens ein Ziel auswählen.':'Please select at least one goal.');return;}if(ud.goals.length>3){peakToast(de?'Maximal 3 Ziele erlauben fokussierte Ergebnisse.':'Max 3 goals for focused results.');return;}ud.goal=ud.goals[0];saveSession();showLoad();}));}
 
 // ── AI LOADING + PLAN FETCH ───────────────────────────────────────────
-function showLoad(){var de=lang==='de';card('<div class="lw"><div class="spin"></div><div class="lt">'+(de?'Baue deinen Plan...':'Building your plan...')+'</div><p style="font-size:11px;color:var(--faint);margin-bottom:18px">'+(de?'Einzigartig für dich — sonst bekommt das niemand.':'Unique to you — nobody else gets this.')+'</p><div style="text-align:left">'+[['⚡',de?'Berechne Kalorien-Ziel':'Calculating calorie targets'],['🥗',de?'Rezepte nach deinem Geschmack':'Selecting recipes for your taste'],['💪',(de?'Baue ':'Building ')+ud.sport+(de?'-Übungen':' exercises')],['🔋',de?'Regenerations-Protokoll':'Designing recovery protocol'],['✦',de?'Finalisiere deinen Plan':'Finalising your roadmap']].map(function(l,i){return '<div class="lsi" id="li'+i+'"><span style="width:18px;text-align:center;flex-shrink:0">'+l[0]+'</span> '+l[1]+'</div>';}).join('')+'</div></div>');var i=0;var ti=setInterval(function(){if(i>0){var prev=document.getElementById('li'+(i-1));if(prev)prev.className='lsi done';}if(i<5){var cur=document.getElementById('li'+i);if(cur)cur.className='lsi active';i++;}else{clearInterval(ti);fetchPlan().then(function(){step=6;render();});}},700);}
+function showLoad(){var de=lang==='de';var sportLbl=sportLabel(ud.sport);card('<div class="lw"><div class="spin"></div><div class="lt">'+(de?'Baue deinen Plan...':'Building your plan...')+'</div><p style="font-size:11px;color:var(--faint);margin-bottom:18px">'+(de?'Einzigartig für dich — sonst bekommt das niemand.':'Unique to you — nobody else gets this.')+'</p><div style="text-align:left">'+[['⚡',de?'Berechne Kalorien-Ziel':'Calculating calorie targets'],['🥗',de?'Rezepte nach deinem Geschmack':'Selecting recipes for your taste'],['💪',(de?'Baue ':'Building ')+sportLbl+(de?'-Übungen':' exercises')],['🔋',de?'Regenerations-Protokoll':'Designing recovery protocol'],['✦',de?'Finalisiere deinen Plan':'Finalising your roadmap']].map(function(l,i){return '<div class="lsi" id="li'+i+'"><span style="width:18px;text-align:center;flex-shrink:0">'+l[0]+'</span> '+l[1]+'</div>';}).join('')+'</div></div>');var i=0;var ti=setInterval(function(){if(i>0){var prev=document.getElementById('li'+(i-1));if(prev)prev.className='lsi done';}if(i<5){var cur=document.getElementById('li'+i);if(cur)cur.className='lsi active';i++;}else{clearInterval(ti);fetchPlan().then(function(){step=6;render();});}},700);}
 
 async function fetchPlan(){
   var bmr=ud.weight&&ud.height&&ud.age?Math.round(88.362+13.397*parseFloat(ud.weight)+4.799*parseFloat(ud.height)-5.677*parseFloat(ud.age)):1800;
@@ -1957,6 +1972,25 @@ function st2(tier){selTier=tier;__validVoucher=null;render();}
 function sp3(tier,p){selTier=tier;selPlan=p;__validVoucher=null;render();}
 function goFree(){selTier='free';selPlan='free';step=70;render();}
 
+// Smart entry point for "Start free" from login screen:
+// If user has essential onboarding data already (from earlier session),
+// skip straight to Free-Signup. Otherwise start fresh onboarding.
+function startFreeFlow(){
+  var hasProfile=ud.name&&ud.age&&ud.weight;
+  var hasSport=ud.sport&&ud.level;
+  var hasGoals=Array.isArray(ud.goals)&&ud.goals.length>0;
+  if(hasProfile&&hasSport&&hasGoals){
+    // Onboarding already complete → direct to Free signup
+    goFree();
+  }else if(ud.consent_health_data){
+    // Consent done but onboarding incomplete → resume onboarding
+    step=1;render();
+  }else{
+    // Fresh start → show health disclaimer first
+    showHealthDisclaimer();
+  }
+}
+
 function s7(){
   var mP,yP;
   if(selTier==='basic'){mP='€9.99/month';yP='€59/year';}
@@ -2355,6 +2389,7 @@ async function showMealDetail(idx){
 function tFi(p){
   var de=lang==='de';
   var sport=ud.sport||'—';var level=ud.level||'—';
+  var sportDisplay=sportLabel(sport);
   // DE: trigger background translation of week templates if not yet cached.
   // First render may show EN briefly; translation re-renders automatically.
   if(de&&p&&p.week&&weekNeedsTranslation(p.week,sport,level)){
@@ -2363,7 +2398,7 @@ function tFi(p){
       if(currentView==='dashboard'&&dashTab==='fitness')showTab('fitness');
     }).catch(function(e){console.warn('tFi translate:',e);});
   }
-  var c='<div class="sg"><div class="stat"><div class="stl">'+t('sp')+'</div><div class="stv">'+sport+'</div></div><div class="stat"><div class="stl">Level</div><div class="stv">'+level+'</div></div><div class="stat"><div class="stl">'+(de?'Einheiten':'Sessions')+'</div><div class="stv">'+(ud.sessions||'—')+t('sessionsUnit')+'</div></div><div class="stat"><div class="stl">'+(de?'Dauer':'Duration')+'</div><div class="stv">'+(ud.dur||'—')+' '+t('minutesLbl')+'</div></div></div>';
+  var c='<div class="sg"><div class="stat"><div class="stl">'+t('sp')+'</div><div class="stv">'+sportDisplay+'</div></div><div class="stat"><div class="stl">Level</div><div class="stv">'+level+'</div></div><div class="stat"><div class="stl">'+(de?'Einheiten':'Sessions')+'</div><div class="stv">'+(ud.sessions||'—')+t('sessionsUnit')+'</div></div><div class="stat"><div class="stl">'+(de?'Dauer':'Duration')+'</div><div class="stv">'+(ud.dur||'—')+' '+t('minutesLbl')+'</div></div></div>';
 
   // WEEKLY PLAN VIEW
   if(p&&p.week&&p.week.days&&p.week.days.length){
@@ -2872,7 +2907,7 @@ function showLogin(){
     '</div>'+
     '<div class="cf"><button class="bnx" id="magicLinkBtn" onclick="doMagicLink()" style="flex:1;letter-spacing:3px">'+sendBtn+'</button></div>'+
     '<div style="padding:0 30px 18px;text-align:center;font-size:11px;color:var(--faint)">'+noAccount+
-      '<span style="color:var(--red);cursor:pointer;font-weight:700" onclick="step=1;render()">'+startFree+'</span>'+
+      '<span style="color:var(--red);cursor:pointer;font-weight:700" onclick="startFreeFlow()">'+startFree+'</span>'+
     '</div>'
   );
 }
@@ -2885,14 +2920,18 @@ async function doMagicLink(){
   btn.textContent=de?'Wird gesendet...':'Sending...';
   btn.style.opacity='.6';btn.disabled=true;
   try{
-    var result=await window.sb.auth.signInWithOtp({
-      email:em,
-      options:{emailRedirectTo:window.location.origin+'/'}
+    // Use backend endpoint so user receives the branded PEAK magic-link email
+    // (instead of Supabase's plain default template)
+    var res=await fetch(BACKEND+'/auth/send-login-link',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email:em,lang:lang})
     });
-    if(result.error)throw result.error;
+    var data=await res.json();
+    if(!res.ok)throw new Error(data.error||(de?'Link konnte nicht gesendet werden.':'Could not send login link.'));
     showInboxCheck(em);
   }catch(err){
-    showE('el2',err.message||'Could not send login link.');
+    showE('el2',err.message||(de?'Fehler. Erneut versuchen.':'Could not send login link.'));
     btn.textContent=de?'LOGIN-LINK SENDEN →':'SEND LOGIN LINK →';
     btn.style.opacity='1';btn.disabled=false;
   }
