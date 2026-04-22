@@ -2304,7 +2304,14 @@ async function doFreeSignup(){
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         email:em,
-        userData:{name:ud.name,goal:ud.goal,goals:ud.goals||[],sport:ud.sport},
+        userData:{
+          name:ud.name,age:ud.age,gender:ud.gender,
+          weight:ud.weight,dweight:ud.dweight,height:ud.height,sleep:ud.sleep,
+          job:ud.job,commute:ud.commute,stress:ud.stress,
+          sport:ud.sport,level:ud.level,sessions:ud.sessions,dur:ud.dur,equip:ud.equip,
+          al:ud.al||[],di:ud.di||[],cu:ud.cu||[],cook:ud.cook,budget:ud.budget,
+          goal:ud.goal,goals:ud.goals||[]
+        },
         consent:{healthData:true,terms:true,at:ud.consentAt},
         lang:lang
       })
