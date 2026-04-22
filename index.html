@@ -2100,6 +2100,11 @@ async function doPay(){
     var voucherCode=document.getElementById('vc')?document.getElementById('vc').value.trim().toUpperCase():'';
     var res=await fetch(BACKEND+'/create-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,plan:selPlan,tier:selTier,userData:{name:ud.name,goal:ud.goal,goals:ud.goals||[],sport:ud.sport},consent:{healthData:true,terms:true,at:ud.consentAt},voucher:voucherCode||null,lang:lang})});
     var data=await res.json();
+    // Backend detected an existing active subscription → show portal instead
+    if(res.status===409&&data.code==='ALREADY_SUBSCRIBED'){
+      showAccountExists(em,true);
+      return;
+    }
     if(data.url)window.location.href=data.url;
     else throw new Error(data.error||'Error');
   }catch(err){showE('ep',err.message);btn.textContent='🔒 '+t('tp')+' →';btn.style.opacity='1';btn.onclick=doPay;}
