@@ -1703,7 +1703,10 @@ async function translateWeekPlanToDE(week, sport, level){
   var lk=levelKey(level);
   var tasks=week.days.map(function(d){
     if(!d||d.type==='rest'||!d.title)return Promise.resolve(d);
-    var key=sport+'|'+d.type+'|'+lk;
+    // Cache-key includes the title, so AI-generated sessions with different
+    // titles (e.g. "Explosive Lower Body" vs "Match-Specific Conditioning")
+    // don't overwrite each other's translations.
+    var key=sport+'|'+d.type+'|'+lk+'|'+d.title;
     return translateSessionToDE(d,key);
   });
   var translated=await Promise.all(tasks);
@@ -1717,9 +1720,25 @@ function weekNeedsTranslation(week, sport, level){
   var cache=getSesCache();
   return week.days.some(function(d){
     if(!d||d.type==='rest'||!d.title)return false;
-    var key=sport+'|'+d.type+'|'+lk;
-    return !cache[key];
+    // Cache-key uses the title itself so each unique AI-generated session
+    // gets its own cached translation (previously cache hit by sport|type|level
+    // only, which incorrectly reused translations across different sessions).
+    var key=sport+'|'+d.type+'|'+lk+'|'+d.title;
+    if(cache[key])return false;
+    // Also detect English text in an existing session that was never translated
+    // (e.g. "Advanced Ball Mastery", "Explosive Lower Body").
+    if(looksEnglish(d.title)||looksEnglish(d.focus)||looksEnglish(d.desc))return true;
+    return true; // no cache entry → need translation
   });
+}
+
+// Simple heuristic: title is likely English if it contains common English
+// words that don't exist in German (or lacks German-specific characters).
+function looksEnglish(s){
+  if(!s||typeof s!=='string')return false;
+  // Common English fitness words we never want to see in a German plan
+  var enWords=/\b(advanced|mastery|explosive|lower|upper|body|match|specific|conditioning|strength|power|speed|endurance|session|workout|ball|control|sprint|interval|recovery|foundation|build|peak|phase|elite|beginner|intermediate|focus)\b/i;
+  return enWords.test(s);
 }
 
 // Find template for sport (case-insensitive, fuzzy)
@@ -1804,7 +1823,9 @@ function applyProgression(exercises,mult){
 // Build a week of training via KI for sports not in TPL.
 // One API call delivers all sessions — cheaper than one per day.
 async function aiBuildWeek(sport,level,sessionsPerWk,duration,typeSequence,weekNum,phase){
-  var langInstr=lang==='de'?'Respond entirely in GERMAN.':'Respond entirely in ENGLISH.';
+  var langInstr=lang==='de'
+    ?'CRITICAL: Respond ENTIRELY in GERMAN (Deutsch). ALL text fields — especially "title", "focus", "desc", exercise "name", "detail", and "tip" — MUST be in natural German. Examples: "Explosive Lower Body" → "Explosive Beinkraft", "Advanced Ball Mastery" → "Fortgeschrittene Ballbeherrschung", "Match-Specific Conditioning" → "Spielspezifische Kondition", "Ball control" → "Ballkontrolle", "Sprint intervals" → "Sprint-Intervalle". Keep numbers + units unchanged (3×10min, 6×30m, @75%).'
+    :'IMPORTANT: Respond ENTIRELY in ENGLISH. All text fields must be in English.';
   var phaseInstr={foundation:'Foundation phase: moderate intensity, focus on movement quality.',build:'Build phase: progressively heavier loads and higher volume (+15% vs foundation).',peak:'Peak phase: maximum intensity, sport-specific demands (+30% vs foundation).'}[phase]||'';
   var prompt='You are an expert strength & conditioning coach for '+sport+'.\n'+langInstr+'\nBuild '+sessionsPerWk+' training sessions for a '+level+'-level athlete, week '+weekNum+' of a 12-week program.\n'+phaseInstr+'\nSession types (in order): '+typeSequence.join(', ')+'.\nEach session: '+duration+' minutes. 4-5 exercises with sets/reps/duration and one technique tip.\n\nRespond ONLY with valid JSON:\n{"sessions":[{"type":"<type>","title":"<session title>","focus":"<what this trains>","desc":"<1-2 sentences>","exercises":[{"name":"<exercise>","detail":"<sets/reps/duration>","tip":"<technique tip>"},{"name":"<exercise>","detail":"<detail>","tip":"<tip>"},{"name":"<exercise>","detail":"<detail>","tip":"<tip>"},{"name":"<exercise>","detail":"<detail>","tip":"<tip>"}]}]}';
   try{
