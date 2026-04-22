@@ -502,11 +502,20 @@ function showUpgradePrompt(featureKey){
 }
 
 function goUpgrade(){
-  // Reset onboarding step to plan-selection (step 6). We keep ud data, just
-  // reshow tier choice. After Stripe checkout succeeds, user becomes premium.
+  // Logged-in Free users already have a confirmed email + onboarding data.
+  // Skip the email-input step and jump straight to plan selection (step 6).
+  // From there, doPay() will recognise the existing email and go straight to
+  // Stripe Checkout — since the user is already Free (not paid), the backend
+  // will NOT block with ALREADY_SUBSCRIBED (only blocks for existing paid subs).
+  // We set a flag so doPay() knows to skip the check-email call for logged-in users.
+  if(ud.tier==='free'&&ud.email){
+    __upgradingExistingFree=true;
+  }
   step=6;
   render();
 }
+// Module-level flag: true when a logged-in Free user is upgrading to paid
+var __upgradingExistingFree=false;
 
 // PEAK-style inline toast — replaces native alert()
 function peakToast(msg, opts){
@@ -2211,24 +2220,29 @@ async function doPay(){
   btn.textContent='Loading...';btn.style.opacity='.6';btn.onclick=null;
   document.getElementById('ep').style.display='none';
   try{
-    // First: check if an account already exists for this email
-    var chk=await fetch(BACKEND+'/auth/check-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em})});
-    var chkData=await chk.json();
-    if(chkData.exists){
-      // Account exists → show options screen instead of going to Stripe
-      showAccountExists(em,chkData.hasSubscription);
-      return;
+    // Logged-in Free user upgrading → skip check-email (account exists, but
+    // it's a Free one — we WANT them to checkout). The /create-checkout backend
+    // will still block if they already have an active PAID subscription.
+    if(!__upgradingExistingFree){
+      // First: check if an account already exists for this email
+      var chk=await fetch(BACKEND+'/auth/check-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em})});
+      var chkData=await chk.json();
+      if(chkData.exists){
+        // Account exists → show options screen instead of going to Stripe
+        showAccountExists(em,chkData.hasSubscription);
+        return;
+      }
     }
-    // No existing account → proceed to Stripe Checkout
+    // No existing account (or logged-in Free upgrade) → proceed to Stripe Checkout
     var voucherCode=document.getElementById('vc')?document.getElementById('vc').value.trim().toUpperCase():'';
-    var res=await fetch(BACKEND+'/create-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,plan:selPlan,tier:selTier,userData:{name:ud.name,goal:ud.goal,goals:ud.goals||[],sport:ud.sport},consent:{healthData:true,terms:true,at:ud.consentAt},voucher:voucherCode||null,lang:lang})});
+    var res=await fetch(BACKEND+'/create-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,plan:selPlan,tier:selTier,userData:{name:ud.name,age:ud.age,gender:ud.gender,weight:ud.weight,dweight:ud.dweight,height:ud.height,sleep:ud.sleep,job:ud.job,commute:ud.commute,stress:ud.stress,sport:ud.sport,level:ud.level,sessions:ud.sessions,dur:ud.dur,equip:ud.equip,al:ud.al||[],di:ud.di||[],cu:ud.cu||[],cook:ud.cook,budget:ud.budget,goal:ud.goal,goals:ud.goals||[]},consent:{healthData:true,terms:true,at:ud.consentAt},voucher:voucherCode||null,lang:lang})});
     var data=await res.json();
     // Backend detected an existing active subscription → show portal instead
     if(res.status===409&&data.code==='ALREADY_SUBSCRIBED'){
       showAccountExists(em,true);
       return;
     }
-    if(data.url)window.location.href=data.url;
+    if(data.url){__upgradingExistingFree=false;window.location.href=data.url;}
     else throw new Error(data.error||'Error');
   }catch(err){showE('ep',err.message);btn.textContent='🔒 '+t('tp')+' →';btn.style.opacity='1';btn.onclick=doPay;}
 }
@@ -3098,11 +3112,19 @@ function showInboxCheck(email){
   var sub=de?'Wir haben einen Login-Link an <strong>'+email+'</strong> gesendet. Klick den Link in der E-Mail, um dich anzumelden.':'We sent a login link to <strong>'+email+'</strong>. Click the link in the email to sign in.';
   var resend=de?'E-Mail erneut senden':'Resend email';
   var back=de?'← Zurück':'← Back';
+  // PWA-specific note: on iOS, magic links open in Safari, not the installed PWA.
+  // Warn the user so they know they'll need to open the PWA manually afterwards.
+  var isStandalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
+  var pwaNote='';
+  if(isStandalone){
+    pwaNote='<div style="background:var(--s1);border-left:3px solid var(--red);padding:14px;margin:0 0 16px;font-size:12px;color:var(--dim);line-height:1.55"><strong style="color:var(--text);display:block;margin-bottom:4px;font-family:Barlow Condensed,sans-serif;letter-spacing:1.5px;text-transform:uppercase;font-size:11px">'+(de?'⚠️ Wichtig':'⚠️ Important')+'</strong>'+(de?'Der Link öffnet sich im Browser (nicht in der App). Nach dem Klick: kehre manuell zur PEAK-App auf deinem Home-Bildschirm zurück — du bist dann automatisch eingeloggt.':'The link opens in your browser (not this app). After clicking, return manually to the PEAK app on your home screen — you will be logged in automatically.')+'</div>';
+  }
   card(
     '<div class="ch"><div class="chip">✦ '+(de?'Fast geschafft':'Almost there')+'</div>'+
     '<div class="ct">'+title+'</div>'+
     '<p class="cs">'+sub+'</p></div>'+
     '<div class="cb">'+
+    pwaNote+
     '<div style="padding:16px 0;text-align:center;font-size:12px;color:var(--dim);line-height:1.7">'+
     (de?'Keine E-Mail erhalten? Check deinen Spam-Ordner.':'No email? Check your spam folder.')+
     '</div></div>'+
@@ -3817,7 +3839,7 @@ if('serviceWorker' in navigator){
     var de=typeof lang!=='undefined'&&lang==='de';
     var badge=document.createElement('div');
     badge.id='pwaInstallBadge';
-    badge.style.cssText='position:fixed;bottom:22px;right:22px;z-index:9998;background:linear-gradient(135deg,#E8001A 0%,#B80015 100%);color:#fff;padding:14px 18px 14px 14px;font-family:"Barlow Condensed",Arial,sans-serif;font-weight:900;font-size:13px;letter-spacing:1.8px;text-transform:uppercase;cursor:pointer;box-shadow:0 8px 24px rgba(232,0,26,.35),0 2px 8px rgba(0,0,0,.2);display:flex;align-items:center;gap:12px;user-select:none;max-width:calc(100vw - 44px);border:2px solid #fff;border-radius:12px';
+    badge.style.cssText='position:fixed;bottom:88px;right:22px;z-index:9998;background:linear-gradient(135deg,#E8001A 0%,#B80015 100%);color:#fff;padding:14px 18px 14px 14px;font-family:"Barlow Condensed",Arial,sans-serif;font-weight:900;font-size:13px;letter-spacing:1.8px;text-transform:uppercase;cursor:pointer;box-shadow:0 8px 24px rgba(232,0,26,.35),0 2px 8px rgba(0,0,0,.2);display:flex;align-items:center;gap:12px;user-select:none;max-width:calc(100vw - 44px);border:2px solid #fff;border-radius:12px';
     badge.innerHTML=
       '<div style="background:#fff;color:#E8001A;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;flex-shrink:0;border-radius:50%">📲</div>'+
       '<div style="line-height:1.25">'+
