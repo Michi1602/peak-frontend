@@ -288,6 +288,15 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;hei
 .srm{font-size:11px;color:var(--dim)}
 .fbdg{display:inline-flex;align-items:center;padding:2px 8px;font-size:10px;font-weight:700;margin-top:4px}
 .fgood{background:rgba(0,200,100,.08);color:#00C864;border:1px solid rgba(0,200,100,.15)}.fbad{background:var(--rbg);color:var(--red);border:1px solid var(--rbd)}
+.fwarn{background:rgba(255,170,0,.1);color:#E89A00;border:1px solid rgba(255,170,0,.25)}
+.scan-overlay{position:fixed;inset:0;z-index:9999;background:#000;display:flex;align-items:center;justify-content:center}
+.scan-overlay video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.scan-ui{position:relative;z-index:2;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;padding:env(safe-area-inset-top) 20px env(safe-area-inset-bottom)}
+.scan-close{position:absolute;top:calc(env(safe-area-inset-top) + 14px);right:14px;width:40px;height:40px;border:none;background:rgba(0,0,0,.55);color:#fff;font-size:20px;cursor:pointer;pointer-events:auto;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.scan-frame{width:min(78vw,320px);aspect-ratio:4/3;border:2px solid var(--red);position:relative;box-shadow:0 0 0 9999px rgba(0,0,0,.45)}
+.scan-frame-line{position:absolute;left:0;right:0;height:2px;background:var(--red);animation:scan 2s ease-in-out infinite;box-shadow:0 0 8px var(--red)}
+.scan-hint{color:#fff;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-top:22px;text-shadow:0 1px 3px rgba(0,0,0,.7)}
+.scan-err{margin-top:14px;max-width:80vw;padding:10px 14px;background:rgba(232,0,26,.9);color:#fff;font-size:12px;font-weight:700;pointer-events:auto;text-align:center;line-height:1.4}
 .le{background:var(--s2);border:1px solid var(--b2);padding:10px 12px;margin-bottom:5px;display:flex;align-items:center;gap:8px}
 .lei{font-size:18px}.leinf{flex:1}.let{font-size:12px;font-weight:600;color:var(--white)}.leti{font-size:10px;color:var(--faint)}
 .lek{font-size:11px;font-weight:700;color:var(--red)}
@@ -3093,14 +3102,283 @@ function tSc(){
   if(isFree()){dshell('scanner',upgHTMLFree('scanner'));return;}
   if(isBasic()){dshell('scanner',upgHTML());return;}
   var de=lang==='de';
-  var c='<div class="tiles c3" style="margin-bottom:11px">'+[{i:'📷',l:(de?'Barcode':'Barcode'),f:'simScan'},{i:'🍽️',l:(de?'Menükarte':'Menu Scan'),f:'simMenu'},{i:'🛒',l:(de?'Einkauf':'Shopping'),f:'simShop'}].map(function(b){return '<div class="tile" onclick="'+b.f+'()" style="flex-direction:column;text-align:center;padding:12px 5px"><span style="font-size:19px;margin-bottom:4px">'+b.i+'</span><span class="tl" style="font-size:10px;letter-spacing:.5px">'+b.l+'</span></div>';}).join('')+'</div><div id="sr"></div><div class="sbox" onclick="simScan()"><div style="text-align:center"><div class="sfr"><div class="sln"></div></div><div class="stxt">'+(de?'TIPPEN ZUM SIMULIEREN':'TAP TO SIMULATE')+'</div></div></div>';
+  var tiles=[
+    {i:'📷',l:(de?'Barcode':'Barcode'),f:'openBarcodeScanner'},
+    {i:'🍽️',l:(de?'Menükarte':'Menu Scan'),f:'openMenuScanner'},
+    {i:'🔢',l:(de?'Manuell':'Manual'),f:'openManualBarcode'}
+  ];
+  var c='<div class="tiles c3" style="margin-bottom:11px">'+tiles.map(function(b){return '<div class="tile" onclick="'+b.f+'()" style="flex-direction:column;text-align:center;padding:12px 5px"><span style="font-size:19px;margin-bottom:4px">'+b.i+'</span><span class="tl" style="font-size:10px;letter-spacing:.5px">'+b.l+'</span></div>';}).join('')+'</div>';
+  c+='<div id="sr"></div>';
+  c+='<div class="sbox" onclick="openBarcodeScanner()"><div style="text-align:center"><div class="sfr"><div class="sln"></div></div><div class="stxt">'+(de?'TIPPEN ZUM SCANNEN':'TAP TO SCAN')+'</div></div></div>';
   dshell('scanner',c);
 }
-function simScan(){var foods=[{name:'Oat milk 250ml',k:45,p:1.5,c:6.5,f:1.2,brand:'Oatly',fit:true},{name:'Protein Bar 60g',k:210,p:20,c:22,f:7,brand:'Grenade',fit:true},{name:'Cola 330ml',k:139,p:0,c:35,f:0,brand:'Coca-Cola',fit:false},{name:'Greek Yoghurt 150g',k:88,p:10,c:3.6,f:3.8,brand:'Fage',fit:true}];var fd=foods[Math.floor(Math.random()*foods.length)];var el=document.getElementById('sr');if(el)el.innerHTML='<div class="sres"><div class="srn">'+fd.brand+' — '+fd.name+'</div><div class="srm">'+fd.k+' kcal · '+fd.p+'g protein · '+fd.c+'g carbs</div><div class="fbdg '+(fd.fit?'fgood':'fbad')+'">'+(fd.fit?'✓ Fits plan':'⚠ High sugar/cals')+'</div><div style="display:flex;gap:7px;margin-top:8px"><button class="bnx" style="flex:1;font-size:10px;padding:7px;letter-spacing:1px" onclick="logFood(\''+fd.name+'\','+fd.k+')">LOG</button><button class="bnx" style="flex:1;font-size:10px;padding:7px;letter-spacing:1px;background:var(--s3);color:var(--dim)" onclick="simRecSug(\''+fd.name+'\')">RECIPES →</button></div></div>';}
-function simMenu(){var de=lang==='de';var el=document.getElementById('sr');if(el)el.innerHTML='<div class="aib"><div class="ailbl"><div class="aidot"></div>'+(de?'Menü-Analyse':'Menu Analysis')+'</div>'+[{r:1,n:de?'Gegrillter Lachs':'Grilled salmon',d:'~580 kcal · 45g '+(de?'Eiweiß · Beste Wahl':'protein · Best fit')},{r:2,n:de?'Hähnchensalat':'Chicken salad',d:'~420 kcal · 38g '+(de?'Eiweiß · Gut':'protein · Great')},{r:3,n:de?'Gemüse-Risotto':'Vegetable risotto',d:'~520 kcal · 12g '+(de?'Eiweiß · OK':'protein · OK')}].map(function(i){return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)"><div style="width:18px;height:18px;background:var(--red);color:var(--white);font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+i.r+'</div><div><div style="font-size:12px;font-weight:700;color:var(--white)">'+i.n+'</div><div style="font-size:10px;color:var(--faint)">'+i.d+'</div></div></div>';}).join('')+'</div>';}
-function simShop(){var de=lang==='de';var el=document.getElementById('sr');if(el)el.innerHTML='<div class="aib"><div class="ailbl"><div class="aidot"></div>'+(de?'Live-Shopping-Modus':'Live Shopping Mode')+'</div><p>'+(de?'Scanne Produkte im Laden. Ich sage dir, ob sie zu deinem Plan passen und schlage Rezepte vor.':'Scan products in-store. I\'ll tell you if they fit your plan and suggest recipes.')+'</p></div>';}
-function simRecSug(ing){var el=document.getElementById('sr');if(el)el.innerHTML+='<div class="aib" style="margin-top:8px"><div class="ailbl"><div class="aidot"></div>Recipes with '+ing+'</div><div style="font-size:12px;padding:5px 0;color:var(--ink2)">🍳 Quick stir-fry bowl — 20 min</div><div style="font-size:12px;padding:5px 0;color:var(--ink2)">🥗 Protein salad — 10 min</div></div>';}
-function logFood(n,k){flog.push({text:n,emoji:'📦',kcal:k,time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})});var el=document.getElementById('sr');if(el){var msg=document.createElement('div');msg.style.cssText='font-size:11px;color:var(--red);font-weight:700;margin-top:6px;letter-spacing:.5px';msg.textContent='✓ Logged!';el.appendChild(msg);}}
+
+// ── BARCODE SCANNER ───────────────────────────────────────────────────
+var __zxingReader=null;
+var __zxingControls=null;
+var __zxingLoaded=false;
+
+function loadZXing(){
+  if(__zxingLoaded)return Promise.resolve(window.ZXingBrowser);
+  return new Promise(function(resolve,reject){
+    var s=document.createElement('script');
+    s.src='https://unpkg.com/@zxing/browser@0.1.5/umd/zxing-browser.min.js';
+    s.onload=function(){__zxingLoaded=true;resolve(window.ZXingBrowser);};
+    s.onerror=function(){reject(new Error('Scanner library failed to load'));};
+    document.head.appendChild(s);
+  });
+}
+
+async function openBarcodeScanner(){
+  var de=lang==='de';
+  // Create overlay
+  var ov=document.createElement('div');
+  ov.id='scanOverlay';
+  ov.className='scan-overlay';
+  ov.innerHTML=
+    '<video id="scanVideo" playsinline muted autoplay></video>'+
+    '<div class="scan-ui">'+
+      '<button class="scan-close" onclick="closeBarcodeScanner()" aria-label="close">✕</button>'+
+      '<div class="scan-frame"><div class="scan-frame-line"></div></div>'+
+      '<div class="scan-hint">'+(de?'Barcode ins Rechteck halten':'Center the barcode in the frame')+'</div>'+
+      '<div class="scan-err" id="scanErr" style="display:none"></div>'+
+    '</div>';
+  document.body.appendChild(ov);
+  try{
+    var ZX=await loadZXing();
+    var reader=new ZX.BrowserMultiFormatReader();
+    __zxingReader=reader;
+    var video=document.getElementById('scanVideo');
+    // Select back camera if possible
+    var devices=await ZX.BrowserCodeReader.listVideoInputDevices();
+    var deviceId;
+    if(devices&&devices.length){
+      var back=devices.find(function(d){return /back|rear|environment/i.test(d.label||'');});
+      deviceId=back?back.deviceId:devices[devices.length-1].deviceId;
+    }
+    __zxingControls=await reader.decodeFromVideoDevice(deviceId,video,function(result,err){
+      if(result){
+        var code=result.getText();
+        handleBarcodeDetected(code);
+      }
+    });
+  }catch(err){
+    var msg=(err&&err.name==='NotAllowedError')?(de?'Kamerazugriff verweigert. Bitte in den Browser-Einstellungen erlauben.':'Camera access denied. Please allow in browser settings.'):(err.message||(de?'Kamera nicht verfügbar.':'Camera unavailable.'));
+    var errEl=document.getElementById('scanErr');
+    if(errEl){errEl.textContent=msg;errEl.style.display='block';}
+    console.error('Barcode scanner error:',err);
+  }
+}
+
+function closeBarcodeScanner(){
+  try{if(__zxingControls&&__zxingControls.stop)__zxingControls.stop();}catch(e){}
+  try{if(__zxingReader&&__zxingReader.reset)__zxingReader.reset();}catch(e){}
+  __zxingReader=null;__zxingControls=null;
+  var ov=document.getElementById('scanOverlay');
+  if(ov)ov.remove();
+}
+
+async function handleBarcodeDetected(code){
+  // Prevent double-fire while navigating away
+  if(!document.getElementById('scanOverlay'))return;
+  closeBarcodeScanner();
+  await lookupBarcode(code);
+}
+
+function openManualBarcode(){
+  var de=lang==='de';
+  var code=window.prompt(de?'Barcode eingeben (6–14 Ziffern):':'Enter barcode (6–14 digits):','');
+  if(!code)return;
+  code=code.trim().replace(/\D/g,'');
+  if(!/^\d{6,14}$/.test(code)){
+    alert(de?'Ungültiger Barcode.':'Invalid barcode.');
+    return;
+  }
+  lookupBarcode(code);
+}
+
+async function lookupBarcode(code){
+  var de=lang==='de';
+  var el=document.getElementById('sr');
+  if(!el)return;
+  el.innerHTML='<div class="aib"><div class="ailbl"><div class="aidot"></div>'+(de?'Suche Produkt…':'Looking up product…')+'</div><div class="lw" style="padding:14px"><div class="spin"></div></div></div>';
+  try{
+    var sess=await window.sb.auth.getSession();
+    var token=sess?.data?.session?.access_token;
+    var res=await fetch(BACKEND+'/ai/scan-barcode',{
+      method:'POST',
+      headers:Object.assign({'Content-Type':'application/json'},token?{Authorization:'Bearer '+token}:{}),
+      body:JSON.stringify({barcode:code,userGoal:ud.goal||'',userLang:lang})
+    });
+    if(res.status===404){
+      el.innerHTML='<div class="aib"><div class="ailbl"><div class="aidot"></div>'+(de?'Nicht gefunden':'Not found')+'</div><p style="font-size:12px;color:var(--dim);margin:6px 0">'+(de?'Barcode ':'Barcode ')+code+(de?' ist nicht in unserer Datenbank. Du kannst den Eintrag manuell hinzufügen.':' is not in our database. You can add it manually.')+'</p><button class="bnx" style="width:100%;font-size:11px;padding:9px" onclick="openManualFoodEntry()">'+(de?'+ Manuell eintragen':'+ Add manually')+'</button></div>';
+      return;
+    }
+    var data=await res.json().catch(function(){return{};});
+    if(!res.ok||!data.product){
+      throw new Error(data.error||(de?'Fehler beim Nachschlagen.':'Lookup error.'));
+    }
+    renderProductResult(data.product);
+  }catch(err){
+    el.innerHTML='<div class="aib" style="border-color:var(--red)"><div class="ailbl" style="color:var(--red)"><div class="aidot"></div>'+(de?'Fehler':'Error')+'</div><p style="font-size:12px;color:var(--dim);margin:6px 0">'+(err.message||String(err))+'</p></div>';
+  }
+}
+
+function renderProductResult(p){
+  var de=lang==='de';
+  var el=document.getElementById('sr');
+  if(!el)return;
+  var fitClass=p.fit==='fit'?'fgood':(p.fit==='avoid'?'fbad':'fwarn');
+  var fitLabel=p.fit==='fit'?(de?'✓ Passt zum Plan':'✓ Fits plan'):(p.fit==='avoid'?(de?'⚠ Eher meiden':'⚠ Best avoided'):(de?'◉ In Maßen':'◉ In moderation'));
+  var warningsHtml=(p.warnings&&p.warnings.length)?'<div style="font-size:10px;color:var(--faint);margin-top:4px">'+p.warnings.join(' · ')+'</div>':'';
+  var imgHtml=p.image?'<img src="'+p.image+'" alt="" style="width:48px;height:48px;object-fit:cover;margin-right:10px;flex-shrink:0">':'';
+  var brandLine=p.brand?(p.brand+' — '):'';
+  el.innerHTML=
+    '<div class="sres">'+
+      '<div style="display:flex;align-items:flex-start">'+imgHtml+
+        '<div style="flex:1;min-width:0">'+
+          '<div class="srn">'+brandLine+p.name+'</div>'+
+          '<div class="srm">~'+p.kcal+' kcal · '+p.protein+'g '+(de?'Eiweiß':'protein')+' · '+p.carbs+'g '+(de?'Kohlenh.':'carbs')+'</div>'+
+          '<div style="font-size:10px;color:var(--faint);margin-top:2px">'+(de?'pro Portion':'per serving')+' (~'+p.serving_g+'g)'+(p.nutri_score?' · Nutri-Score '+p.nutri_score:'')+'</div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="fbdg '+fitClass+'" style="margin-top:8px">'+fitLabel+'</div>'+
+      warningsHtml+
+      '<div style="display:flex;gap:7px;margin-top:10px">'+
+        '<button class="bnx" style="flex:1;font-size:10px;padding:7px;letter-spacing:1px" onclick="logFood('+JSON.stringify((p.brand?p.brand+' ':'')+p.name).replace(/"/g,'&quot;')+','+p.kcal+')">LOG</button>'+
+        '<button class="bnx" style="flex:1;font-size:10px;padding:7px;letter-spacing:1px;background:var(--s3);color:var(--dim)" onclick="openBarcodeScanner()">'+(de?'NÄCHSTER SCAN':'SCAN AGAIN')+' →</button>'+
+      '</div>'+
+    '</div>';
+}
+
+function openManualFoodEntry(){
+  var de=lang==='de';
+  var name=window.prompt(de?'Produktname:':'Product name:','');
+  if(!name)return;
+  var kcalStr=window.prompt(de?'Geschätzte Kalorien:':'Estimated calories:','');
+  var kcal=parseInt(kcalStr,10);
+  if(!isFinite(kcal)||kcal<=0){alert(de?'Bitte gültige Kalorienzahl eingeben.':'Please enter a valid calorie number.');return;}
+  logFood(name,kcal);
+  var el=document.getElementById('sr');
+  if(el)el.innerHTML='<div class="aib"><div class="ailbl" style="color:#2a9d5f"><div class="aidot" style="background:#2a9d5f"></div>✓ '+(de?'Eingetragen':'Logged')+'</div><p style="font-size:12px;color:var(--dim);margin:6px 0">'+name+' · '+kcal+' kcal</p></div>';
+}
+
+// ── MENU SCANNER (Photo → Claude Vision) ─────────────────────────────
+function openMenuScanner(){
+  var de=lang==='de';
+  // Use a file input with capture hint so mobile devices open camera directly
+  var input=document.createElement('input');
+  input.type='file';
+  input.accept='image/*';
+  input.capture='environment';
+  input.style.display='none';
+  input.addEventListener('change',function(e){
+    var file=e.target.files&&e.target.files[0];
+    if(!file)return;
+    handleMenuPhoto(file);
+  });
+  document.body.appendChild(input);
+  input.click();
+  // Auto-cleanup after 60s just in case
+  setTimeout(function(){try{input.remove();}catch(_){}},60000);
+}
+
+async function handleMenuPhoto(file){
+  var de=lang==='de';
+  var el=document.getElementById('sr');
+  if(!el)return;
+  if(!file.type||!file.type.startsWith('image/')){
+    el.innerHTML='<div class="aib" style="border-color:var(--red)"><div class="ailbl" style="color:var(--red)"><div class="aidot"></div>'+(de?'Bitte ein Foto wählen':'Please choose a photo')+'</div></div>';
+    return;
+  }
+  el.innerHTML='<div class="aib"><div class="ailbl"><div class="aidot"></div>'+(de?'Analysiere Speisekarte…':'Analyzing menu…')+'</div><div class="lw" style="padding:14px"><div class="spin"></div><p style="font-size:11px;color:var(--faint);margin-top:8px">'+(de?'Das dauert 5–15 Sekunden':'This takes 5–15 seconds')+'</p></div></div>';
+  try{
+    // Downscale to max 1280px to keep payload small + faster upload
+    var dataUrl=await resizeImageFile(file,1280,0.82);
+    // Split "data:image/jpeg;base64,AAAA..." into mediaType + base64
+    var m=dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+    if(!m)throw new Error('Image encoding failed');
+    var mediaType=m[1];var b64=m[2];
+    var sess=await window.sb.auth.getSession();
+    var token=sess?.data?.session?.access_token;
+    var res=await fetch(BACKEND+'/ai/scan-menu',{
+      method:'POST',
+      headers:Object.assign({'Content-Type':'application/json'},token?{Authorization:'Bearer '+token}:{}),
+      body:JSON.stringify({image:b64,mediaType:mediaType,userGoal:ud.goal||'',userLang:lang})
+    });
+    var data=await res.json().catch(function(){return{};});
+    if(!res.ok)throw new Error(data.error||'Analysis failed');
+    if(data.error==='no_menu'||!data.dishes||!data.dishes.length){
+      el.innerHTML='<div class="aib" style="border-color:var(--red)"><div class="ailbl" style="color:var(--red)"><div class="aidot"></div>'+(de?'Keine Speisekarte erkannt':'No menu detected')+'</div><p style="font-size:12px;color:var(--dim);margin:6px 0">'+(de?'Versuch es mit einem schärferen Foto der Karte.':'Try again with a clearer photo of the menu.')+'</p><button class="bnx" style="width:100%;font-size:11px;padding:9px;margin-top:6px" onclick="openMenuScanner()">'+(de?'Neues Foto':'New photo')+' →</button></div>';
+      return;
+    }
+    renderMenuResult(data.dishes);
+  }catch(err){
+    console.error('Menu scan error:',err);
+    el.innerHTML='<div class="aib" style="border-color:var(--red)"><div class="ailbl" style="color:var(--red)"><div class="aidot"></div>'+(de?'Fehler':'Error')+'</div><p style="font-size:12px;color:var(--dim);margin:6px 0">'+(err.message||String(err))+'</p><button class="bnx" style="width:100%;font-size:11px;padding:9px;margin-top:6px" onclick="openMenuScanner()">'+(de?'Nochmal versuchen':'Try again')+' →</button></div>';
+  }
+}
+
+function resizeImageFile(file,maxDim,quality){
+  return new Promise(function(resolve,reject){
+    var reader=new FileReader();
+    reader.onerror=function(){reject(new Error('File read failed'));};
+    reader.onload=function(){
+      var img=new Image();
+      img.onload=function(){
+        var w=img.naturalWidth,h=img.naturalHeight;
+        if(w>maxDim||h>maxDim){
+          if(w>h){h=Math.round(h*maxDim/w);w=maxDim;}
+          else{w=Math.round(w*maxDim/h);h=maxDim;}
+        }
+        var canvas=document.createElement('canvas');
+        canvas.width=w;canvas.height=h;
+        var ctx=canvas.getContext('2d');
+        ctx.drawImage(img,0,0,w,h);
+        try{resolve(canvas.toDataURL('image/jpeg',quality));}
+        catch(e){reject(e);}
+      };
+      img.onerror=function(){reject(new Error('Image load failed'));};
+      img.src=reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderMenuResult(dishes){
+  var de=lang==='de';
+  var el=document.getElementById('sr');
+  if(!el)return;
+  var fitLabel={
+    best:de?'Beste Wahl':'Best',
+    good:de?'Gut':'Good',
+    ok:de?'OK':'OK'
+  };
+  var fitColor={best:'var(--red)',good:'#2a9d5f',ok:'var(--faint)'};
+  var html='<div class="aib"><div class="ailbl"><div class="aidot"></div>'+(de?'Menü-Analyse':'Menu Analysis')+'</div>';
+  dishes.slice(0,3).forEach(function(d,i){
+    var rnk=i+1;
+    var fit=d.fit||'ok';
+    var col=fitColor[fit]||fitColor.ok;
+    var lbl=fitLabel[fit]||fit;
+    var kcal=d.kcal?('~'+d.kcal+' kcal'):'';
+    var prot=d.protein?(' · '+d.protein+'g '+(de?'Eiweiß':'protein')):'';
+    var reason=d.reason?(' · '+d.reason):'';
+    html+='<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'+
+      '<div style="width:20px;height:20px;background:'+col+';color:var(--white);font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">'+rnk+'</div>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-size:13px;font-weight:700;color:var(--white)">'+(d.name||'—')+'</div>'+
+        '<div style="font-size:11px;color:var(--faint);line-height:1.4">'+kcal+prot+'</div>'+
+        '<div style="font-size:10px;color:'+col+';font-weight:700;letter-spacing:.5px;margin-top:2px">'+lbl.toUpperCase()+reason+'</div>'+
+      '</div>'+
+    '</div>';
+  });
+  html+='<button class="bnx" style="width:100%;font-size:10px;padding:8px;letter-spacing:1px;margin-top:8px" onclick="openMenuScanner()">'+(de?'NEUES MENÜ SCANNEN':'SCAN ANOTHER MENU')+' →</button>';
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+function logFood(n,k){flog.push({text:n,emoji:'📦',kcal:k,time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})});saveSession();var el=document.getElementById('sr');if(el){var msg=document.createElement('div');msg.style.cssText='font-size:11px;color:#2a9d5f;font-weight:700;margin-top:6px;letter-spacing:.5px';msg.textContent='✓ '+((lang==='de')?'Eingetragen':'Logged');el.appendChild(msg);}}
 
 // ── LOG TAB ───────────────────────────────────────────────────────────
 var logEditIdx=-1; // welcher Eintrag gerade bearbeitet wird
