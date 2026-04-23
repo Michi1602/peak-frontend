@@ -7,18 +7,13 @@
 
 <!-- PWA / Mobile app meta -->
 <meta name="description" content="Personalised AI nutrition, training and recovery for your sport.">
-<meta name="theme-color" content="#0E0E0E">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="PEAK">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="application-name" content="PEAK">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="PEAK">
-<meta name="theme-color" content="#0E0E0E" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0E0E0E" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="PEAK">
+<meta name="application-name" content="PEAK">
 
 <!-- Icons -->
 <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png?v=3">
@@ -886,13 +881,25 @@ function toggleTheme(){
   try{localStorage.setItem('peak-theme',next);}catch(e){}
   var btn=document.getElementById('tb');
   if(btn)btn.textContent=next==='dark'?'DARK':'LIGHT';
+  updateThemeColorMeta(next);
 }
 function syncThemeButton(){
   var btn=document.getElementById('tb');
-  if(btn){
-    var cur=document.documentElement.getAttribute('data-theme')||'dark';
-    btn.textContent=cur==='dark'?'DARK':'LIGHT';
-  }
+  var cur=document.documentElement.getAttribute('data-theme')||'dark';
+  if(btn)btn.textContent=cur==='dark'?'DARK':'LIGHT';
+  updateThemeColorMeta(cur);
+}
+// Update the <meta name="theme-color"> to match the in-app theme so the
+// browser chrome / iOS status bar matches the app's top bar color.
+// Media-query-bound theme-colors only react to system scheme, not our toggle.
+function updateThemeColorMeta(theme){
+  var color=theme==='light'?'#FFFFFF':'#0E0E0E';
+  var existing=document.querySelector('meta[name="theme-color"]:not([media])');
+  if(existing){existing.setAttribute('content',color);return;}
+  var m=document.createElement('meta');
+  m.setAttribute('name','theme-color');
+  m.setAttribute('content',color);
+  document.head.appendChild(m);
 }
 function rerenderCurrent(){
   // Use explicit view tracking — DOM-sniffing was unreliable
@@ -3307,7 +3314,12 @@ async function handleMenuPhoto(file){
       body:JSON.stringify({image:b64,mediaType:mediaType,userGoal:ud.goal||'',userLang:lang})
     });
     var data=await res.json().catch(function(){return{};});
-    if(!res.ok)throw new Error(data.error||'Analysis failed');
+    if(!res.ok){
+      // Surface the real error for debugging: 413 = payload too big, 502 = AI error, etc.
+      var errMsg=data.error||('HTTP '+res.status);
+      if(res.status===413)errMsg=de?'Bild zu groß. Bitte kleineres Foto.':'Image too large. Please use a smaller photo.';
+      throw new Error(errMsg);
+    }
     if(data.error==='no_menu'||!data.dishes||!data.dishes.length){
       el.innerHTML='<div class="aib" style="border-color:var(--red)"><div class="ailbl" style="color:var(--red)"><div class="aidot"></div>'+(de?'Keine Speisekarte erkannt':'No menu detected')+'</div><p style="font-size:12px;color:var(--dim);margin:6px 0">'+(de?'Versuch es mit einem schärferen Foto der Karte.':'Try again with a clearer photo of the menu.')+'</p><button class="bnx" style="width:100%;font-size:11px;padding:9px;margin-top:6px" onclick="openMenuScanner()">'+(de?'Neues Foto':'New photo')+' →</button></div>';
       return;
