@@ -2500,10 +2500,77 @@ function s7fi(){
 }
 
 function s8(){
-  document.getElementById('pb').style.width='100%';
-  document.getElementById('sl').textContent='Plan unlocked!';
   loadSession();
-  showDash();
+  var de=lang==='de';
+  document.getElementById('pb').style.width='100%';
+  document.getElementById('sl').textContent=de?'Zahlung erfolgreich':'Payment successful';
+  currentView='payment-success';
+
+  // Clean the session_id from URL so a refresh doesn't re-trigger this screen.
+  try{
+    if(window.location.search.includes('session_id')){
+      window.history.replaceState({},document.title,window.location.pathname);
+    }
+  }catch(e){}
+
+  var email=ud.email||'';
+  var emailHint=email
+    ? '<div style="font-family:var(--head);font-weight:900;font-size:15px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px">'+email+'</div>'
+    : '';
+
+  var title=de?'Zahlung erfolgreich':'Payment successful';
+  var chip=de?'✓ Willkommen bei PEAK':'✓ Welcome to PEAK';
+  var sub=de?'Dein Zugang ist freigeschaltet':'Your access is unlocked';
+  var body=de
+    ? 'Wir haben dir einen Login-Link per E-Mail geschickt. Klick darauf, um dich einzuloggen und deinen personalisierten Plan zu sehen.'
+    : 'We\'ve sent you a login link by email. Click it to sign in and see your personalized plan.';
+  var spamHint=de
+    ? 'Keine Mail nach 2 Minuten? Schau im Spam-Ordner oder'
+    : 'No email after 2 minutes? Check spam, or';
+  var resendLabel=de?'Link erneut senden':'Resend link';
+
+  card(
+    '<div class="ch"><div class="chip">'+chip+'</div><div class="ct">'+title+'</div><p class="cs">'+sub+'</p></div>'+
+    '<div class="cb" style="text-align:center;padding:28px 20px">'+
+      '<div style="font-size:48px;margin-bottom:14px">📬</div>'+
+      emailHint+
+      '<div style="color:var(--dim);font-size:13px;line-height:1.6;margin-bottom:20px">'+body+'</div>'+
+      '<div id="s8Msg" style="font-size:12px;margin-bottom:12px;display:none"></div>'+
+      (email?'<button class="bnx inline-btn" id="s8Resend" onclick="doResendLoginLink()" style="width:auto;padding:10px 20px;font-size:12px">📧 '+resendLabel+'</button>':'')+
+      '<div style="background:var(--s2);border-left:3px solid var(--red);padding:12px 16px;font-size:12px;color:var(--dim);text-align:left;line-height:1.5;margin-top:20px">'+spamHint+' support@mj-performance.net</div>'+
+    '</div>'
+  );
+}
+
+// Resend login link from payment success screen (if welcome mail didn't arrive)
+async function doResendLoginLink(){
+  var btn=document.getElementById('s8Resend');
+  var msg=document.getElementById('s8Msg');
+  var de=lang==='de';
+  if(!ud.email)return;
+  if(btn){btn.disabled=true;btn.style.opacity='.6';btn.textContent=de?'Sende...':'Sending...';}
+  try{
+    var res=await fetch(BACKEND+'/auth/send-login-link',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email:ud.email})
+    });
+    var data=await res.json().catch(function(){return{};});
+    if(!res.ok)throw new Error(data.error||'Resend failed');
+    if(msg){
+      msg.style.display='block';
+      msg.style.color='#2a9d5f';
+      msg.textContent=de?'✓ Link gesendet. Prüfe dein Postfach.':'✓ Link sent. Check your inbox.';
+    }
+    if(btn){btn.textContent=de?'✓ Gesendet':'✓ Sent';btn.style.opacity='.6';}
+  }catch(err){
+    if(msg){
+      msg.style.display='block';
+      msg.style.color='var(--red)';
+      msg.textContent=err.message||(de?'Fehler. Bitte später erneut versuchen.':'Error. Please try again later.');
+    }
+    if(btn){btn.disabled=false;btn.style.opacity='1';btn.textContent='📧 '+(de?'Link erneut senden':'Resend link');}
+  }
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────
