@@ -292,6 +292,7 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;hei
 .scan-frame-line{position:absolute;left:0;right:0;height:2px;background:var(--red);animation:scan 2s ease-in-out infinite;box-shadow:0 0 8px var(--red)}
 .scan-hint{color:#fff;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-top:22px;text-shadow:0 1px 3px rgba(0,0,0,.7)}
 .scan-err{margin-top:14px;max-width:80vw;padding:10px 14px;background:rgba(232,0,26,.9);color:#fff;font-size:12px;font-weight:700;pointer-events:auto;text-align:center;line-height:1.4}
+.scan-manual{margin-top:16px;padding:10px 18px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.4);color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:900;letter-spacing:2px;text-transform:uppercase;pointer-events:auto;cursor:pointer;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .le{background:var(--s2);border:1px solid var(--b2);padding:10px 12px;margin-bottom:5px;display:flex;align-items:center;gap:8px}
 .lei{font-size:18px}.leinf{flex:1}.let{font-size:12px;font-weight:600;color:var(--white)}.leti{font-size:10px;color:var(--faint)}
 .lek{font-size:11px;font-weight:700;color:var(--red)}
@@ -3128,11 +3129,19 @@ var __zxingLoaded=false;
 function loadZXing(){
   if(__zxingLoaded)return Promise.resolve(window.ZXingBrowser);
   return new Promise(function(resolve,reject){
-    var s=document.createElement('script');
-    s.src='https://unpkg.com/@zxing/browser@0.1.5/umd/zxing-browser.min.js';
-    s.onload=function(){__zxingLoaded=true;resolve(window.ZXingBrowser);};
-    s.onerror=function(){reject(new Error('Scanner library failed to load'));};
-    document.head.appendChild(s);
+    // Load @zxing/library first — it provides BarcodeFormat + DecodeHintType
+    // constants that @zxing/browser doesn't expose on its own in UMD.
+    var s1=document.createElement('script');
+    s1.src='https://unpkg.com/@zxing/library@0.21.3';
+    s1.onload=function(){
+      var s2=document.createElement('script');
+      s2.src='https://unpkg.com/@zxing/browser@0.1.5';
+      s2.onload=function(){__zxingLoaded=true;resolve(window.ZXingBrowser);};
+      s2.onerror=function(){reject(new Error('Scanner library (browser) failed to load'));};
+      document.head.appendChild(s2);
+    };
+    s1.onerror=function(){reject(new Error('Scanner library (core) failed to load'));};
+    document.head.appendChild(s1);
   });
 }
 
@@ -3147,39 +3156,122 @@ async function openBarcodeScanner(){
     '<div class="scan-ui">'+
       '<button class="scan-close" onclick="closeBarcodeScanner()" aria-label="close">✕</button>'+
       '<div class="scan-frame"><div class="scan-frame-line"></div></div>'+
-      '<div class="scan-hint">'+(de?'Barcode ins Rechteck halten':'Center the barcode in the frame')+'</div>'+
+      '<div class="scan-hint" id="scanHint">'+(de?'Barcode ins Rechteck halten':'Center the barcode in the frame')+'</div>'+
       '<div class="scan-err" id="scanErr" style="display:none"></div>'+
+      '<button class="scan-manual" id="scanManualBtn" onclick="fallbackToManual()" style="display:none">'+(de?'Barcode manuell eingeben':'Enter barcode manually')+' →</button>'+
     '</div>';
   document.body.appendChild(ov);
   try{
     var ZX=await loadZXing();
-    var reader=new ZX.BrowserMultiFormatReader();
-    __zxingReader=reader;
     var video=document.getElementById('scanVideo');
-    // Select back camera if possible
-    var devices=await ZX.BrowserCodeReader.listVideoInputDevices();
-    var deviceId;
-    if(devices&&devices.length){
-      var back=devices.find(function(d){return /back|rear|environment/i.test(d.label||'');});
-      deviceId=back?back.deviceId:devices[devices.length-1].deviceId;
+    // Request camera with continuous autofocus + good resolution for barcode sharpness
+    // Fallback chain: back camera with focus mode → back camera → any camera
+    var stream;
+    try{
+      stream=await navigator.mediaDevices.getUserMedia({
+        video:{
+          facingMode:{ideal:'environment'},
+          width:{ideal:1920},
+          height:{ideal:1080},
+          focusMode:{ideal:'continuous'},
+          advanced:[{focusMode:'continuous'}]
+        }
+      });
+    }catch(_){
+      try{
+        stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}});
+      }catch(_2){
+        stream=await navigator.mediaDevices.getUserMedia({video:true});
+      }
     }
-    __zxingControls=await reader.decodeFromVideoDevice(deviceId,video,function(result,err){
+    video.srcObject=stream;
+    await video.play().catch(function(){});
+
+    // Try to apply focus/torch constraints post-stream-start (some Android/iOS versions allow this)
+    try{
+      var track=stream.getVideoTracks()[0];
+      if(track&&track.applyConstraints){
+        var caps=track.getCapabilities?track.getCapabilities():{};
+        var constraints={};
+        if(caps.focusMode&&caps.focusMode.indexOf('continuous')!==-1)constraints.focusMode='continuous';
+        if(Object.keys(constraints).length)await track.applyConstraints({advanced:[constraints]}).catch(function(){});
+      }
+    }catch(_){}
+
+    // Configure ZXing hints: only scan product barcode formats (EAN/UPC/Code128)
+    // instead of all possible formats. This is ~10-20x faster and more reliable
+    // for food products. TRY_HARDER spends more cycles for better accuracy.
+    // BarcodeFormat + DecodeHintType live on window.ZXing (@zxing/library), not on
+    // ZXingBrowser.
+    var hints=null;
+    try{
+      var LibNS=window.ZXing||ZX; // @zxing/library namespace if loaded
+      if(LibNS&&LibNS.BarcodeFormat&&LibNS.DecodeHintType){
+        hints=new Map();
+        var formats=[
+          LibNS.BarcodeFormat.EAN_13,
+          LibNS.BarcodeFormat.EAN_8,
+          LibNS.BarcodeFormat.UPC_A,
+          LibNS.BarcodeFormat.UPC_E,
+          LibNS.BarcodeFormat.CODE_128
+        ].filter(function(f){return f!==undefined;});
+        if(formats.length)hints.set(LibNS.DecodeHintType.POSSIBLE_FORMATS,formats);
+        hints.set(LibNS.DecodeHintType.TRY_HARDER,true);
+      }
+    }catch(_){hints=null;}
+
+    var reader=hints?new ZX.BrowserMultiFormatReader(hints):new ZX.BrowserMultiFormatReader();
+    __zxingReader=reader;
+    // Use decodeFromStream so we pass our already-configured stream
+    __zxingControls=await reader.decodeFromStream(stream,video,function(result,err){
       if(result){
         var code=result.getText();
         handleBarcodeDetected(code);
       }
     });
+
+    // After 20 seconds without a result, hint that manual entry is available
+    setTimeout(function(){
+      if(document.getElementById('scanOverlay')){
+        var hint=document.getElementById('scanHint');
+        var btn=document.getElementById('scanManualBtn');
+        if(hint)hint.textContent=de?'Barcode schwer lesbar? Mehr Licht oder näher halten':'Barcode not reading? Try more light or move closer';
+        if(btn)btn.style.display='block';
+      }
+    },20000);
   }catch(err){
-    var msg=(err&&err.name==='NotAllowedError')?(de?'Kamerazugriff verweigert. Bitte in den Browser-Einstellungen erlauben.':'Camera access denied. Please allow in browser settings.'):(err.message||(de?'Kamera nicht verfügbar.':'Camera unavailable.'));
+    var msg;
+    if(err&&err.name==='NotAllowedError'){
+      msg=de?'Kamerazugriff verweigert. Bitte in den Browser-Einstellungen erlauben.':'Camera access denied. Please allow in browser settings.';
+    }else if(err&&err.name==='NotFoundError'){
+      msg=de?'Keine Kamera gefunden.':'No camera found.';
+    }else{
+      msg=err.message||(de?'Kamera nicht verfügbar.':'Camera unavailable.');
+    }
     var errEl=document.getElementById('scanErr');
     if(errEl){errEl.textContent=msg;errEl.style.display='block';}
+    var btn=document.getElementById('scanManualBtn');
+    if(btn)btn.style.display='block';
     console.error('Barcode scanner error:',err);
   }
+}
+
+function fallbackToManual(){
+  closeBarcodeScanner();
+  openManualBarcode();
 }
 
 function closeBarcodeScanner(){
   try{if(__zxingControls&&__zxingControls.stop)__zxingControls.stop();}catch(e){}
   try{if(__zxingReader&&__zxingReader.reset)__zxingReader.reset();}catch(e){}
+  // Stop all video tracks on the <video> element in case the ZXing cleanup missed them
+  try{
+    var v=document.getElementById('scanVideo');
+    if(v&&v.srcObject){
+      v.srcObject.getTracks().forEach(function(t){try{t.stop();}catch(_){}});
+      v.srcObject=null;
+    }
+  }catch(_){}
   __zxingReader=null;__zxingControls=null;
   var ov=document.getElementById('scanOverlay');
   if(ov)ov.remove();
