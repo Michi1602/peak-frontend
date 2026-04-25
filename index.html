@@ -1086,10 +1086,34 @@ function s5(){var goals=[{e:'⚖️',k:'g1',d:'g1d'},{e:'💪',k:'g2',d:'g2d'},{
 function showLoad(){var de=lang==='de';var sportLbl=sportLabel(ud.sport);card('<div class="lw"><div class="spin"></div><div class="lt">'+(de?'Baue deinen Plan...':'Building your plan...')+'</div><p style="font-size:11px;color:var(--faint);margin-bottom:18px">'+(de?'Einzigartig für dich — sonst bekommt das niemand.':'Unique to you — nobody else gets this.')+'</p><div style="text-align:left">'+[['⚡',de?'Berechne Kalorien-Ziel':'Calculating calorie targets'],['🥗',de?'Rezepte nach deinem Geschmack':'Selecting recipes for your taste'],['💪',(de?'Baue ':'Building ')+sportLbl+(de?'-Übungen':' exercises')],['🔋',de?'Regenerations-Protokoll':'Designing recovery protocol'],['✦',de?'Finalisiere deinen Plan':'Finalising your roadmap']].map(function(l,i){return '<div class="lsi" id="li'+i+'"><span style="width:18px;text-align:center;flex-shrink:0">'+l[0]+'</span> '+l[1]+'</div>';}).join('')+'</div></div>');var i=0;var ti=setInterval(function(){if(i>0){var prev=document.getElementById('li'+(i-1));if(prev)prev.className='lsi done';}if(i<5){var cur=document.getElementById('li'+i);if(cur)cur.className='lsi active';i++;}else{clearInterval(ti);fetchPlan().then(function(){step=6;render();});}},700);}
 
 async function fetchPlan(isRegen){
-  var bmr=ud.weight&&ud.height&&ud.age?Math.round(88.362+13.397*parseFloat(ud.weight)+4.799*parseFloat(ud.height)-5.677*parseFloat(ud.age)):1800;
-  var mult=1.375;if(parseFloat(ud.sessions||3)>=5)mult=1.55;
+  // ── BMR via Mifflin-St Jeor (1990) — modern standard, gender-aware.
+  // Replaces older Harris-Benedict (1984) which over/under-shoots for women.
+  // Source: ACSM, Academy of Nutrition and Dietetics.
+  var w=parseFloat(ud.weight),h=parseFloat(ud.height),a=parseFloat(ud.age);
+  var bmr;
+  if(w&&h&&a){
+    var base=10*w+6.25*h-5*a;
+    bmr=ud.gender==='Female'?Math.round(base-161):Math.round(base+5); // Male/Other = +5
+  }else{
+    bmr=1800; // sane default
+  }
+  // ── Activity multiplier — 5 standard steps based on training frequency.
+  // Sessions per week from onboarding maps to ACSM activity tiers.
+  var sess=parseFloat(ud.sessions||3);
+  var mult=1.2;                    // Sedentary (no training)
+  if(sess>=1)mult=1.375;           // Lightly active (1-2×/week)
+  if(sess>=3)mult=1.55;            // Moderately active (3-4×/week)
+  if(sess>=5)mult=1.725;           // Very active (5-6×/week)
+  if(sess>=7)mult=1.9;             // Extra active (daily/twice daily)
   var tdee=Math.round(bmr*mult);
-  var kcal=ud.goal===t('g1')||ud.goal===T.de.g1?tdee-400:ud.goal===t('g2')||ud.goal===T.de.g2?tdee+250:tdee;
+  // ── Goal-adjusted target. Standard sustainable rates:
+  //   Lose: -500 kcal/day → ~0.5 kg/week loss
+  //   Gain: +400 kcal/day → ~0.4 kg/week lean gain
+  //   Maintain: TDEE
+  var kcal=ud.goal===t('g1')||ud.goal===T.de.g1?tdee-500:ud.goal===t('g2')||ud.goal===T.de.g2?tdee+400:tdee;
+  // Safety floors: never recommend below 1500 (men) / 1200 (women) kcal/day.
+  var floor=ud.gender==='Female'?1200:1500;
+  if(kcal<floor)kcal=floor;
   var sport=ud.sport||'Running';var level=ud.level||'Intermediate';
   // Use bilingual getSportTips() helper — same set as fp() fallback below, so DE/EN
   // stays consistent across pre-AI fallback and post-AI-failure rendering.
