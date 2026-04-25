@@ -4,13 +4,14 @@
 //  - HTML: network-first, fall back to cache (keep app up-to-date)
 //  - Static assets (icons, manifest): cache-first (performance)
 //  - API calls: always network (dynamic data must be fresh)
+//  - Auth callbacks: NEVER cached (tokens are one-time-use)
 //  - Offline: if network fails entirely → serve cached index.html
 //
 // Bump CACHE_VERSION when deploying to force old clients to refresh.
 // ════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'peak-v3';
-const RUNTIME_CACHE = 'peak-runtime-v3';
+const CACHE_VERSION = 'peak-v4';
+const RUNTIME_CACHE = 'peak-runtime-v4';
 
 // Core files to pre-cache on install (app shell)
 const PRECACHE_URLS = [
@@ -55,18 +56,36 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
   if (!url.protocol.startsWith('http')) return;
 
-  // Never cache auth or API calls — always go to network
+  // ── Never cache auth callbacks (Supabase magic links, OAuth) ──
+  // These contain one-time tokens. Caching them would replay tokens
+  // on reload and break login.
   if (
-    url.pathname.startsWith('/api/') ||
-    url.hostname.includes('supabase.co') ||
-    url.hostname.includes('peak-backend') ||
-    url.hostname.includes('anthropic.com') ||
-    url.hostname.includes('stripe.com')
+    url.search.includes('access_token=') ||
+    url.search.includes('refresh_token=') ||
+    url.hash && url.hash.includes('access_token=') ||
+    url.pathname.includes('/auth/callback') ||
+    url.pathname.includes('/auth/v1/')
   ) {
     return; // Let browser handle normally, no SW intervention
   }
 
-  // HTML navigation: network-first
+  // ── Never cache auth or API calls — always go to network ──
+  if (
+    url.pathname.startsWith('/api/') ||
+    url.pathname.startsWith('/auth/') ||
+    url.pathname.startsWith('/ai/') ||
+    url.pathname.startsWith('/user/') ||
+    url.pathname.startsWith('/webhook') ||
+    url.hostname.includes('supabase.co') ||
+    url.hostname.includes('peak-backend') ||
+    url.hostname.includes('anthropic.com') ||
+    url.hostname.includes('stripe.com') ||
+    url.hostname.includes('resend.com')
+  ) {
+    return; // Let browser handle normally, no SW intervention
+  }
+
+  // ── HTML navigation: network-first ──
   if (request.mode === 'navigate' || request.destination === 'document') {
     event.respondWith(
       fetch(request)
@@ -84,7 +103,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets: cache-first
+  // ── Static assets: cache-first ──
   if (
     request.destination === 'image' ||
     request.destination === 'style' ||
@@ -108,7 +127,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Default: network, fall back to cache
+  // ── Default: network, fall back to cache ──
   event.respondWith(
     fetch(request).catch(() => caches.match(request))
   );
