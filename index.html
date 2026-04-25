@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -121,7 +121,7 @@ html,body{height:100%;background:var(--bg);font-family:'Barlow',sans-serif;color
 .cs{font-size:13px;color:var(--dim);line-height:1.6}
 .field{margin-bottom:12px}
 label{display:block;font-size:10px;font-weight:700;color:var(--dim);margin-bottom:5px;letter-spacing:2px;text-transform:uppercase}
-input[type="text"],input[type="number"],input[type="email"],input[type="password"],textarea{width:100%;padding:12px 13px;border:1.5px solid var(--ibd);background:var(--ibg);color:var(--white);font-family:'Barlow',sans-serif;font-size:15px;font-weight:500;outline:none;transition:border-color .15s;border-radius:0!important;appearance:none;-webkit-appearance:none;-moz-appearance:none}
+input[type="text"],input[type="number"],input[type="email"],input[type="password"],input:not([type]),textarea{width:100%;padding:12px 13px;border:1.5px solid var(--ibd);background:var(--ibg);color:var(--white);font-family:'Barlow',sans-serif;font-size:15px;font-weight:500;outline:none;transition:border-color .15s;border-radius:0!important;appearance:none;-webkit-appearance:none;-moz-appearance:none}
 input:focus,textarea:focus{border-color:var(--red)}
 input::placeholder,textarea::placeholder{color:var(--faint);font-weight:400}
 input[type="text"]{border-radius:0!important;-webkit-border-radius:0!important}
@@ -691,6 +691,9 @@ var lang=(function(){
   }catch(_){}
   return 'en';
 })();
+// Sync the <html lang="..."> attribute so screen readers + Google
+// pick up the correct language right after init.
+try{document.documentElement.lang=lang;}catch(_){ }
 var ud={name:'',age:'',gender:'',weight:'',dweight:'',height:'',sleep:'',job:'',commute:'',stress:'5',sport:'',level:'',sessions:'',dur:'',equip:'',al:[],di:[],cu:[],cook:'',budget:'',goal:''};
 var plan=null,selPlan='annual',selTier='premium',flog=[],mrat={},wrat={};
 // Training progression state.
@@ -824,6 +827,7 @@ function translateMacro(macroStr){
 function toggleLang(){
   lang=lang==='en'?'de':'en';
   document.getElementById('lb').textContent=lang==='en'?'DE':'EN';
+  document.documentElement.lang=lang;
   rerenderCurrent();
 
   // Persist language to user profile (so backend sends emails in correct lang)
@@ -1068,7 +1072,7 @@ function s0(){
   );
 }
 
-function s1(){card('<div class="ch"><div class="chip">✦ '+t('s1')+'</div><div class="ct">'+t('s1t')+' <em>'+t('s1e')+'</em></div><p class="cs">'+t('s1s')+'</p></div><div class="cb"><div class="irow"><div class="field"><label>'+t('fn')+'</label><input id="fn" placeholder="Alex" value="'+(ud.name||'')+'"></div><div class="field"><label>'+t('age')+'</label><input type="number" id="ag" placeholder="28" min="16" max="120" value="'+(ud.age||'')+'"></div></div><div class="field"><label>'+t('gen')+'</label><div class="tiles c3">'+['Male ♂','Female ♀','Other'].map(function(g){var k=g.split(' ')[0];return '<div class="tile '+(ud.gender===k?'sel':'')+'" onclick="sel(this,\'gender\',\''+k+'\')"><span class="tl">'+g+'</span><span class="tck">✓</span></div>';}).join('')+'</div></div><div class="irow"><div class="field"><label>'+t('wt')+'</label><div class="ui"><input type="number" id="wt" placeholder="78" value="'+(ud.weight||'')+'"><span class="utag">KG</span></div></div><div class="field"><label>'+t('dw')+'</label><div class="ui"><input type="number" id="dw" placeholder="70" value="'+(ud.dweight||'')+'"><span class="utag">KG</span></div></div></div><div class="irow"><div class="field"><label>'+t('ht')+'</label><div class="ui"><input type="number" id="ht" placeholder="175" value="'+(ud.height||'')+'"><span class="utag">CM</span></div></div><div class="field"><label>'+t('sl')+'</label><div class="ui"><input type="number" id="sl2" placeholder="7" value="'+(ud.sleep||'')+'"><span class="utag">HRS</span></div></div></div></div>'+foot('Continue',function(){ud.name=document.getElementById('fn').value.trim();ud.age=document.getElementById('ag').value;ud.weight=document.getElementById('wt').value;ud.dweight=document.getElementById('dw').value;ud.height=document.getElementById('ht').value;ud.sleep=document.getElementById('sl2').value;var de=lang==='de';var ageInput=document.getElementById('ag');if(ageInput){ageInput.style.borderColor='';}if(!ud.name||!ud.age||!ud.weight){peakToast(de?'Bitte Name, Alter und Gewicht ausfüllen.':'Please fill in name, age and weight.');return;}var ageNum=parseInt(ud.age,10);if(isNaN(ageNum)||ageNum<16||ageNum>120){if(ageInput){ageInput.style.borderColor='var(--red)';ageInput.focus();ageInput.select();}peakToast(de?'PEAK ist erst ab 16 Jahren verfügbar.':'PEAK is only available from age 16.',{kind:'error'});return;}saveSession();step++;render();},true));}
+function s1(){card('<div class="ch"><div class="chip">✦ '+t('s1')+'</div><div class="ct">'+t('s1t')+' <em>'+t('s1e')+'</em></div><p class="cs">'+t('s1s')+'</p></div><div class="cb"><div class="irow"><div class="field"><label>'+t('fn')+'</label><input type="text" id="fn" placeholder="Alex" value="'+(ud.name||'')+'"></div><div class="field"><label>'+t('age')+'</label><input type="number" id="ag" placeholder="28" min="16" max="120" value="'+(ud.age||'')+'"></div></div><div class="field"><label>'+t('gen')+'</label><div class="tiles c3">'+['Male ♂','Female ♀','Other'].map(function(g){var k=g.split(' ')[0];return '<div class="tile '+(ud.gender===k?'sel':'')+'" onclick="sel(this,\'gender\',\''+k+'\')"><span class="tl">'+g+'</span><span class="tck">✓</span></div>';}).join('')+'</div></div><div class="irow"><div class="field"><label>'+t('wt')+'</label><div class="ui"><input type="number" id="wt" placeholder="78" value="'+(ud.weight||'')+'"><span class="utag">KG</span></div></div><div class="field"><label>'+t('dw')+'</label><div class="ui"><input type="number" id="dw" placeholder="70" value="'+(ud.dweight||'')+'"><span class="utag">KG</span></div></div></div><div class="irow"><div class="field"><label>'+t('ht')+'</label><div class="ui"><input type="number" id="ht" placeholder="175" value="'+(ud.height||'')+'"><span class="utag">CM</span></div></div><div class="field"><label>'+t('sl')+'</label><div class="ui"><input type="number" id="sl2" placeholder="7" value="'+(ud.sleep||'')+'"><span class="utag">HRS</span></div></div></div></div>'+foot('Continue',function(){ud.name=document.getElementById('fn').value.trim();ud.age=document.getElementById('ag').value;ud.weight=document.getElementById('wt').value;ud.dweight=document.getElementById('dw').value;ud.height=document.getElementById('ht').value;ud.sleep=document.getElementById('sl2').value;var de=lang==='de';var ageInput=document.getElementById('ag');if(ageInput){ageInput.style.borderColor='';}if(!ud.name||!ud.age||!ud.weight){peakToast(de?'Bitte Name, Alter und Gewicht ausfüllen.':'Please fill in name, age and weight.');return;}var ageNum=parseInt(ud.age,10);if(isNaN(ageNum)||ageNum<16||ageNum>120){if(ageInput){ageInput.style.borderColor='var(--red)';ageInput.focus();ageInput.select();}peakToast(de?'PEAK ist erst ab 16 Jahren verfügbar.':'PEAK is only available from age 16.',{kind:'error'});return;}saveSession();step++;render();},true));}
 
 function s2(){card('<div class="ch"><div class="chip">✦ '+t('s2')+'</div><div class="ct">'+t('s2t')+' <em>'+t('s2e')+'</em></div><p class="cs">'+t('s2s')+'</p></div><div class="cb"><div class="field"><label>'+t('job')+'</label><div class="tiles">'+[{i:'💻',l:t('desk'),d:'Mostly sitting'},{i:'🔧',l:t('phys'),d:'On feet all day'},{i:'🔄',l:t('mix'),d:'Varies'},{i:'🌙',l:t('shift'),d:'Irregular'}].map(function(j){return '<div class="tile '+(ud.job===j.l?'sel':'')+'" onclick="sel(this,\'job\',\''+j.l+'\')"><span class="ti">'+j.i+'</span><span class="tt"><span class="tl">'+j.l+'</span><span class="td">'+j.d+'</span></span><span class="tck">✓</span></div>';}).join('')+'</div></div><div class="field"><label>'+t('com')+'</label><div class="tiles c2">'+[{i:'🚗',l:t('car')},{i:'🚌',l:t('bus')},{i:'🚶',l:t('walk')},{i:'🚲',l:t('bike')}].map(function(c){return '<div class="tile '+(ud.commute===c.l?'sel':'')+'" onclick="sel(this,\'commute\',\''+c.l+'\')"><span class="ti">'+c.i+'</span><span class="tl">'+c.l+'</span><span class="tck">✓</span></div>';}).join('')+'</div></div><div class="field"><label>'+t('str')+'</label><div class="slabs"><span>Low</span><span>Medium</span><span>High</span></div><input type="range" id="str" min="1" max="10" value="'+(ud.stress||5)+'" oninput="document.getElementById(\'sv\').textContent=this.value;ud.stress=this.value"><div class="sv" id="sv">'+(ud.stress||5)+'<span style="font-size:12px;color:var(--faint);font-family:Barlow"> /10</span></div></div></div>'+foot('Continue',function(){if(!ud.job){peakToast(lang==='de'?'Bitte Job-Typ wählen.':'Please select your job type.');return;}saveSession();step++;render();}));}
 
@@ -3789,6 +3793,24 @@ async function doMagicLink(){
       body:JSON.stringify({email:em,lang:lang})
     });
     var data=await res.json();
+    // No account exists for this email → don't dump them in OTP screen,
+    // route them directly to free signup
+    if(res.status===404&&data.error==='no_account'){
+      var box=document.getElementById('el2');
+      if(box){
+        box.innerHTML=
+          '<div style="font-size:13px;line-height:1.5;color:var(--ink);margin-bottom:8px">'+
+            (de?'Für <strong>'+em+'</strong> gibt es noch kein Konto.':'No account exists for <strong>'+em+'</strong> yet.')+
+          '</div>'+
+          '<button class="bnx" onclick="startFreeFlow()" style="width:100%;padding:10px;font-size:12px">'+
+            (de?'✦ Kostenlos starten':'✦ Start free')+' →'+
+          '</button>';
+        box.style.display='block';
+      }
+      btn.textContent=de?'CODE ANFORDERN →':'SEND CODE →';
+      btn.style.opacity='1';btn.disabled=false;
+      return;
+    }
     if(!res.ok)throw new Error(data.message||data.error||(de?'Code konnte nicht gesendet werden.':'Could not send code.'));
     ud.pendingLoginEmail=em;
     showOtpInput(em);
