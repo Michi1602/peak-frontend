@@ -1091,8 +1091,9 @@ async function fetchPlan(isRegen){
   var tdee=Math.round(bmr*mult);
   var kcal=ud.goal===t('g1')||ud.goal===T.de.g1?tdee-400:ud.goal===t('g2')||ud.goal===T.de.g2?tdee+250:tdee;
   var sport=ud.sport||'Running';var level=ud.level||'Intermediate';
-  var sportTips={Running:['Interval runs 6×400m at tempo','Hill repeats 5×uphill','Core: Dead bugs 3×12, Bird dogs 3×10','Single-leg deadlifts 3×8 each','Calf raises 3×20'],Football:['Ball control 3×10min','Sprint intervals 6×30m','Core: Plank series 3×45s','Single-leg squats 3×10 each','Lateral agility ladder 3×2min'],Weights:['Compound lifts: Squat/Bench/Deadlift','Progressive overload +2.5kg','Accessory: Face pulls, Band pull-aparts','Core: Hanging leg raises 3×12','Mobility 10min post'],Swimming:['Pull buoy drill 400m','4×100m at race pace','Rotator cuff exercises','Swiss ball rollouts 3×12','Shoulder mobility warm-up 10min'],Cycling:['Threshold 3×10min at FTP','High-cadence drills 100+RPM','Core: Plank variations','Hip flexor stretch post-ride','Single-leg pedalling'],Yoga:['Sun salutation ×10','Balance: Tree, Warrior III','Hip opening: Pigeon series','Shoulder openers','Box breathing 5min'],Tennis:['Footwork: Split-step drills','50 focused serves','Core rotation: Cable woodchops 3×12','Shoulder: External rotation','Agility: T-drill ×6'],Basketball:['100 shot makes','Ball handling: Crossover series','Vertical: Depth jumps 3×8','Core: Medicine ball rotations','Defensive slides 4×1min'],'Martial Arts':['Shadow boxing 4×3min rounds','Stance and footwork drills','Core: Russian twists, Wood chops','Hip flexor, hamstring flexibility','Reaction mirror drills']};
-  var exFallback=(sportTips[sport]||['Warm-up 10 min','Main set 35 min','Cool-down 10 min']).map(function(e){return {name:e,detail:''};});
+  // Use bilingual getSportTips() helper — same set as fp() fallback below, so DE/EN
+  // stays consistent across pre-AI fallback and post-AI-failure rendering.
+  var exFallback=getSportTips(sport,lang);
   var langInstr=lang==='de'?'IMPORTANT: Respond entirely in GERMAN (Deutsch). All text fields including headline, meal names, workout names, exercise names, tips, shopping items, milestones must be in German. Keep meal time values as English labels "Breakfast","Lunch","Dinner","Snack" for app compatibility.':'IMPORTANT: Respond entirely in ENGLISH. All text fields must be in English.';
   var prompt='You are PEAK AI by MJ Performance.\n'+langInstr+'\nUser: '+ud.name+', age '+ud.age+', '+ud.weight+'kg→'+ud.dweight+'kg, '+ud.height+'cm, sleep '+ud.sleep+'hrs\nJob: '+ud.job+', stress '+ud.stress+'/10\nSport: '+sport+' ('+level+'), '+ud.sessions+'×/wk, '+ud.dur+'min, at '+ud.equip+'\nAllergies: '+(ud.al||[]).join(',')+'\nDiet: '+(ud.di||[]).join(',')+'\nCuisines: '+(ud.cu||[]).join(',')+'\nCooking: '+ud.cook+'\nGoal: '+goalStr()+', Calories: '+kcal+'\n\nCreate a personalised plan. For workout: create 4-5 SPECIFIC exercises for '+sport+' at '+level+' level that improve performance in '+sport+'. NOT generic gym. Include drills, technique, sport-specific conditioning. Each needs name + sets/reps/duration.\n\nRespond ONLY with valid JSON, no markdown:\n{"headline":"<12 words>","calories":'+kcal+',"protein":<g>,"carbs":<g>,"fat":<g>,"timeline":"<weeks>","todayMeals":[{"emoji":"🍳","name":"<meal>","time":"Breakfast","kcal":<n>,"macro":"<e.g. 28g protein>"},{"emoji":"🥗","name":"<meal>","time":"Lunch","kcal":<n>,"macro":"<e.g. 42g protein>"},{"emoji":"🍽️","name":"<meal>","time":"Dinner","kcal":<n>,"macro":"<e.g. 38g protein>"},{"emoji":"🍎","name":"<snack>","time":"Snack","kcal":<n>,"macro":"<e.g. 15g protein>"}],"workout":{"title":"<sport-specific title>","focus":"<what this improves in '+sport+'>","desc":"<2 sentences why>","duration":<min>,"exercises":[{"name":"<exercise>","detail":"<sets/reps/duration>"},{"name":"<exercise>","detail":"<sets/reps>"},{"name":"<exercise>","detail":"<sets/reps>"},{"name":"<exercise>","detail":"<duration>"}]},"recovery":{"tip":"<tip>","sleep":"<advice>","hydration":"<target>"},"shopping":["<item1>","<item2>","<item3>","<item4>","<item5>"],"milestones":["<wk2-3>","<wk5-7>","<final>"]}';
   try{
@@ -2081,27 +2082,25 @@ async function enrichWeekWithAI(){
   if(currentView==='dashboard'&&dashTab==='fitness')showTab('fitness');
 }
 
-function fp(){
-  if(plan)return plan;
-  var deE=lang==='de';
-  var sport=ud.sport||'Running';
-  var level=ud.level||'Intermediate';
-  var duration=parseInt(ud.dur||60);
-  // Sport-specific fallback exercises. Matches the set in fetchPlan() so the
-  // dashboard still shows a real, credible workout if the KI call failed.
-  var sportTips={
+// Sport-specific bilingual fallback exercises. Used in two places:
+//  1. fetchPlan() — when AI generation hasn't started yet (showLoad screen)
+//  2. fp() — when AI generation FAILED and we need a credible visible plan
+// Single source of truth so DE/EN translations only live in one place.
+function getSportTips(sport,langCode){
+  var deE=langCode==='de';
+  var tips={
     Running:[
       {name:deE?'Intervall-Läufe':'Interval runs',detail:'6×400m @ Tempo'},
       {name:deE?'Berg-Wiederholungen':'Hill repeats',detail:'5×bergauf'},
       {name:deE?'Core: Dead Bugs':'Core: Dead bugs',detail:'3×12'},
-      {name:deE?'Einbeiniges Kreuzheben':'Single-leg deadlifts',detail:'3×8 pro Seite'},
+      {name:deE?'Einbeiniges Kreuzheben':'Single-leg deadlifts',detail:deE?'3×8 pro Seite':'3×8 each'},
       {name:deE?'Wadenheben':'Calf raises',detail:'3×20'}
     ],
     Football:[
       {name:deE?'Ballkontrolle':'Ball control',detail:'3×10min'},
       {name:deE?'Sprint-Intervalle':'Sprint intervals',detail:'6×30m'},
       {name:deE?'Core: Plank-Serie':'Core: Plank series',detail:'3×45s'},
-      {name:deE?'Einbeinige Kniebeugen':'Single-leg squats',detail:'3×10 pro Seite'},
+      {name:deE?'Einbeinige Kniebeugen':'Single-leg squats',detail:deE?'3×10 pro Seite':'3×10 each'},
       {name:deE?'Seitliche Koordinationsleiter':'Lateral agility ladder',detail:'3×2min'}
     ],
     Weights:[
@@ -2109,33 +2108,33 @@ function fp(){
       {name:deE?'Progressive Überlastung':'Progressive overload',detail:deE?'+2,5kg pro Woche':'+2.5kg/week'},
       {name:deE?'Nebenübungen':'Accessory work',detail:deE?'Face Pulls, Band Pull-Aparts 3×15':'Face pulls, band pull-aparts 3×15'},
       {name:deE?'Core: Hängendes Beinheben':'Core: Hanging leg raises',detail:'3×12'},
-      {name:deE?'Mobility':'Mobility',detail:'10min post-workout'}
+      {name:deE?'Mobility':'Mobility',detail:deE?'10min nach dem Training':'10min post-workout'}
     ],
     Swimming:[
       {name:deE?'Pull-Buoy Drill':'Pull buoy drill',detail:'400m'},
       {name:deE?'Intervalle':'Intervals',detail:deE?'4×100m im Renntempo':'4×100m at race pace'},
       {name:deE?'Rotatorenmanschette':'Rotator cuff',detail:'3×12'},
       {name:deE?'Swiss Ball Rollouts':'Swiss ball rollouts',detail:'3×12'},
-      {name:deE?'Schulter-Mobilität':'Shoulder mobility',detail:'10min Warm-up'}
+      {name:deE?'Schulter-Mobilität':'Shoulder mobility',detail:deE?'10min Warm-up':'10min warm-up'}
     ],
     Cycling:[
       {name:deE?'Schwellen-Intervalle':'Threshold intervals',detail:'3×10min @ FTP'},
       {name:deE?'Hochfrequenz-Drills':'High-cadence drills',detail:'100+ RPM'},
       {name:deE?'Core: Plank-Varianten':'Core: Plank variations',detail:'3×45s'},
       {name:deE?'Hüftbeuger-Dehnung':'Hip flexor stretch',detail:deE?'nach der Fahrt':'post-ride'},
-      {name:deE?'Einbeiniges Treten':'Single-leg pedalling',detail:'2×3min pro Seite'}
+      {name:deE?'Einbeiniges Treten':'Single-leg pedalling',detail:deE?'2×3min pro Seite':'2×3min each side'}
     ],
     Yoga:[
       {name:deE?'Sonnengruß':'Sun salutation',detail:'×10'},
       {name:deE?'Balance: Baum, Krieger III':'Balance: Tree, Warrior III',detail:'3×30s'},
-      {name:deE?'Hüft-Öffner: Taube':'Hip opening: Pigeon series',detail:'2min pro Seite'},
+      {name:deE?'Hüft-Öffner: Taube':'Hip opening: Pigeon series',detail:deE?'2min pro Seite':'2min each side'},
       {name:deE?'Schulter-Öffner':'Shoulder openers',detail:'5min'},
       {name:deE?'Box-Atmung':'Box breathing',detail:'5min'}
     ],
     Tennis:[
       {name:deE?'Beinarbeit: Split-Step':'Footwork: Split-step',detail:'10min'},
-      {name:deE?'Fokussierte Aufschläge':'Focused serves',detail:'50 Wiederholungen'},
-      {name:deE?'Core-Rotation: Kabel-Holzhacker':'Core: Cable woodchops',detail:'3×12 pro Seite'},
+      {name:deE?'Fokussierte Aufschläge':'Focused serves',detail:deE?'50 Wiederholungen':'50 reps'},
+      {name:deE?'Core-Rotation: Kabel-Holzhacker':'Core: Cable woodchops',detail:deE?'3×12 pro Seite':'3×12 each side'},
       {name:deE?'Schulter: Außenrotation':'Shoulder: External rotation',detail:'3×15'},
       {name:deE?'Agilität: T-Drill':'Agility: T-drill',detail:'×6'}
     ],
@@ -2143,22 +2142,32 @@ function fp(){
       {name:deE?'100 Treffer':'100 shot makes',detail:deE?'Tempo frei':''},
       {name:deE?'Ball-Handling: Crossover':'Ball handling: Crossover',detail:'3×1min'},
       {name:deE?'Sprungkraft: Depth Jumps':'Vertical: Depth jumps',detail:'3×8'},
-      {name:deE?'Core: Medizinball-Rotation':'Core: Medicine ball rotations',detail:'3×10 pro Seite'},
+      {name:deE?'Core: Medizinball-Rotation':'Core: Medicine ball rotations',detail:deE?'3×10 pro Seite':'3×10 each side'},
       {name:deE?'Defensiv-Slides':'Defensive slides',detail:'4×1min'}
     ],
     'Martial Arts':[
-      {name:deE?'Schattenboxen':'Shadow boxing',detail:'4×3min Runden'},
+      {name:deE?'Schattenboxen':'Shadow boxing',detail:deE?'4×3min Runden':'4×3min rounds'},
       {name:deE?'Stand + Beinarbeit':'Stance + footwork',detail:'10min'},
       {name:deE?'Core: Russian Twists':'Core: Russian twists',detail:'3×20'},
       {name:deE?'Hüft- + Hamstring-Flexibilität':'Hip + hamstring flexibility',detail:'10min'},
       {name:deE?'Reaktions-Spiegel-Drills':'Reaction mirror drills',detail:'3×2min'}
     ]
   };
-  var fallbackEx=sportTips[sport]||[
+  return tips[sport]||[
     {name:deE?'Aufwärmen':'Warm-up',detail:'10 min'},
-    {name:deE?'Hauptsatz':'Main set',detail:(duration-20)+' min'},
+    {name:deE?'Hauptsatz':'Main set',detail:'35 min'},
     {name:deE?'Cool-down':'Cool-down',detail:'10 min'}
   ];
+}
+
+function fp(){
+  if(plan)return plan;
+  var deE=lang==='de';
+  var sport=ud.sport||'Running';
+  var level=ud.level||'Intermediate';
+  var duration=parseInt(ud.dur||60);
+  // Use shared getSportTips() helper — single source of truth for DE/EN translations.
+  var fallbackEx=getSportTips(sport,lang);
   var sportLbl=sportLabel(sport);
   return {
     calories:2000,protein:150,carbs:200,fat:70,
