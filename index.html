@@ -51,7 +51,19 @@
   }catch(e){document.documentElement.setAttribute('data-theme','dark');}
 })();
 </script>
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
+<!-- ── Performance: Preconnect to third-party origins for parallel TLS setup ── -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://hfgzgdweprcntxlkrwha.supabase.co" crossorigin>
+<!-- ── Performance: Async font loading via media="print" + onload swap ──
+     Browser parses fonts off the critical render path. font-display: swap
+     in the URL ensures fallback text renders instantly while fonts load. -->
+<link rel="preload" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@700;900&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet"></noscript>
+<!-- ── Performance: Supabase SDK loads synchronously (top-level code below
+     uses window.sb immediately). Preconnect above primes the TLS handshake
+     so this script downloads as fast as possible. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.43.0/dist/umd/supabase.min.js"></script>
 <script>
 // Supabase client — available globally as window.sb
