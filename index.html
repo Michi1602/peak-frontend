@@ -4867,7 +4867,9 @@ if('serviceWorker' in navigator){
     // Close button dismisses permanently
     document.getElementById('pwaBadgeClose').onclick=function(e){
       e.stopPropagation();
-      localStorage.setItem(DISMISS_KEY,'1');
+      // iOS Private Mode rejects localStorage writes — fail silently rather
+      // than crash the close handler. User can re-dismiss next session.
+      try{localStorage.setItem(DISMISS_KEY,'1');}catch(_){}
       hideInstallBadge();
     };
   }
