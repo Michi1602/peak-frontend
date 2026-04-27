@@ -554,6 +554,24 @@ function goUpgrade(){
 // Module-level flag: true when a logged-in Free user is upgrading to paid
 var __upgradingExistingFree=false;
 
+// ── HTML escaping helper — central XSS guard (Apr 2026 hardening) ──
+// Use whenever inserting external/user data into innerHTML strings.
+// Example: el.innerHTML = '<div>'+esc(p.name)+'</div>';
+// Sources that REQUIRE escaping:
+//   • Data from external APIs (OpenFoodFacts, Anthropic, etc.)
+//   • User-typed input (prompts, manual food names, profile fields)
+//   • Anything echoed back from server that originated from a user
+// Pure app-controlled strings (i18n labels, hardcoded class names) are safe.
+function esc(s){
+  if(s==null)return '';
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
 // PEAK-style inline toast — replaces native alert()
 function peakToast(msg, opts){
   opts=opts||{};
@@ -563,7 +581,7 @@ function peakToast(msg, opts){
   if(!wrap){wrap=document.createElement('div');wrap.id='pk-toast-wrap';wrap.className='pk-toast-wrap';document.body.appendChild(wrap);}
   var el=document.createElement('div');
   el.className='pk-toast '+kind;
-  el.innerHTML='<div class="pk-toast-t">'+title+'</div><div class="pk-toast-m">'+msg+'</div>';
+  el.innerHTML='<div class="pk-toast-t">'+esc(title)+'</div><div class="pk-toast-m">'+esc(msg)+'</div>';
   wrap.appendChild(el);
   requestAnimationFrame(function(){el.classList.add('show');});
   setTimeout(function(){
@@ -583,7 +601,7 @@ function peakConfirm(msg, opts){
     wrap.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;font-family:Barlow,sans-serif';
     var box=document.createElement('div');
     box.style.cssText='background:var(--s1);border:1px solid var(--red);border-left:3px solid var(--red);padding:20px;max-width:380px;width:100%';
-    box.innerHTML='<div style="font-family:\'Barlow Condensed\';font-weight:900;font-size:11px;color:var(--red);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">'+title+'</div><div style="color:var(--white);font-size:14px;line-height:1.45;margin-bottom:14px">'+msg+'</div><div style="display:flex;gap:8px"><button id="pkCok" style="flex:1;background:var(--red);color:var(--white);border:none;padding:10px;font-family:\'Barlow Condensed\';font-weight:900;font-size:12px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">'+okLabel+'</button><button id="pkCca" style="flex:1;background:var(--s3);color:var(--dim);border:1px solid var(--border);padding:10px;font-family:\'Barlow Condensed\';font-weight:900;font-size:12px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">'+caLabel+'</button></div>';
+    box.innerHTML='<div style="font-family:\'Barlow Condensed\';font-weight:900;font-size:11px;color:var(--red);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">'+esc(title)+'</div><div style="color:var(--white);font-size:14px;line-height:1.45;margin-bottom:14px">'+esc(msg)+'</div><div style="display:flex;gap:8px"><button id="pkCok" style="flex:1;background:var(--red);color:var(--white);border:none;padding:10px;font-family:\'Barlow Condensed\';font-weight:900;font-size:12px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">'+esc(okLabel)+'</button><button id="pkCca" style="flex:1;background:var(--s3);color:var(--dim);border:1px solid var(--border);padding:10px;font-family:\'Barlow Condensed\';font-weight:900;font-size:12px;letter-spacing:2px;text-transform:uppercase;cursor:pointer">'+esc(caLabel)+'</button></div>';
     wrap.appendChild(box);
     document.body.appendChild(wrap);
     function close(v){if(wrap.parentNode)wrap.parentNode.removeChild(wrap);resolve(v);}
@@ -2766,7 +2784,7 @@ async function pickMood(cuisine){
   var a=document.getElementById('moodA');
   if(!a)return;
   var de=lang==='de';
-  a.innerHTML='<div class="aib" style="margin-top:8px"><div class="ailbl"><div class="aidot"></div>PEAK AI</div><p>'+(de?'Passe Tagesplan an '+cuisine+' an...':'Adapting day plan to '+cuisine+'...')+'</p><div class="spin" style="width:22px;height:22px;margin:8px 0 0;border-width:2px"></div></div>';
+  a.innerHTML='<div class="aib" style="margin-top:8px"><div class="ailbl"><div class="aidot"></div>PEAK AI</div><p>'+(de?'Passe Tagesplan an '+esc(cuisine)+' an...':'Adapting day plan to '+esc(cuisine)+'...')+'</p><div class="spin" style="width:22px;height:22px;margin:8px 0 0;border-width:2px"></div></div>';
   var p=fp();
   var prompt='Rework today\'s meal plan in '+cuisine+' style. Language: '+lang+'. Goal: '+goalStr()+', total ~'+p.calories+' kcal, ~'+p.protein+'g protein. Allergies: '+(ud.al||[]).join(',')+'. Cooking level: '+ud.cook+'.\nKeep the same structure (Breakfast, Lunch, Dinner, Snack) but all dishes should be authentic '+cuisine+' cuisine. Respect macros.\nRespond ONLY with valid JSON, no markdown:\n{"todayMeals":[{"emoji":"<emoji>","name":"<breakfast dish>","time":"Breakfast","kcal":<n>,"macro":"<e.g. 28g protein>"},{"emoji":"<emoji>","name":"<lunch dish>","time":"Lunch","kcal":<n>,"macro":"<e.g. 42g protein>"},{"emoji":"<emoji>","name":"<dinner dish>","time":"Dinner","kcal":<n>,"macro":"<e.g. 38g protein>"},{"emoji":"<emoji>","name":"<snack>","time":"Snack","kcal":<n>,"macro":"<e.g. 15g protein>"}]}';
   try{
@@ -3375,7 +3393,7 @@ async function lookupBarcode(code){
       body:JSON.stringify({barcode:code,userGoal:ud.goal||'',userLang:lang})
     });
     if(res.status===404){
-      el.innerHTML='<div class="aib"><div class="ailbl"><div class="aidot"></div>'+(de?'Nicht gefunden':'Not found')+'</div><p style="font-size:12px;color:var(--dim);margin:6px 0">'+(de?'Barcode ':'Barcode ')+code+(de?' ist nicht in unserer Datenbank. Du kannst den Eintrag manuell hinzufügen.':' is not in our database. You can add it manually.')+'</p><button class="bnx" style="width:100%;font-size:11px;padding:9px" onclick="openManualFoodEntry()">'+(de?'+ Manuell eintragen':'+ Add manually')+'</button></div>';
+      el.innerHTML='<div class="aib"><div class="ailbl"><div class="aidot"></div>'+(de?'Nicht gefunden':'Not found')+'</div><p style="font-size:12px;color:var(--dim);margin:6px 0">'+(de?'Barcode ':'Barcode ')+esc(code)+(de?' ist nicht in unserer Datenbank. Du kannst den Eintrag manuell hinzufügen.':' is not in our database. You can add it manually.')+'</p><button class="bnx" style="width:100%;font-size:11px;padding:9px" onclick="openManualFoodEntry()">'+(de?'+ Manuell eintragen':'+ Add manually')+'</button></div>';
       return;
     }
     var data=await res.json().catch(function(){return{};});
@@ -3384,7 +3402,7 @@ async function lookupBarcode(code){
     }
     renderProductResult(data.product);
   }catch(err){
-    el.innerHTML='<div class="aib" style="border-color:var(--red)"><div class="ailbl" style="color:var(--red)"><div class="aidot"></div>'+(de?'Fehler':'Error')+'</div><p style="font-size:12px;color:var(--dim);margin:6px 0">'+(err.message||String(err))+'</p></div>';
+    el.innerHTML='<div class="aib" style="border-color:var(--red)"><div class="ailbl" style="color:var(--red)"><div class="aidot"></div>'+(de?'Fehler':'Error')+'</div><p style="font-size:12px;color:var(--dim);margin:6px 0">'+esc(err.message||String(err))+'</p></div>';
   }
 }
 
@@ -3392,24 +3410,39 @@ function renderProductResult(p){
   var de=lang==='de';
   var el=document.getElementById('sr');
   if(!el)return;
+  // ─── XSS hardening: data comes from OpenFoodFacts API, must be escaped ──
+  // Numeric fields are coerced to safe Number first; string fields use esc().
   var fitClass=p.fit==='fit'?'fgood':(p.fit==='avoid'?'fbad':'fwarn');
   var fitLabel=p.fit==='fit'?(de?'✓ Passt zum Plan':'✓ Fits plan'):(p.fit==='avoid'?(de?'⚠ Eher meiden':'⚠ Best avoided'):(de?'◉ In Maßen':'◉ In moderation'));
-  var warningsHtml=(p.warnings&&p.warnings.length)?'<div style="font-size:10px;color:var(--faint);margin-top:4px">'+p.warnings.join(' · ')+'</div>':'';
-  var imgHtml=p.image?'<img src="'+p.image+'" alt="" style="width:48px;height:48px;object-fit:cover;margin-right:10px;flex-shrink:0">':'';
-  var brandLine=p.brand?(p.brand+' — '):'';
+  var warningsHtml=(p.warnings&&p.warnings.length)?'<div style="font-size:10px;color:var(--faint);margin-top:4px">'+p.warnings.map(esc).join(' · ')+'</div>':'';
+  // Image URL: only allow http(s), reject javascript: and data: URIs.
+  var safeImg=(typeof p.image==='string'&&/^https?:\/\//i.test(p.image))?p.image:'';
+  var imgHtml=safeImg?'<img src="'+esc(safeImg)+'" alt="" style="width:48px;height:48px;object-fit:cover;margin-right:10px;flex-shrink:0">':'';
+  var brandLine=p.brand?(esc(p.brand)+' — '):'';
+  var nameEsc=esc(p.name||'');
+  var kcal=Number(p.kcal)||0;
+  var protein=Number(p.protein)||0;
+  var carbs=Number(p.carbs)||0;
+  var servingG=Number(p.serving_g)||0;
+  var nutriScore=p.nutri_score?esc(p.nutri_score):'';
+  // logFood is called via JSON.stringify which is safe for JS strings, but
+  // the resulting fragment is then placed inside an HTML attribute — so we
+  // also need to encode quotes for the attribute context. Stick with the
+  // existing pattern (JSON.stringify + &quot;) since it's already correct.
+  var logArg=JSON.stringify((p.brand?p.brand+' ':'')+p.name).replace(/"/g,'&quot;');
   el.innerHTML=
     '<div class="sres">'+
       '<div style="display:flex;align-items:flex-start">'+imgHtml+
         '<div style="flex:1;min-width:0">'+
-          '<div class="srn">'+brandLine+p.name+'</div>'+
-          '<div class="srm">~'+p.kcal+' kcal · '+p.protein+'g '+(de?'Eiweiß':'protein')+' · '+p.carbs+'g '+(de?'Kohlenh.':'carbs')+'</div>'+
-          '<div style="font-size:10px;color:var(--faint);margin-top:2px">'+(de?'pro Portion':'per serving')+' (~'+p.serving_g+'g)'+(p.nutri_score?' · Nutri-Score '+p.nutri_score:'')+'</div>'+
+          '<div class="srn">'+brandLine+nameEsc+'</div>'+
+          '<div class="srm">~'+kcal+' kcal · '+protein+'g '+(de?'Eiweiß':'protein')+' · '+carbs+'g '+(de?'Kohlenh.':'carbs')+'</div>'+
+          '<div style="font-size:10px;color:var(--faint);margin-top:2px">'+(de?'pro Portion':'per serving')+' (~'+servingG+'g)'+(nutriScore?' · Nutri-Score '+nutriScore:'')+'</div>'+
         '</div>'+
       '</div>'+
       '<div class="fbdg '+fitClass+'" style="margin-top:8px">'+fitLabel+'</div>'+
       warningsHtml+
       '<div style="display:flex;gap:7px;margin-top:10px">'+
-        '<button class="bnx" style="flex:1;font-size:10px;padding:7px;letter-spacing:1px" onclick="logFood('+JSON.stringify((p.brand?p.brand+' ':'')+p.name).replace(/"/g,'&quot;')+','+p.kcal+')">LOG</button>'+
+        '<button class="bnx" style="flex:1;font-size:10px;padding:7px;letter-spacing:1px" onclick="logFood('+logArg+','+kcal+')">LOG</button>'+
         '<button class="bnx" style="flex:1;font-size:10px;padding:7px;letter-spacing:1px;background:var(--s3);color:var(--dim)" onclick="openBarcodeScanner()">'+(de?'NÄCHSTER SCAN':'SCAN AGAIN')+' →</button>'+
       '</div>'+
     '</div>';
@@ -3424,7 +3457,7 @@ function openManualFoodEntry(){
   if(!isFinite(kcal)||kcal<=0){alert(de?'Bitte gültige Kalorienzahl eingeben.':'Please enter a valid calorie number.');return;}
   logFood(name,kcal);
   var el=document.getElementById('sr');
-  if(el)el.innerHTML='<div class="aib"><div class="ailbl" style="color:#2a9d5f"><div class="aidot" style="background:#2a9d5f"></div>✓ '+(de?'Eingetragen':'Logged')+'</div><p style="font-size:12px;color:var(--dim);margin:6px 0">'+name+' · '+kcal+' kcal</p></div>';
+  if(el)el.innerHTML='<div class="aib"><div class="ailbl" style="color:#2a9d5f"><div class="aidot" style="background:#2a9d5f"></div>✓ '+(de?'Eingetragen':'Logged')+'</div><p style="font-size:12px;color:var(--dim);margin:6px 0">'+esc(name)+' · '+(Number(kcal)||0)+' kcal</p></div>';
 }
 
 // ── MENU SCANNER (Photo → Claude Vision) ─────────────────────────────
@@ -3484,7 +3517,7 @@ async function handleMenuPhoto(file){
     renderMenuResult(data.dishes);
   }catch(err){
     console.error('Menu scan error:',err);
-    el.innerHTML='<div class="aib" style="border-color:var(--red)"><div class="ailbl" style="color:var(--red)"><div class="aidot"></div>'+(de?'Fehler':'Error')+'</div><p style="font-size:12px;color:var(--dim);margin:6px 0">'+(err.message||String(err))+'</p><button class="bnx" style="width:100%;font-size:11px;padding:9px;margin-top:6px" onclick="openMenuScanner()">'+(de?'Nochmal versuchen':'Try again')+' →</button></div>';
+    el.innerHTML='<div class="aib" style="border-color:var(--red)"><div class="ailbl" style="color:var(--red)"><div class="aidot"></div>'+(de?'Fehler':'Error')+'</div><p style="font-size:12px;color:var(--dim);margin:6px 0">'+esc(err.message||String(err))+'</p><button class="bnx" style="width:100%;font-size:11px;padding:9px;margin-top:6px" onclick="openMenuScanner()">'+(de?'Nochmal versuchen':'Try again')+' →</button></div>';
   }
 }
 
