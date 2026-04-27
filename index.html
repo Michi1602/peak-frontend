@@ -1119,11 +1119,18 @@ async function fetchPlan(isRegen){
   // ── BMR via Mifflin-St Jeor (1990) — modern standard, gender-aware.
   // Replaces older Harris-Benedict (1984) which over/under-shoots for women.
   // Source: ACSM, Academy of Nutrition and Dietetics.
+  // Mifflin-St Jeor has no official "Other" variant. We use the average of
+  // the two formulas (offset = -78) so non-binary users get a fair midpoint
+  // rather than defaulting to male (which over-shoots ~166 kcal vs. female).
   var w=parseFloat(ud.weight),h=parseFloat(ud.height),a=parseFloat(ud.age);
   var bmr;
   if(w&&h&&a){
     var base=10*w+6.25*h-5*a;
-    bmr=ud.gender==='Female'?Math.round(base-161):Math.round(base+5); // Male/Other = +5
+    var offset;
+    if(ud.gender==='Female')offset=-161;
+    else if(ud.gender==='Male')offset=5;
+    else offset=-78; // Other / unspecified → average of -161 and +5
+    bmr=Math.round(base+offset);
   }else{
     bmr=1800; // sane default
   }
