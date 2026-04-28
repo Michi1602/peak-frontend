@@ -471,6 +471,13 @@ async function aiGen(prompt, maxTokens, purpose){
       e.max=err.max;
       throw e;
     }
+    // Propagate premium-required server-side rejection so callers can show
+    // the upgrade modal instead of a generic error toast (Apr 2026 hardening).
+    if(err.code==='PREMIUM_REQUIRED'){
+      var e2=new Error(err.error||'Premium required');
+      e2.premiumRequired=true;
+      throw e2;
+    }
     throw new Error(err.error||'AI request failed');
   }
   var data=await r.json();
@@ -515,6 +522,10 @@ function showUpgradePrompt(featureKey){
     session_complete: de?'Session-Tracking ist Premium':'Session tracking is Premium',
     meal_rating: de?'Bewertungen sind Premium':'Ratings are Premium',
     plan_limit: de?'Plan-Limit erreicht':'Plan limit reached',
+    log: de?'Protokoll ist Premium':'Log is Premium',
+    recipes: de?'Rezepte sind Premium':'Recipes are Premium',
+    scanner: de?'Scanner ist Premium':'Scanner is Premium',
+    mood_recipe: de?'Cuisine-Anpassung ist Premium':'Cuisine swap is Premium',
   };
   var descs={
     training_progression: de?'Dein Gratis-Plan zeigt Woche 1. Upgrade für 12-Wochen-Progression.':'Your free plan shows Week 1. Upgrade for the 12-week progression.',
@@ -526,6 +537,7 @@ function showUpgradePrompt(featureKey){
     log: de?'Das Protokoll ist Premium. Tracke Essen, Stimmung und Training an einem Ort.':'The Log is Premium. Track food, mood and training in one place.',
     recipes: de?'Rezepte sind Premium. KI-Rezepte passend zu deinen Makros & Zielen.':'Recipes are Premium. AI recipes matching your macros & goals.',
     scanner: de?'Der Scanner ist Premium. Barcode & Menü scannen für smartes Tracking.':'Scanner is Premium. Scan barcodes & menus for smart tracking.',
+    mood_recipe: de?'Tagesplan-Anpassung an Küchen ist Premium. Wechsle Mahlzeiten passend zu deiner Stimmung.':'Cuisine swap is Premium. Adapt your day plan to your mood.',
   };
   var t_=titles[featureKey]||(de?'Upgrade erforderlich':'Upgrade required');
   var d_=descs[featureKey]||(de?'Dieses Feature ist Premium.':'This feature is Premium.');
@@ -977,6 +989,12 @@ function setP(s,tot){
   pbEl.style.width=((s-1)/(tot-1)*100)+'%';
   slEl.textContent=s<=tot?(lang==='de'?'Schritt '+s+' von '+tot:'Step '+s+' of '+tot):(lang==='de'?'Fast geschafft!':'Almost there!');
 }
+// Track last rendered step so we can decide whether to scroll-to-top.
+// Re-rendering the SAME step (e.g. user toggling plan radio buttons) should
+// keep the scroll position; navigating to a NEW step resets it. This was a
+// reported friction point: clicking "Annual" vs "Monthly" on the plan
+// selector jumped the user back to the page top.
+var __lastRenderedStep=null;
 function render(){
   // Safety: if step is out of range, reset to intro (prevents blank screen)
   var handlers={0:s0,1:s1,2:s2,3:s3,4:s4,5:s5,6:s6,7:s7,8:s8,70:s7f,71:s7fi};
@@ -986,7 +1004,11 @@ function render(){
   var c=document.getElementById('mc');
   c.style.animation='none';c.offsetHeight;c.style.animation='up .32s ease';
   handlers[step]();
-  try{window.scrollTo({top:0,behavior:'instant'});}catch(e){window.scrollTo(0,0);}
+  // Only reset scroll on actual step transitions, not on same-step re-renders.
+  if(__lastRenderedStep!==step){
+    try{window.scrollTo({top:0,behavior:'instant'});}catch(e){window.scrollTo(0,0);}
+    __lastRenderedStep=step;
+  }
 }
 function card(h){document.getElementById('mc').innerHTML=h;}
 function foot(lbl,fn,bk){bk=bk===undefined;return '<div class="cf">'+((!bk)&&step>1?'<button class="bbk" onclick="step--;render()">← Back</button>':'')+'<button class="bnx" onclick="('+fn.toString()+')()">'+lbl+' →</button></div>';}
@@ -2616,7 +2638,9 @@ function s8(){
   // Clean the session_id from URL so a refresh doesn't re-trigger this screen.
   try{
     if(window.location.search.includes('session_id')){
-      window.history.replaceState({},document.title,window.location.pathname);
+      // Preserve our history-state schema so popstate routing keeps working.
+      var existingState=window.history.state||{};
+      window.history.replaceState(existingState,document.title,window.location.pathname);
     }
   }catch(e){}
 
@@ -2798,7 +2822,7 @@ async function pickMood(cuisine){
   var p=fp();
   var prompt='Rework today\'s meal plan in '+cuisine+' style. Language: '+lang+'. Goal: '+goalStr()+', total ~'+p.calories+' kcal, ~'+p.protein+'g protein. Allergies: '+(ud.al||[]).join(',')+'. Cooking level: '+ud.cook+'.\nKeep the same structure (Breakfast, Lunch, Dinner, Snack) but all dishes should be authentic '+cuisine+' cuisine. Respect macros.\nRespond ONLY with valid JSON, no markdown:\n{"todayMeals":[{"emoji":"<emoji>","name":"<breakfast dish>","time":"Breakfast","kcal":<n>,"macro":"<e.g. 28g protein>"},{"emoji":"<emoji>","name":"<lunch dish>","time":"Lunch","kcal":<n>,"macro":"<e.g. 42g protein>"},{"emoji":"<emoji>","name":"<dinner dish>","time":"Dinner","kcal":<n>,"macro":"<e.g. 38g protein>"},{"emoji":"<emoji>","name":"<snack>","time":"Snack","kcal":<n>,"macro":"<e.g. 15g protein>"}]}';
   try{
-    var result=await aiGenJSON(prompt,800);
+    var result=await aiGenJSON(prompt,800,'mood_recipe');
     if(!result.todayMeals||!Array.isArray(result.todayMeals)||result.todayMeals.length===0)throw new Error('Invalid data');
     // Update plan with new meals
     if(plan){
@@ -2811,6 +2835,12 @@ async function pickMood(cuisine){
     showTab('nutrition');
   }catch(e){
     console.error('pickMood error:',e);
+    if(e&&e.premiumRequired){
+      // Backend rejected for tier — show upgrade modal instead of generic error
+      a.innerHTML='';
+      showUpgradePrompt('mood_recipe');
+      return;
+    }
     a.innerHTML='<div style="font-size:12px;color:var(--faint);margin-top:8px;padding:10px;border:1px solid var(--border)">'+(de?'Fehler. Bitte erneut versuchen.':'Could not generate. Please try again.')+'</div><button class="blog" style="margin-top:8px" onclick="showMoodPicker()">'+(de?'Nochmal versuchen':'Try again')+'</button>';
   }
 }
@@ -2823,7 +2853,7 @@ async function showMealDetail(idx){
   card('<div class="dhead"><div class="dgreet">'+m.emoji+' '+m.name.toUpperCase()+'</div><div class="dsub">'+mealTimeLabel(m.time)+' · '+m.kcal+' kcal · '+translateMacro(m.macro)+'</div></div><div class="dnav">'+tabs.map(function(tb){return '<button class="ntab '+(tb.k==='nutrition'?'act':'')+'" data-tab="'+tb.k+'" onclick="showTab(\''+tb.k+'\')">'+tb.l+'</button>';}).join('')+'</div><div class="dbody" id="db"><div class="lw"><div class="spin"></div><p style="font-size:12px;color:var(--faint)">'+(de?'Rezept wird geladen...':'Loading recipe...')+'</p></div></div>');
   try{
     var prompt='Detailed recipe for "'+m.name+'" in language: '+lang+'. Target: '+m.kcal+' kcal, '+m.macro+'. Goal: '+goalStr()+', allergies: '+(ud.al||[]).join(',')+'. Include macros and key micronutrients (iron, calcium, vitC, zinc).\nJSON only, no markdown, no prose:\n{"name":"'+m.name+'","kcal":'+m.kcal+',"protein":<g>,"carbs":<g>,"fat":<g>,"micros":{"iron":"<mg>","calcium":"<mg>","vitC":"<mg>","zinc":"<mg>"},"prepTime":<min>,"cookTime":<min>,"ingredients":["<i1 with quantity>","<i2>","<i3>","<i4>","<i5>","<i6>"],"steps":["<s1>","<s2>","<s3>","<s4>"],"shoppingList":["<item1>","<item2>","<item3>","<item4>","<item5>"],"tip":"<chef tip>"}';
-    var rec=await aiGenJSON(prompt,1400);
+    var rec=await aiGenJSON(prompt,1400,'recipe');
     // Defensive: recipe is usable even if some fields missing
     if(!rec||typeof rec!=='object')throw new Error('No recipe data');
     if(!Array.isArray(rec.ingredients)||rec.ingredients.length===0)throw new Error('Missing ingredients');
@@ -2845,6 +2875,12 @@ async function showMealDetail(idx){
     document.getElementById('db').innerHTML=c;
   }catch(e){
     console.error('Recipe load error:',e&&e.message,e);
+    if(e&&e.premiumRequired){
+      // Backend rejected for tier — route to upgrade flow
+      showTab('nutrition');
+      showUpgradePrompt('recipes');
+      return;
+    }
     var errDetail=(e&&e.message)?e.message:(de?'Unbekannter Fehler':'Unknown error');
     document.getElementById('db').innerHTML=
       '<div style="font-size:12px;color:var(--faint);padding:12px;line-height:1.6">'+
@@ -4275,7 +4311,8 @@ async function bootApp(){
       if(ok){
         // Clean auth tokens from URL after magic link redirect
         if(window.location.hash||window.location.search.includes('code=')){
-          window.history.replaceState({},document.title,window.location.pathname);
+          var existingState=window.history.state||{};
+          window.history.replaceState(existingState,document.title,window.location.pathname);
         }
         return;
       }
@@ -4675,7 +4712,162 @@ async function deleteMyAccount(){
   }
 }
 
+// ── HISTORY-BASED NAVIGATION (Apr 2026, for Android TWA Back-Button) ────
+// Without explicit history-stack management, the Android system Back-Button
+// in a Trusted Web Activity drops users straight out of the app on the very
+// first tap — Google Play guidelines require Back to navigate within the
+// app first, only exiting from the entry screen.
+//
+// Strategy:
+// 1. Whenever the user moves to a "new" logical screen (onboarding step,
+//    dashboard tab, profile, recovery detail), pushHistory(state) records
+//    it via history.pushState. The current screen lives at history index N,
+//    the previous at N-1, etc.
+// 2. The popstate handler reads state.view + state.payload and routes to
+//    the matching screen WITHOUT pushing again — this prevents infinite
+//    loops on browser back.
+// 3. The intro screen is the bottom of the stack: Back from there exits
+//    the app (TWA) or goes to the previous browser page (web).
+// 4. A guard flag __ignoreNextPop suppresses popstate during programmatic
+//    history mutations (e.g. URL cleanup after magic-link login).
+var __historyReady=false;
+var __ignoreNextPop=false;
+var __lastHistoryView=null;
+
+function pushHistory(view, payload){
+  // Don't push duplicates of the same view back-to-back; otherwise Back
+  // would feel "sticky" (user has to tap twice to actually navigate).
+  if(__lastHistoryView===view&&!payload)return;
+  __lastHistoryView=view;
+  try{
+    history.pushState({view:view,payload:payload||null,t:Date.now()},'',window.location.pathname+window.location.search);
+  }catch(e){/* private mode / iframe edge cases — silently no-op */}
+}
+
+function initHistoryNav(){
+  if(__historyReady)return;
+  __historyReady=true;
+  // Anchor the very first state so the FIRST back press has somewhere to
+  // pop to — without this, the browser's Back goes to the previous site
+  // (or exits TWA) on the very first tap inside the app.
+  try{history.replaceState({view:'__root',payload:null,t:Date.now()},'',window.location.pathname+window.location.search);}catch(_){}
+
+  window.addEventListener('popstate',function(ev){
+    if(__ignoreNextPop){__ignoreNextPop=false;return;}
+    var st=ev.state;
+    // Empty state = user popped past our root → let browser handle it
+    // (in TWA this exits the app, which is the desired behaviour).
+    if(!st||st.view==='__root'){
+      // Re-anchor root so the user can keep using the app if they navigate
+      // forward again instead of exiting.
+      try{history.replaceState({view:'__root',payload:null,t:Date.now()},'',window.location.pathname+window.location.search);}catch(_){}
+      // If they're mid-app and accidentally hit back at the root, send them
+      // to a sensible landing screen rather than a blank page.
+      if(currentView==='dashboard'||currentView==='profile'){
+        // Already at a stable place — keep them there, don't re-render.
+        return;
+      }
+      return;
+    }
+
+    // Route to the requested view. We do NOT call pushHistory from inside
+    // these branches — popstate already moved the cursor in history.
+    try{
+      switch(st.view){
+        case 'intro':
+          step=0; render(); break;
+        case 'onboarding':
+          if(typeof st.payload==='number'){step=st.payload; render();}
+          break;
+        case 'login':
+          showLogin(); break;
+        case 'dashboard':
+          showDash(); break;
+        case 'tab':
+          if(st.payload&&typeof st.payload==='string'){
+            currentView='dashboard';
+            showTab(st.payload);
+          }
+          break;
+        case 'profile':
+          showProfile(); break;
+        case 'meal-detail':
+          if(typeof st.payload==='number')showMealDetail(st.payload);
+          break;
+        default:
+          // Unknown state — fall back to dashboard if logged in
+          if(ud&&ud.email)showDash();
+      }
+    }catch(e){console.warn('[history] popstate routing failed:',e);}
+  });
+}
+
+// Wrap the existing navigation entry points so they push history without
+// us having to thread pushHistory calls through every onclick. This keeps
+// the change small and reversible. The originals are preserved on _orig.
+(function patchNavForHistory(){
+  var origRender=null;
+  var origShowTab=null;
+  var origShowProfile=null;
+  var origShowDash=null;
+  var origShowLogin=null;
+
+  function wrap(){
+    if(typeof render==='function'&&!origRender){
+      origRender=render;
+      window.render=function(){
+        var r=origRender.apply(this,arguments);
+        if(__historyReady&&currentView==='onboarding'){
+          pushHistory('onboarding',step);
+        }else if(__historyReady&&currentView==='intro'){
+          pushHistory('intro',null);
+        }
+        return r;
+      };
+    }
+    if(typeof showTab==='function'&&!origShowTab){
+      origShowTab=showTab;
+      window.showTab=function(tab){
+        var r=origShowTab.apply(this,arguments);
+        if(__historyReady)pushHistory('tab',tab);
+        return r;
+      };
+    }
+    if(typeof showProfile==='function'&&!origShowProfile){
+      origShowProfile=showProfile;
+      window.showProfile=function(){
+        var r=origShowProfile.apply(this,arguments);
+        if(__historyReady)pushHistory('profile',null);
+        return r;
+      };
+    }
+    if(typeof showDash==='function'&&!origShowDash){
+      origShowDash=showDash;
+      window.showDash=function(){
+        var r=origShowDash.apply(this,arguments);
+        if(__historyReady)pushHistory('dashboard',null);
+        return r;
+      };
+    }
+    if(typeof showLogin==='function'&&!origShowLogin){
+      origShowLogin=showLogin;
+      window.showLogin=function(){
+        var r=origShowLogin.apply(this,arguments);
+        if(__historyReady)pushHistory('login',null);
+        return r;
+      };
+    }
+  }
+  // Wait until DOM + scripts are ready before wrapping
+  if(document.readyState==='complete'||document.readyState==='interactive'){
+    setTimeout(wrap,0);
+  }else{
+    document.addEventListener('DOMContentLoaded',wrap);
+  }
+})();
+
 // ── INIT ──────────────────────────────────────────────────────────────
+initHistoryNav();
 bootApp().finally(function(){__bootDone=true;});
 syncThemeButton();
 </script>
