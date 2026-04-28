@@ -424,6 +424,43 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;hei
   .wk-advance:hover{background:var(--rdk)}
   .rdb-back:hover{color:var(--red)}
 }
+
+/* ── Meal-tracking checkbox (tap to mark a planned meal as eaten) ── */
+.meal-check{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:24px;height:24px;min-width:24px;
+  border:2px solid var(--border);border-radius:6px;
+  background:var(--s2);color:var(--red);
+  font-size:14px;font-weight:900;line-height:1;
+  cursor:pointer;user-select:none;
+  margin-right:10px;flex-shrink:0;
+  transition:border-color .15s ease,background .15s ease,transform .1s ease;
+}
+.meal-check:hover{border-color:var(--red)}
+.meal-check:active{transform:scale(0.92)}
+.meal-check.on{border-color:var(--red);background:var(--red);color:#fff}
+
+/* ── Pull-to-refresh indicator (drag the page down to reload data) ── */
+#ptr-indicator{
+  position:fixed;top:0;left:50%;transform:translateX(-50%) translateY(-60px);
+  z-index:999;
+  background:var(--s1);border:1px solid var(--border);border-top:none;
+  border-radius:0 0 14px 14px;
+  padding:8px 18px;
+  display:flex;align-items:center;gap:10px;
+  font-size:11px;letter-spacing:1.5px;font-weight:700;color:var(--ink2);text-transform:uppercase;
+  transition:transform .25s cubic-bezier(.2,.8,.2,1),opacity .2s;
+  opacity:0;pointer-events:none;
+  box-shadow:0 4px 16px rgba(0,0,0,0.4);
+}
+#ptr-indicator.visible{opacity:1}
+#ptr-indicator.armed{color:var(--red)}
+#ptr-indicator.spinning .ptr-ico{animation:spin .7s linear infinite}
+.ptr-ico{
+  width:14px;height:14px;
+  border:2px solid var(--border);border-top-color:var(--red);
+  border-radius:50%;
+}
 </style>
 </head>
 <body>
@@ -526,6 +563,7 @@ function showUpgradePrompt(featureKey){
     recipes: de?'Rezepte sind Premium':'Recipes are Premium',
     scanner: de?'Scanner ist Premium':'Scanner is Premium',
     mood_recipe: de?'Cuisine-Anpassung ist Premium':'Cuisine swap is Premium',
+    meal_tracking: de?'Meal-Tracking ab Basic':'Meal tracking from Basic',
   };
   var descs={
     training_progression: de?'Dein Gratis-Plan zeigt Woche 1. Upgrade für 12-Wochen-Progression.':'Your free plan shows Week 1. Upgrade for the 12-week progression.',
@@ -538,6 +576,7 @@ function showUpgradePrompt(featureKey){
     recipes: de?'Rezepte sind Premium. KI-Rezepte passend zu deinen Makros & Zielen.':'Recipes are Premium. AI recipes matching your macros & goals.',
     scanner: de?'Der Scanner ist Premium. Barcode & Menü scannen für smartes Tracking.':'Scanner is Premium. Scan barcodes & menus for smart tracking.',
     mood_recipe: de?'Tagesplan-Anpassung an Küchen ist Premium. Wechsle Mahlzeiten passend zu deiner Stimmung.':'Cuisine swap is Premium. Adapt your day plan to your mood.',
+    meal_tracking: de?'Mahlzeiten abhaken und Tagesfortschritt sehen — verfügbar ab Basic.':'Check off meals and see daily progress — available from Basic.',
   };
   var t_=titles[featureKey]||(de?'Upgrade erforderlich':'Upgrade required');
   var d_=descs[featureKey]||(de?'Dieses Feature ist Premium.':'This feature is Premium.');
@@ -738,6 +777,123 @@ var lang=(function(){
 try{document.documentElement.lang=lang;}catch(_){ }
 var ud={name:'',age:'',gender:'',weight:'',dweight:'',height:'',sleep:'',job:'',commute:'',stress:'5',sport:'',level:'',sessions:'',dur:'',equip:'',al:[],di:[],cu:[],cook:'',budget:'',goal:''};
 var plan=null,selPlan='annual',selTier='premium',flog=[],mrat={},wrat={};
+
+// ── MEAL TRACKING (Apr 2026) ────────────────────────────────────────
+// Persistent record of which planned meals (todayMeals) the user has
+// checked off as eaten. Counts towards the day's calorie/protein
+// totals just like flog (manual food log entries) does.
+//
+// Structure: { date: 'YYYY-MM-DD', checked: { '0': true, '2': true } }
+// Reset automatically at the start of each new local day (so yesterday's
+// checks don't leak into today's totals when meals refresh).
+//
+// Persistence is hybrid: written to localStorage immediately for instant
+// UI feedback + offline support, then synced to Supabase in the background
+// so it follows the user across devices.
+var mealTrack={date:null,checked:{}};
+
+function todayDateStr(){
+  var d=new Date();
+  // Use local YYYY-MM-DD so reset happens at the user's midnight, not UTC
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function loadMealTrack(){
+  try{
+    var raw=localStorage.getItem('peak_meal_track');
+    if(raw){
+      var parsed=JSON.parse(raw);
+      // Roll over if it's stale from a previous day
+      if(parsed&&parsed.date===todayDateStr()){
+        mealTrack=parsed;
+      }else{
+        mealTrack={date:todayDateStr(),checked:{}};
+        saveMealTrack();
+      }
+    }else{
+      mealTrack={date:todayDateStr(),checked:{}};
+    }
+  }catch(_){
+    mealTrack={date:todayDateStr(),checked:{}};
+  }
+}
+
+function saveMealTrack(){
+  // Always write the current date so next load triggers correct rollover
+  if(!mealTrack.date)mealTrack.date=todayDateStr();
+  try{localStorage.setItem('peak_meal_track',JSON.stringify(mealTrack));}catch(_){}
+  // Best-effort backend sync (don't await — UI shouldn't wait for network).
+  // If user is on Free tier or not logged in, skip — this is a Basic+ feature.
+  if(isFree())return;
+  if(!ud||!ud.email)return;
+  syncMealTrackToBackend();
+}
+
+// Debounced backend sync to avoid hammering the server on rapid taps
+var __mealSyncTimer=null;
+function syncMealTrackToBackend(){
+  if(__mealSyncTimer)clearTimeout(__mealSyncTimer);
+  __mealSyncTimer=setTimeout(async function(){
+    try{
+      if(!window.sb)return;
+      var sess=await window.sb.auth.getSession();
+      var tok=sess?.data?.session?.access_token;
+      if(!tok)return;
+      await fetch(BACKEND+'/user/meal-track',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},
+        body:JSON.stringify({date:mealTrack.date,checked:mealTrack.checked})
+      });
+    }catch(e){
+      // Fail silently — localStorage is the source of truth on the device
+      console.warn('[meal-track] backend sync failed:',e&&e.message);
+    }
+  },800);
+}
+
+// Toggle a single meal's checked state. Called from the meal card click.
+function toggleMealCheck(idx,ev){
+  if(ev)ev.stopPropagation();
+  // Gate: Basic + Premium only (Free gets the upsell)
+  if(isFree()){
+    showUpgradePrompt('meal_tracking');
+    return;
+  }
+  // Roll over if user crossed midnight while the tab was open
+  if(mealTrack.date!==todayDateStr()){
+    mealTrack={date:todayDateStr(),checked:{}};
+  }
+  var key=String(idx);
+  if(mealTrack.checked[key]){
+    delete mealTrack.checked[key];
+  }else{
+    mealTrack.checked[key]=true;
+  }
+  saveMealTrack();
+  // Re-render Nutrition tab so totals update
+  if(currentView==='dashboard'&&dashTab==='nutrition'){
+    var p=fp();tNu(p);
+  }
+}
+
+// Sum of kcal from checked planned-meals (used in Nutrition stats).
+function trackedMealKcal(meals){
+  if(!Array.isArray(meals))return 0;
+  if(mealTrack.date!==todayDateStr())return 0;
+  return meals.reduce(function(a,m,i){
+    return a+(mealTrack.checked[String(i)]?(m.kcal||0):0);
+  },0);
+}
+function trackedMealProtein(meals){
+  if(!Array.isArray(meals))return 0;
+  if(mealTrack.date!==todayDateStr())return 0;
+  return meals.reduce(function(a,m,i){
+    if(!mealTrack.checked[String(i)])return a;
+    // Parse "28g protein" → 28
+    var match=String(m.macro||'').match(/(\d+(?:\.\d+)?)\s*g/);
+    return a+(match?parseFloat(match[1]):0);
+  },0);
+}
 // Training progression state.
 // trainState.completed: { "w1-d0": true, "w1-d2": true, ... }
 // trainState.feedback: { "w1-d0": "easy" | "perfect" | "hard", ... }
@@ -765,7 +921,7 @@ var T={en:{
   bld:'Build my plan',
   s6:'Plan Ready',plRdy:'PLAN READY',ul:'UNLOCK YOUR FULL PLAN',uls:'Your meals, workouts and recovery are ready.',
   tBas:'Basic',tPrem:'Premium',tCh:'CHOOSE YOUR PLAN',
-  tBasF:['Preset nutrition plan','Preset training plan','Preset recovery plan'],
+  tBasF:['Preset nutrition plan','Preset training plan','Preset recovery plan','Meal tracking & daily progress','Calorie & protein targets'],
   tPremF:['Full AI meal plan + recipes','Sport-specific workout programme','Recovery guide + reminders','Live shopping mode + scanner','Real-time plan adaptation','Recipe builder','Cuisine mood picker'],
   tEv:'Everything in Basic, plus:',perMo:'/mo',perYr:'/yr',inAnn:'in annual plan',
   pxOnly:'Premium only',upgTxt:'Upgrade to Premium to unlock this feature.',upgBtn:'Upgrade to Premium',
@@ -814,7 +970,7 @@ var T={en:{
   bld:'Meinen Plan erstellen',
   s6:'Plan bereit',plRdy:'PLAN BEREIT',ul:'DEINEN PLAN FREISCHALTEN',uls:'Deine Mahlzeiten, Workouts und Regeneration sind bereit.',
   tBas:'Basic',tPrem:'Premium',tCh:'WÄHLE DEINEN PLAN',
-  tBasF:['Vorgegebener Ernährungsplan','Vorgegebener Trainingsplan','Vorgegebener Regenerationsplan'],
+  tBasF:['Vorgegebener Ernährungsplan','Vorgegebener Trainingsplan','Vorgegebener Regenerationsplan','Meal-Tracking & Tagesfortschritt','Kalorien- & Eiweißziele'],
   tPremF:['Vollständiger KI-Ernährungsplan + Rezepte','Sportspezifisches Trainingsprogramm','Regenerationsguide + Erinnerungen','Live-Shopping-Modus + Scanner','Echtzeit-Anpassung','Rezept-Builder','Cuisine Mood Picker'],
   tEv:'Alles aus Basic, plus:',perMo:'/Mon',perYr:'/Jahr',inAnn:'im Jahresplan',
   pxOnly:'Nur Premium',upgTxt:'Upgrade auf Premium, um diese Funktion freizuschalten.',upgBtn:'Auf Premium upgraden',
@@ -1047,7 +1203,7 @@ function selGoal(el,k){
 function tc(el,key,val){if(!ud[key])ud[key]=[];if(ud[key].includes(val)){ud[key]=ud[key].filter(function(v){return v!==val;});el.classList.remove('sel');}else{ud[key].push(val);el.classList.add('sel');}}
 function showE(id,msg){var el=document.getElementById(id);if(el){el.textContent='⚠ '+msg;el.style.display='block';}}
 function saveSession(){try{sessionStorage.setItem('pk_ud',JSON.stringify(ud));if(plan)sessionStorage.setItem('pk_plan',JSON.stringify(plan));sessionStorage.setItem('pk_train',JSON.stringify(trainState));}catch(e){}if(ud.email)scheduleTrainSync();}
-function loadSession(){try{var d=sessionStorage.getItem('pk_ud');if(d){var saved=JSON.parse(d);Object.keys(saved).forEach(function(k){if(saved[k])ud[k]=saved[k];});}var p=sessionStorage.getItem('pk_plan');if(p)plan=JSON.parse(p);var ts=sessionStorage.getItem('pk_train');if(ts){var t=JSON.parse(ts);if(t.completed)trainState.completed=t.completed;if(t.feedback)trainState.feedback=t.feedback;if(t.currentWeek)trainState.currentWeek=t.currentWeek;}}catch(e){}}
+function loadSession(){try{var d=sessionStorage.getItem('pk_ud');if(d){var saved=JSON.parse(d);Object.keys(saved).forEach(function(k){if(saved[k])ud[k]=saved[k];});}var p=sessionStorage.getItem('pk_plan');if(p)plan=JSON.parse(p);var ts=sessionStorage.getItem('pk_train');if(ts){var t=JSON.parse(ts);if(t.completed)trainState.completed=t.completed;if(t.feedback)trainState.feedback=t.feedback;if(t.currentWeek)trainState.currentWeek=t.currentWeek;}}catch(e){}loadMealTrack();}
 
 // Debounced backend sync for trainState. Waits 1.5s after last change
 // so rapid actions (abhaken + feedback) only fire one request.
@@ -2789,14 +2945,30 @@ function showTab(tab){
 // ── NUTRITION TAB ─────────────────────────────────────────────────────
 function tNu(p){
   var de=lang==='de';
-  var lg=flog.reduce(function(a,e){return a+(e.kcal||0);},0);
+  // Logged kcal = manual flog entries + checked planned meals (Basic+ only).
+  // For Free users, mealTrack.checked stays empty so trackedKcal=0.
+  var manualKcal=flog.reduce(function(a,e){return a+(e.kcal||0);},0);
+  var trackedKcal=trackedMealKcal(p.todayMeals);
+  var lg=manualKcal+trackedKcal;
   var rm=p.calories-lg;
+  // Protein progress (Basic+: includes tracked meal protein, otherwise 0)
+  var trackedProt=trackedMealProtein(p.todayMeals);
+  var protPct=p.protein?Math.min(100,Math.round(trackedProt/p.protein*100)):0;
   var c='<div class="sg"><div class="stat"><div class="stl">'+t('dt')+'</div><div class="stv">'+p.calories+' kcal</div></div><div class="stat"><div class="stl">'+(de?'Protokolliert':'Logged')+'</div><div class="stv">'+lg+'</div></div><div class="stat"><div class="stl">'+(de?'Verbleibend':'Remaining')+'</div><div class="stv" style="color:var(--red)">'+rm+'</div></div><div class="stat"><div class="stl">'+t('pg')+'</div><div class="stv">'+p.protein+'g</div></div></div>';
-  c+='<div class="mbw"><div class="mbl"><span>'+(de?'Eiweiß':'Protein')+'</span><span>'+p.protein+'g</span></div><div class="mb"><div class="mf" style="width:72%;background:var(--red)"></div></div></div>';
+  c+='<div class="mbw"><div class="mbl"><span>'+(de?'Eiweiß':'Protein')+'</span><span>'+trackedProt+' / '+p.protein+'g</span></div><div class="mb"><div class="mf" style="width:'+protPct+'%;background:var(--red)"></div></div></div>';
   c+='<div class="mbw"><div class="mbl"><span>'+(de?'Kohlenhydrate':'Carbs')+'</span><span>'+p.carbs+'g</span></div><div class="mb"><div class="mf" style="width:58%;background:#4A90D9"></div></div></div>';
   c+='<div class="mbw"><div class="mbl"><span>'+(de?'Fette':'Fat')+'</span><span>'+p.fat+'g</span></div><div class="mb"><div class="mf" style="width:48%;background:var(--dim)"></div></div></div>';
   c+='<div class="dst">'+t('tm')+'</div>';
-  c+=p.todayMeals.map(function(m,i){var r=mrat[i];return '<div class="mc" onclick="showMealDetail('+i+')"><span class="me">'+m.emoji+'</span><div class="mi"><div class="mn">'+m.name+'</div><div class="mm">'+mealTimeLabel(m.time)+' · '+translateMacro(m.macro)+'</div>'+(!r?'<div class="rrow" onclick="event.stopPropagation()">'+[1,2,3,4,5].map(function(s){return '<span class="star" onclick="rateMeal('+i+','+s+',this)">⭐</span>';}).join('')+'</div>':'<div style="font-size:10px;color:var(--red);margin-top:3px">'+(de?'BEWERTET':'RATED')+' '+r+'/5 ✓</div>')+'</div><span class="mk">'+m.kcal+' kcal</span><span style="color:var(--faint);font-size:10px;margin-left:5px">→</span></div>';}).join('');
+  c+=p.todayMeals.map(function(m,i){
+    var r=mrat[i];
+    var checked=mealTrack.date===todayDateStr()&&mealTrack.checked[String(i)];
+    // Checkbox: tappable square that fills with ✓ when meal is checked.
+    // For Free users, tapping triggers the upgrade prompt instead of toggling.
+    var checkBox='<span class="meal-check'+(checked?' on':'')+'" onclick="toggleMealCheck('+i+',event)" role="checkbox" aria-checked="'+(checked?'true':'false')+'" title="'+(de?'Mahlzeit abhaken':'Mark as eaten')+'">'+(checked?'✓':'')+'</span>';
+    var rowStyle=checked?' style="opacity:0.65"':'';
+    var nameStyle=checked?' style="text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:2px"':'';
+    return '<div class="mc"'+rowStyle+'>'+checkBox+'<span class="me" onclick="showMealDetail('+i+')" style="cursor:pointer">'+m.emoji+'</span><div class="mi" onclick="showMealDetail('+i+')" style="cursor:pointer"><div class="mn"'+nameStyle+'>'+m.name+'</div><div class="mm">'+mealTimeLabel(m.time)+' · '+translateMacro(m.macro)+'</div>'+(!r?'<div class="rrow" onclick="event.stopPropagation()">'+[1,2,3,4,5].map(function(s){return '<span class="star" onclick="rateMeal('+i+','+s+',this)">⭐</span>';}).join('')+'</div>':'<div style="font-size:10px;color:var(--red);margin-top:3px">'+(de?'BEWERTET':'RATED')+' '+r+'/5 ✓</div>')+'</div><span class="mk" onclick="showMealDetail('+i+')" style="cursor:pointer">'+m.kcal+' kcal</span><span style="color:var(--faint);font-size:10px;margin-left:5px;cursor:pointer" onclick="showMealDetail('+i+')">→</span></div>';
+  }).join('');
   if(!isBasic()&&!isFree()){c+='<div class="aib" style="margin-top:11px"><div class="ailbl"><div class="aidot"></div>PEAK AI</div><p>'+(de?'Nicht nach Plan? ':'Not feeling the plan? ')+'<span style="color:var(--red);cursor:pointer;font-weight:700" onclick="showMoodPicker()">'+(de?'Küche wählen →':'Pick a cuisine →')+'</span></p></div><div id="moodA"></div>';}
   if(p&&p.shopping&&p.shopping.length){c+='<div class="dst" style="margin-top:14px">'+(de?'Einkaufsliste':'Shopping List')+'</div>';c+='<div class="aib">'+p.shopping.map(function(s){return '<div style="font-size:12px;padding:4px 0;color:var(--ink2);border-bottom:1px solid var(--border)">🛒 '+s+'</div>';}).join('')+'</div>';}
   dshell('nutrition',c);
@@ -4204,6 +4376,18 @@ async function loadAuthProfile(){
     // Load training state from backend (overrides sessionStorage stub)
     await loadTrainingStateFromBackend();
 
+    // Restore meal-tracking state from backend if it's for today.
+    // Backend wins over localStorage when both have data for today,
+    // so a user switching devices sees their up-to-date checkmarks.
+    if(p.meal_track&&p.meal_track.date===todayDateStr()&&p.meal_track.checked){
+      // Merge: backend keys win, but local keys for today are preserved
+      // in case the user toggled offline.
+      var localToday=mealTrack.date===todayDateStr()?mealTrack.checked:{};
+      var merged=Object.assign({},localToday,p.meal_track.checked);
+      mealTrack={date:todayDateStr(),checked:merged};
+      try{localStorage.setItem('peak_meal_track',JSON.stringify(mealTrack));}catch(_){}
+    }
+
     // Merge any saved onboarding data from sessionStorage (full profile)
     try{
       var saved=sessionStorage.getItem('pk_ud');
@@ -4711,6 +4895,133 @@ async function deleteMyAccount(){
     peakToast(de?'Fehler beim Löschen: '+err.message:'Deletion failed: '+err.message);
   }
 }
+
+// ── PULL-TO-REFRESH (Apr 2026) ───────────────────────────────────────
+// Touch-driven gesture: drag the page down at the top to reload data.
+// We don't reload the entire HTML (would lose React-style state); instead
+// we re-fetch profile + training-state from Supabase and re-render the
+// current dashboard tab, which gives users the "fresh" feeling without
+// a full page reload.
+//
+// Available to all tiers — pure UX, no AI cost. Disabled inside dialogs
+// and when scrolled past the top so it doesn't interfere with normal
+// scrolling.
+(function setupPullToRefresh(){
+  var TRIGGER_DISTANCE=72;       // px the user has to drag before refresh fires
+  var MAX_PULL=140;              // visual cap on how far the indicator moves
+  var startY=null;
+  var pulling=false;
+  var indicator=null;
+
+  function ensureIndicator(){
+    if(indicator)return indicator;
+    indicator=document.createElement('div');
+    indicator.id='ptr-indicator';
+    indicator.innerHTML='<div class="ptr-ico"></div><span id="ptr-label">'+(lang==='de'?'Ziehen zum Aktualisieren':'Pull to refresh')+'</span>';
+    document.body.appendChild(indicator);
+    return indicator;
+  }
+  function updateIndicator(distance, armed){
+    var el=ensureIndicator();
+    var visible=distance>10;
+    el.classList.toggle('visible',visible);
+    el.classList.toggle('armed',armed);
+    var translate=Math.min(distance,MAX_PULL)-60; // start at -60 (off-screen)
+    el.style.transform='translateX(-50%) translateY('+translate+'px)';
+    var lbl=el.querySelector('#ptr-label');
+    if(lbl){
+      lbl.textContent=armed
+        ?(lang==='de'?'Loslassen zum Aktualisieren':'Release to refresh')
+        :(lang==='de'?'Ziehen zum Aktualisieren':'Pull to refresh');
+    }
+  }
+  function hideIndicator(){
+    var el=ensureIndicator();
+    el.classList.remove('visible','armed');
+    el.style.transform='translateX(-50%) translateY(-60px)';
+  }
+  function showSpinning(){
+    var el=ensureIndicator();
+    el.classList.add('visible','spinning');
+    el.classList.remove('armed');
+    el.style.transform='translateX(-50%) translateY(20px)';
+    var lbl=el.querySelector('#ptr-label');
+    if(lbl)lbl.textContent=lang==='de'?'Wird aktualisiert…':'Refreshing…';
+  }
+  function stopSpinning(){
+    var el=ensureIndicator();
+    el.classList.remove('spinning');
+    hideIndicator();
+  }
+
+  // Don't trigger if user is interacting with a modal, dialog, or input
+  function isInActiveDialog(target){
+    if(!target)return false;
+    var node=target;
+    while(node&&node!==document.body){
+      if(node.tagName==='INPUT'||node.tagName==='TEXTAREA'||node.tagName==='SELECT')return true;
+      // peakConfirm / peakToast modals
+      if(node.classList&&(node.classList.contains('pkconf')||node.classList.contains('pktoast')||node.classList.contains('modal')))return true;
+      node=node.parentNode;
+    }
+    return false;
+  }
+
+  document.addEventListener('touchstart',function(ev){
+    if(window.scrollY>0)return;
+    if(ev.touches.length!==1)return;
+    if(isInActiveDialog(ev.target))return;
+    startY=ev.touches[0].clientY;
+    pulling=false;
+  },{passive:true});
+
+  document.addEventListener('touchmove',function(ev){
+    if(startY===null)return;
+    if(window.scrollY>0){startY=null;hideIndicator();return;}
+    var dy=ev.touches[0].clientY-startY;
+    if(dy<=0){startY=null;hideIndicator();return;}
+    pulling=true;
+    var armed=dy>=TRIGGER_DISTANCE;
+    updateIndicator(dy,armed);
+  },{passive:true});
+
+  document.addEventListener('touchend',function(ev){
+    if(!pulling||startY===null){startY=null;return;}
+    var lastTouch=ev.changedTouches[0];
+    var dy=lastTouch.clientY-startY;
+    startY=null;
+    pulling=false;
+    if(dy>=TRIGGER_DISTANCE){
+      doRefresh();
+    }else{
+      hideIndicator();
+    }
+  },{passive:true});
+
+  async function doRefresh(){
+    showSpinning();
+    var minDuration=new Promise(function(r){setTimeout(r,500);}); // ensure spinner is visible
+    try{
+      // Reload profile from backend (pulls fresh tier, training-state, meal-track)
+      if(window.sb&&ud&&ud.email){
+        await loadAuthProfile().catch(function(e){console.warn('[ptr] reload profile failed:',e);});
+      }
+      // Re-render current view
+      if(currentView==='dashboard'&&dashTab){
+        showTab(dashTab);
+      }else if(currentView==='profile'){
+        showProfile();
+      }
+      await minDuration;
+      peakToast(lang==='de'?'Aktualisiert ✓':'Refreshed ✓',{kind:'success',duration:1500});
+    }catch(e){
+      console.error('[ptr] refresh failed:',e);
+      peakToast(lang==='de'?'Aktualisierung fehlgeschlagen':'Refresh failed');
+    }finally{
+      stopSpinning();
+    }
+  }
+})();
 
 // ── HISTORY-BASED NAVIGATION (Apr 2026, for Android TWA Back-Button) ────
 // Without explicit history-stack management, the Android system Back-Button
