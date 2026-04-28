@@ -2139,8 +2139,11 @@ async function enrichWeekWithAI(){
       saveSession();
     }catch(e){console.warn('DE week translation failed:',e);}
   }
-  // Re-render fitness tab if user is on it
-  if(currentView==='dashboard'&&dashTab==='fitness')showTab('fitness');
+  // Re-render fitness tab if user is on it. Direct tFi() call is more
+  // reliable than showTab() routing (Apr 2026 fix — see tFi for context).
+  if(currentView==='dashboard'&&dashTab==='fitness'){
+    tFi(plan);
+  }
 }
 
 // Sport-specific bilingual fallback exercises. Used in two places:
@@ -2853,19 +2856,46 @@ async function showMealDetail(idx){
 }
 
 // ── FITNESS TAB ───────────────────────────────────────────────────────
+// Module-level flag: prevents multiple parallel translation calls when
+// tFi is invoked repeatedly (e.g. during navigation, race conditions).
+var __weekTranslating=false;
 function tFi(p){
   var de=lang==='de';
   var sport=ud.sport||'—';var level=ud.level||'—';
   var sportDisplay=sportLabel(sport);
   // DE: trigger background translation of week templates if not yet cached.
-  // First render may show EN briefly; translation re-renders automatically.
-  if(de&&p&&p.week&&weekNeedsTranslation(p.week,sport,level)){
+  // Robust version (Apr 2026): with guard flag, explicit logging, and a
+  // direct re-render via tFi(plan) instead of relying on showTab routing —
+  // showTab depends on currentView/dashTab which can momentarily desync
+  // and silently skip the re-render, leaving the user with English text.
+  if(de&&p&&p.week&&weekNeedsTranslation(p.week,sport,level)&&!__weekTranslating){
+    __weekTranslating=true;
+    console.log('[i18n] Starting DE translation of week plan…');
     translateWeekPlanToDE(p.week,sport,level).then(function(translated){
-      if(plan){plan.week=translated;saveSession();}
-      if(currentView==='dashboard'&&dashTab==='fitness')showTab('fitness');
-    }).catch(function(e){console.warn('tFi translate:',e);});
+      __weekTranslating=false;
+      if(plan){
+        plan.week=translated;
+        saveSession();
+      }
+      console.log('[i18n] DE translation complete — re-rendering fitness tab');
+      // Direct re-render. Bypasses showTab() routing because the user may
+      // have navigated away or dashTab may have desynced. We only re-render
+      // if the user is still actually looking at the fitness tab.
+      if(currentView==='dashboard'&&dashTab==='fitness'){
+        tFi(plan);
+      }
+    }).catch(function(e){
+      __weekTranslating=false;
+      console.warn('[i18n] DE translation failed:',e&&e.message||e);
+    });
   }
   var c='<div class="sg"><div class="stat"><div class="stl">'+t('sp')+'</div><div class="stv">'+sportDisplay+'</div></div><div class="stat"><div class="stl">Level</div><div class="stv">'+level+'</div></div><div class="stat"><div class="stl">'+(de?'Einheiten':'Sessions')+'</div><div class="stv">'+(ud.sessions||'—')+t('sessionsUnit')+'</div></div><div class="stat"><div class="stl">'+(de?'Dauer':'Duration')+'</div><div class="stv">'+(ud.dur||'—')+' '+t('minutesLbl')+'</div></div></div>';
+
+  // Loading hint: if we're actively translating, show a subtle banner so
+  // the user knows English text is temporary, not a bug.
+  if(de&&__weekTranslating){
+    c+='<div style="background:var(--s2);border-left:3px solid var(--red);padding:10px 14px;margin:0 0 10px;font-size:11px;color:var(--dim);letter-spacing:.5px;display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border:2px solid var(--red);border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0"></span>Plan wird übersetzt…</div>';
+  }
 
   // WEEKLY PLAN VIEW
   if(p&&p.week&&p.week.days&&p.week.days.length){
