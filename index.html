@@ -542,7 +542,10 @@ function goalStr(){
 // gateFree(featureKey): shows upgrade prompt + returns true if should block
 //                      returns false if user can proceed
 // freeLimitReachedUI(): shows a specific prompt when plan-gen cap is hit
-function isFree(){ return ud.tier==='free'; }
+// Fail-safe: anything other than an explicit paid tier is treated as free.
+// Prevents privilege escalation if ud.tier is ever undefined/null/garbage
+// (e.g. mid-render, before loadAuthProfile finishes, or after data corruption).
+function isFree(){ return ud.tier!=='basic'&&ud.tier!=='premium'; }
 
 function gateFree(featureKey){
   if(!isFree())return false; // allowed
@@ -4369,7 +4372,16 @@ async function loadAuthProfile(){
     if(Array.isArray(p.cu))ud.cu=p.cu;
     if(p.cook)ud.cook=p.cook;
     if(p.budget!==undefined&&p.budget!==null)ud.budget=p.budget;
-    ud.tier=p.tier||'premium';
+    // Tier defaults to 'free' if backend doesn't return a value. Critical
+    // security default: previous fallback was 'premium', which meant a user
+    // with a missing/null tier field would see all Premium UI features
+    // unlocked while the backend (which fails-closed to free in resolveAuthAndTier)
+    // would reject every Premium API call. Result: confused user, support
+    // ticket, and worse — a window where Frontend gating was bypassed.
+    // Free is the safe default: backend will upgrade to Basic/Premium as
+    // soon as the field is read correctly, but we never accidentally
+    // grant elevated privileges from a missing field.
+    ud.tier=(p.tier==='premium'||p.tier==='basic')?p.tier:'free';
     ud.plan_generations_used=p.plan_generations_used||0;
     updateAuthUI();
 
