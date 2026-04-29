@@ -1188,11 +1188,35 @@ function sportLabel(sport,forLang){
   if(l==='de')return SPORT_DE[sport]||sport;
   return sport;
 }
+// Maps a goal label in any language back to its stable key (g1..g6). This
+// is the only safe way to compare goals across language toggles — comparing
+// the rendered string ('Lose weight' vs 'Abnehmen') breaks the moment the
+// user switches DE/EN mid-onboarding.
+function goalKeyOf(label){
+  if(!label)return null;
+  for(var i=1;i<=6;i++){
+    var k='g'+i;
+    if(T.en[k]===label||T.de[k]===label)return k;
+  }
+  return null;
+}
+// True if the user's primary goal corresponds to the given key, regardless
+// of the language the label was stored in.
+function isGoal(k){
+  return goalKeyOf(ud.goal)===k;
+}
+
 function selGoal(el,k){
   // Multi-select: toggle. Keep ud.goal as primary (first), ud.goals as array.
   if(!Array.isArray(ud.goals))ud.goals=[];
   var val=t(k);
-  var idx=ud.goals.indexOf(val);
+  // Match by goal key (language-independent), not the rendered label —
+  // otherwise a user who selected 'Lose weight' in EN and then switched to
+  // DE before clicking would push 'Abnehmen' as a SECOND goal.
+  var idx=-1;
+  for(var i=0;i<ud.goals.length;i++){
+    if(goalKeyOf(ud.goals[i])===k){idx=i;break;}
+  }
   if(idx>=0){
     ud.goals.splice(idx,1);
     el.classList.remove('sel');
@@ -1206,7 +1230,7 @@ function selGoal(el,k){
 function tc(el,key,val){if(!ud[key])ud[key]=[];if(ud[key].includes(val)){ud[key]=ud[key].filter(function(v){return v!==val;});el.classList.remove('sel');}else{ud[key].push(val);el.classList.add('sel');}}
 function showE(id,msg){var el=document.getElementById(id);if(el){el.textContent='⚠ '+msg;el.style.display='block';}}
 function saveSession(){try{sessionStorage.setItem('pk_ud',JSON.stringify(ud));if(plan)sessionStorage.setItem('pk_plan',JSON.stringify(plan));sessionStorage.setItem('pk_train',JSON.stringify(trainState));}catch(e){}if(ud.email)scheduleTrainSync();}
-function loadSession(){try{var d=sessionStorage.getItem('pk_ud');if(d){var saved=JSON.parse(d);Object.keys(saved).forEach(function(k){if(saved[k])ud[k]=saved[k];});}var p=sessionStorage.getItem('pk_plan');if(p)plan=JSON.parse(p);var ts=sessionStorage.getItem('pk_train');if(ts){var t=JSON.parse(ts);if(t.completed)trainState.completed=t.completed;if(t.feedback)trainState.feedback=t.feedback;if(t.currentWeek)trainState.currentWeek=t.currentWeek;}}catch(e){}loadMealTrack();}
+function loadSession(){try{var d=sessionStorage.getItem('pk_ud');if(d){var saved=JSON.parse(d);Object.keys(saved).forEach(function(k){if(k in saved)ud[k]=saved[k];});}var p=sessionStorage.getItem('pk_plan');if(p)plan=JSON.parse(p);var ts=sessionStorage.getItem('pk_train');if(ts){var t=JSON.parse(ts);if(t.completed)trainState.completed=t.completed;if(t.feedback)trainState.feedback=t.feedback;if(t.currentWeek)trainState.currentWeek=t.currentWeek;}}catch(e){}loadMealTrack();}
 
 // Debounced backend sync for trainState. Waits 1.5s after last change
 // so rapid actions (abhaken + feedback) only fire one request.
@@ -1291,7 +1315,7 @@ function s3(){var sp=[{e:'🏃',n:'Running'},{e:'🏋️',n:'Weights'},{e:'⚽',
 
 function s4(){var al=['Gluten','Dairy','Nuts','Peanuts','Shellfish','Eggs','Soy','Fish','Pork','Sesame','Mustard','Lactose','Fructose','Histamine'];var di=['🥩 Keto','🌱 Vegan','🥗 Vegetarian','🐟 Pescatarian','🫙 Paleo','🍖 Carnivore','🌾 Gluten-free','🧘 Mediterranean','⚡ Intermittent Fasting','💊 Diabetic-friendly'];var cu=['🇲🇽 Mexican','🍝 Italian','🍜 Asian','🥗 Mediterranean','🍔 American','🍛 Indian','🇯🇵 Japanese','🥙 Middle Eastern','🇹🇭 Thai','🇬🇷 Greek'];card('<div class="ch"><div class="chip">✦ '+t('s4')+'</div><div class="ct">'+t('s4t')+' <em>'+t('s4e')+'</em></div><p class="cs">'+t('s4s')+'</p></div><div class="cb"><div class="field"><label>'+t('al')+'</label><div class="chips">'+al.map(function(a){return '<div class="chip2 '+((ud.al||[]).includes(a)?'sel':'')+'" onclick="tc(this,\'al\',\''+a+'\')">'+a+'</div>';}).join('')+'<div class="chip2" onclick="ud.al=[];document.querySelectorAll(\'.chip2:not(.di):not(.cu)\').forEach(function(x){x.classList.remove(\'sel\')})">'+t('none')+'</div></div></div><div class="field"><label>'+t('di')+'</label><div class="chips">'+di.map(function(d){return '<div class="chip2 di '+((ud.di||[]).includes(d)?'sel':'')+'" onclick="tc(this,\'di\',\''+d+'\')">'+d+'</div>';}).join('')+'</div></div><div class="field"><label>'+t('cu')+'</label><div class="chips">'+cu.map(function(c){return '<div class="chip2 cu '+((ud.cu||[]).includes(c)?'sel':'')+'" onclick="tc(this,\'cu\',\''+c+'\')">'+c+'</div>';}).join('')+'</div></div><div class="field"><label>'+t('co')+'</label><div class="tiles c3">'+[{i:'🔰',l:t('bc'),d:'Simple & quick'},{i:'🍳',l:t('ic'),d:'Comfortable'},{i:'👨‍🍳',l:t('ac'),d:'Love cooking'}].map(function(s){return '<div class="tile '+(ud.cook===s.l?'sel':'')+'" onclick="sel(this,\'cook\',\''+s.l+'\')"><span class="ti">'+s.i+'</span><span class="tt"><span class="tl">'+s.l+'</span><span class="td">'+s.d+'</span></span><span class="tck">✓</span></div>';}).join('')+'</div></div><div class="field"><label>'+t('bg')+'</label><div class="ui"><input type="number" id="bg" placeholder="80" value="'+(ud.budget||'')+'"><span class="utag">€/WK</span></div></div></div>'+foot('Continue',function(){ud.budget=document.getElementById('bg').value;if(!ud.cook){peakToast(lang==='de'?'Bitte Kochlevel wählen.':'Please select cooking level.');return;}saveSession();step++;render();}));}
 
-function s5(){var goals=[{e:'⚖️',k:'g1',d:'g1d'},{e:'💪',k:'g2',d:'g2d'},{e:'🏃',k:'g3',d:'g3d'},{e:'🥗',k:'g4',d:'g4d'},{e:'🔋',k:'g5',d:'g5d'},{e:'🧘',k:'g6',d:'g6d'}];var diff=ud.weight&&ud.dweight?(parseFloat(ud.weight)-parseFloat(ud.dweight)).toFixed(1):null;var de=lang==='de';var hint=de?'Wähle bis zu 3 Ziele — in Reihenfolge ihrer Priorität.':'Pick up to 3 goals — in order of priority.';if(!Array.isArray(ud.goals))ud.goals=ud.goal?[ud.goal]:[];card('<div class="ch"><div class="chip">✦ '+t('s5')+'</div><div class="ct">'+t('s5t')+' <em>'+t('s5e')+'</em></div><p class="cs">'+hint+'</p></div><div class="cb"><div class="aib"><div class="ailbl"><div class="aidot"></div>PEAK AI</div><p>Hi '+ud.name+'! Profile ready'+(diff>0?' — goal: lose '+diff+'kg':'')+'  . What matters most to you?</p></div>'+goals.map(function(g){var sel=ud.goals.indexOf(t(g.k))>=0;return '<div class="gc '+(sel?'sel':'')+'" onclick="selGoal(this,\''+g.k+'\')"><span class="ge">'+g.e+'</span><div class="gi"><div class="gt">'+t(g.k)+'</div><div class="gd">'+t(g.d)+'</div></div><div class="gr"></div></div>';}).join('')+'</div>'+foot(t('bld'),function(){if(!ud.goals||ud.goals.length===0){peakToast(de?'Bitte mindestens ein Ziel auswählen.':'Please select at least one goal.');return;}if(ud.goals.length>3){peakToast(de?'Maximal 3 Ziele erlauben fokussierte Ergebnisse.':'Max 3 goals for focused results.');return;}ud.goal=ud.goals[0];saveSession();showLoad();}));}
+function s5(){var goals=[{e:'⚖️',k:'g1',d:'g1d'},{e:'💪',k:'g2',d:'g2d'},{e:'🏃',k:'g3',d:'g3d'},{e:'🥗',k:'g4',d:'g4d'},{e:'🔋',k:'g5',d:'g5d'},{e:'🧘',k:'g6',d:'g6d'}];var diff=ud.weight&&ud.dweight?(parseFloat(ud.weight)-parseFloat(ud.dweight)).toFixed(1):null;var de=lang==='de';var hint=de?'Wähle bis zu 3 Ziele — in Reihenfolge ihrer Priorität.':'Pick up to 3 goals — in order of priority.';if(!Array.isArray(ud.goals))ud.goals=ud.goal?[ud.goal]:[];card('<div class="ch"><div class="chip">✦ '+t('s5')+'</div><div class="ct">'+t('s5t')+' <em>'+t('s5e')+'</em></div><p class="cs">'+hint+'</p></div><div class="cb"><div class="aib"><div class="ailbl"><div class="aidot"></div>PEAK AI</div><p>Hi '+ud.name+'! Profile ready'+(diff>0?' — goal: lose '+diff+'kg':'')+'  . What matters most to you?</p></div>'+goals.map(function(g){var sel=ud.goals.some(function(gv){return goalKeyOf(gv)===g.k;});return '<div class="gc '+(sel?'sel':'')+'" onclick="selGoal(this,\''+g.k+'\')"><span class="ge">'+g.e+'</span><div class="gi"><div class="gt">'+t(g.k)+'</div><div class="gd">'+t(g.d)+'</div></div><div class="gr"></div></div>';}).join('')+'</div>'+foot(t('bld'),function(){if(!ud.goals||ud.goals.length===0){peakToast(de?'Bitte mindestens ein Ziel auswählen.':'Please select at least one goal.');return;}if(ud.goals.length>3){peakToast(de?'Maximal 3 Ziele erlauben fokussierte Ergebnisse.':'Max 3 goals for focused results.');return;}ud.goal=ud.goals[0];saveSession();showLoad();}));}
 
 // ── AI LOADING + PLAN FETCH ───────────────────────────────────────────
 function showLoad(){var de=lang==='de';var sportLbl=sportLabel(ud.sport);card('<div class="lw"><div class="spin"></div><div class="lt">'+(de?'Baue deinen Plan...':'Building your plan...')+'</div><p style="font-size:11px;color:var(--faint);margin-bottom:18px">'+(de?'Einzigartig für dich — sonst bekommt das niemand.':'Unique to you — nobody else gets this.')+'</p><div style="text-align:left">'+[['⚡',de?'Berechne Kalorien-Ziel':'Calculating calorie targets'],['🥗',de?'Rezepte nach deinem Geschmack':'Selecting recipes for your taste'],['💪',(de?'Baue ':'Building ')+sportLbl+(de?'-Übungen':' exercises')],['🔋',de?'Regenerations-Protokoll':'Designing recovery protocol'],['✦',de?'Finalisiere deinen Plan':'Finalising your roadmap']].map(function(l,i){return '<div class="lsi" id="li'+i+'"><span style="width:18px;text-align:center;flex-shrink:0">'+l[0]+'</span> '+l[1]+'</div>';}).join('')+'</div></div>');var i=0;var ti=setInterval(function(){if(i>0){var prev=document.getElementById('li'+(i-1));if(prev)prev.className='lsi done';}if(i<5){var cur=document.getElementById('li'+i);if(cur)cur.className='lsi active';i++;}else{clearInterval(ti);fetchPlan().then(function(){step=6;render();});}},700);}
@@ -1324,11 +1348,19 @@ async function fetchPlan(isRegen){
   if(sess>=5)mult=1.725;           // Very active (5-6×/week)
   if(sess>=7)mult=1.9;             // Extra active (daily/twice daily)
   var tdee=Math.round(bmr*mult);
-  // ── Goal-adjusted target. Standard sustainable rates:
+  // Goal-adjusted target. Standard sustainable rates:
   //   Lose: -500 kcal/day → ~0.5 kg/week loss
   //   Gain: +400 kcal/day → ~0.4 kg/week lean gain
   //   Maintain: TDEE
-  var kcal=ud.goal===t('g1')||ud.goal===T.de.g1?tdee-500:ud.goal===t('g2')||ud.goal===T.de.g2?tdee+400:tdee;
+  // Use goalKeyOf() so this works regardless of which language the goal
+  // was stored in (previous comparison used `ud.goal===t('g1')` which broke
+  // the moment the user toggled DE/EN after selecting their goal — the
+  // user would silently get a maintenance plan instead of the deficit
+  // they asked for).
+  var goalK=goalKeyOf(ud.goal);
+  var kcal = goalK==='g1' ? tdee-500
+           : goalK==='g2' ? tdee+400
+           : tdee;
   // Safety floors: never recommend below 1500 (men) / 1200 (women) kcal/day.
   var floor=ud.gender==='Female'?1200:1500;
   if(kcal<floor)kcal=floor;
@@ -2617,7 +2649,11 @@ async function doPay(){
   var c1=document.getElementById('cc1'),c2=document.getElementById('cc2');
   if(!c1||!c1.checked||!c2||!c2.checked){showE('ep',t('csE'));return;}
   if(!em){showE('ep','Please enter your email.');return;}
-  ud.email=em;ud.consentHealthData=true;ud.consentTerms=true;ud.consentAt=new Date().toISOString();saveSession();
+  // Note: snake_case keys to match showHealthDisclaimer() and the render
+  // checks (e.g. cc1 checkbox state restore, fitness disclaimer modal).
+  // Earlier camelCase here caused the consent state to silently drop
+  // when the user navigated back or reloaded mid-flow.
+  ud.email=em;ud.consent_health_data=true;ud.consent_terms=true;ud.consent_at=new Date().toISOString();saveSession();
   btn.textContent='Loading...';btn.style.opacity='.6';btn.onclick=null;
   document.getElementById('ep').style.display='none';
   try{
@@ -2636,7 +2672,7 @@ async function doPay(){
     }
     // No existing account (or logged-in Free upgrade) → proceed to Stripe Checkout
     var voucherCode=document.getElementById('vc')?document.getElementById('vc').value.trim().toUpperCase():'';
-    var res=await fetch(BACKEND+'/create-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,plan:selPlan,tier:selTier,userData:{name:ud.name,age:ud.age,gender:ud.gender,weight:ud.weight,dweight:ud.dweight,height:ud.height,sleep:ud.sleep,job:ud.job,commute:ud.commute,stress:ud.stress,sport:ud.sport,level:ud.level,sessions:ud.sessions,dur:ud.dur,equip:ud.equip,al:ud.al||[],di:ud.di||[],cu:ud.cu||[],cook:ud.cook,budget:ud.budget,goal:ud.goal,goals:ud.goals||[]},consent:{healthData:true,terms:true,at:ud.consentAt},voucher:voucherCode||null,lang:lang})});
+    var res=await fetch(BACKEND+'/create-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,plan:selPlan,tier:selTier,userData:{name:ud.name,age:ud.age,gender:ud.gender,weight:ud.weight,dweight:ud.dweight,height:ud.height,sleep:ud.sleep,job:ud.job,commute:ud.commute,stress:ud.stress,sport:ud.sport,level:ud.level,sessions:ud.sessions,dur:ud.dur,equip:ud.equip,al:ud.al||[],di:ud.di||[],cu:ud.cu||[],cook:ud.cook,budget:ud.budget,goal:ud.goal,goals:ud.goals||[]},consent:{healthData:true,terms:true,at:ud.consent_at},voucher:voucherCode||null,lang:lang})});
     var data=await res.json();
     // Backend detected an existing active subscription → show portal instead
     if(res.status===409&&data.code==='ALREADY_SUBSCRIBED'){
@@ -2740,7 +2776,8 @@ async function doFreeSignup(){
   var de=lang==='de';
   if(!c1||!c1.checked||!c2||!c2.checked){showE('epf',t('csE'));return;}
   if(!em||!em.includes('@')){showE('epf',de?'Bitte gültige E-Mail eingeben.':'Please enter a valid email.');return;}
-  ud.email=em;ud.consentHealthData=true;ud.consentTerms=true;ud.consentAt=new Date().toISOString();saveSession();
+  // Note: snake_case keys to match showHealthDisclaimer() — see doPay() for context.
+  ud.email=em;ud.consent_health_data=true;ud.consent_terms=true;ud.consent_at=new Date().toISOString();saveSession();
   btn.textContent=de?'Senden...':'Sending...';btn.style.opacity='.6';btn.onclick=null;
   document.getElementById('epf').style.display='none';
   try{
@@ -2757,7 +2794,7 @@ async function doFreeSignup(){
           al:ud.al||[],di:ud.di||[],cu:ud.cu||[],cook:ud.cook,budget:ud.budget,
           goal:ud.goal,goals:ud.goals||[]
         },
-        consent:{healthData:true,terms:true,at:ud.consentAt},
+        consent:{healthData:true,terms:true,at:ud.consent_at},
         lang:lang
       })
     });
@@ -3003,6 +3040,12 @@ async function pickMood(cuisine){
     if(plan){
       plan.todayMeals=result.todayMeals;
       mrat={}; // reset ratings
+      // Reset meal-tracking checkmarks too — without this, checked indices
+      // from the OLD meals would still light up the corresponding new
+      // (mexican/italian/etc.) meals as "eaten", and their kcals would
+      // count toward the day's "logged" total.
+      mealTrack={date:todayDateStr(),checked:{}};
+      saveMealTrack();
       saveSession();
     }
     peakToast((de?'Tagesplan auf ':'Day plan adapted to ')+cuisine+(de?' angepasst ✓':' ✓'),{kind:'success'});
@@ -4255,6 +4298,7 @@ async function doVerifyOtp(){
     });
     if(setRes.error)throw new Error(setRes.error.message);
     ud.pendingLoginEmail=null;
+    saveSession();
     // Load profile + render dashboard
     var ok=await loadAuthProfile();
     if(!ok){
@@ -4815,8 +4859,10 @@ async function regenPlan(){
   var de=lang==='de';
   var ok=await peakConfirm(de?'Plan mit deinen aktuellen Daten neu generieren? Das zählt als Plan-Änderung für diesen Monat.':'Rebuild plan using your current data? This counts as a plan change for this month.');
   if(!ok)return;
-  // Reset ratings, clear old plan
+  // Reset ratings, ratings, mealtrack — old indices won't match new meals.
   mrat={};wrat={};
+  mealTrack={date:todayDateStr(),checked:{}};
+  saveMealTrack();
   peakToast(de?'Baue neuen Plan...':'Building new plan...',{duration:2500});
   try{
     await fetchPlan(true); // isRegen=true → counts toward monthly quota
@@ -4834,10 +4880,19 @@ async function regenPlan(){
 
 async function logout(){
   try{await window.sb.auth.signOut();}catch(e){}
-  plan=null;ud={name:'',age:'',gender:'',weight:'',dweight:'',height:'',sleep:'',job:'',commute:'',stress:'5',sport:'',level:'',sessions:'',dur:'',equip:'',al:[],di:[],cu:[],cook:'',budget:'',goal:''};
+  // Note: tier MUST be in the initial state — without it, ud.tier remains the
+  // previous value briefly and isFree() returns the wrong answer between
+  // logout and the next loadAuthProfile (e.g. if User B logs in on the same
+  // device, they'd inherit User A's tier for a few hundred ms).
+  plan=null;ud={name:'',age:'',gender:'',weight:'',dweight:'',height:'',sleep:'',job:'',commute:'',stress:'5',sport:'',level:'',sessions:'',dur:'',equip:'',al:[],di:[],cu:[],cook:'',budget:'',goal:'',tier:'free'};
   flog=[];mrat={};wrat={};
   trainState={completed:{},feedback:{},currentWeek:1,adjustBias:0};
+  // Critical: meal-track lives in BOTH state + localStorage. Without clearing
+  // both, the next user on the same device would see the previous user's
+  // checkmarks ghosting in until midnight rollover.
+  mealTrack={date:null,checked:{}};
   try{sessionStorage.clear();}catch(e){}
+  try{localStorage.removeItem('peak_meal_track');}catch(e){}
   step=0;
   updateAuthUI();
   render();
