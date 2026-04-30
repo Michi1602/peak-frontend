@@ -342,6 +342,11 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;hei
 .wk-complete{margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
 .wk-complete-btn{width:100%;background:var(--red);color:var(--white);border:none;padding:12px;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:12px;letter-spacing:2.5px;text-transform:uppercase;cursor:pointer}
 .wk-done{text-align:center;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:14px;color:var(--red);letter-spacing:2px;padding:8px;margin-bottom:8px}
+.wk-burned{background:var(--s2);border-left:3px solid var(--red);padding:12px 14px;margin:0 0 12px;text-align:center}
+.wk-burned-lbl{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:4px}
+.wk-burned-val{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:24px;letter-spacing:1px;color:var(--red);margin-bottom:3px}
+.wk-burned-range{font-size:11px;color:var(--ink2);margin-bottom:6px}
+.wk-burned-note{font-size:10px;color:var(--faint);line-height:1.4}
 .wk-fb-lbl{font-size:10px;color:var(--dim);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;margin-bottom:6px;text-align:center}
 .wk-fb-btns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px}
 .wk-fb{background:var(--s3);color:var(--ink2);border:1px solid var(--border);padding:8px 4px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;letter-spacing:0.5px;cursor:pointer;transition:all .12s}
@@ -932,6 +937,53 @@ function trackedMealFat(meals){
     if(!mealTrack.checked[String(i)])return a;
     return a+mealMacro(m,'fat');
   },0);
+}
+
+// ── WORKOUT KCAL ESTIMATE (MET-based) ─────────────────────────────────
+// Rough estimate of energy expenditure for a completed session. Formula:
+//   kcal ≈ MET × bodyweight_kg × duration_hours
+// MET values are population averages from the Compendium of Physical
+// Activities (Ainsworth et al.). These are CONSERVATIVE midpoints — actual
+// burn varies ±25% by intensity, age, fitness level, terrain, gear, etc.
+// We surface the estimate with a clear disclaimer so users don't treat it
+// as a measurement. For accurate numbers, they need a heart-rate monitor.
+//
+// Levels modulate the base MET: Beginner -15%, Advanced +15%. This is a
+// simplification — a beginner runner usually goes slower (lower MET)
+// than an advanced one — but avoids over-claiming for novices.
+var SPORT_MET={
+  Running:9.8,           // ~10 km/h pace
+  Weights:5.0,           // moderate-vigorous resistance training
+  Football:8.0,          // soccer, casual play
+  Cycling:7.5,           // ~20-22 km/h leisure pace
+  Swimming:8.0,          // freestyle, moderate effort
+  Yoga:3.0,              // hatha-style
+  'Martial Arts':10.0,   // moderate-vigorous sparring
+  Basketball:6.5,        // game play, half-court
+  Tennis:7.3,            // singles
+  Volleyball:4.0,        // recreational
+  Skiing:7.0,            // downhill, moderate
+  Golf:4.8,              // walking with clubs
+  Gymnastics:5.5,        // moderate
+  Rowing:7.0,            // moderate vigorous
+  Equestrian:5.5,        // general riding
+  Other:6.0,             // generic moderate exercise
+};
+function estimateBurnedKcal(sport,level,durationMin,weightKg){
+  var baseMet=SPORT_MET[sport];
+  if(typeof baseMet!=='number')baseMet=SPORT_MET.Other;
+  // Level adjustment — match against both EN and DE labels (level is a
+  // translated string). T.en.beg etc. would be cleaner but the level field
+  // currently stores the rendered label, not a key.
+  var lvlAdj=1.0;
+  var lvlStr=String(level||'').toLowerCase();
+  if(/(beginner|anfänger)/.test(lvlStr))lvlAdj=0.85;
+  else if(/(advanced|fortgeschritten)/.test(lvlStr))lvlAdj=1.15;
+  var kg=parseFloat(weightKg);
+  var min=parseFloat(durationMin);
+  if(!isFinite(kg)||kg<=0||!isFinite(min)||min<=0)return null;
+  var kcal=baseMet*lvlAdj*kg*(min/60);
+  return Math.round(kcal);
 }
 // Training progression state.
 // trainState.completed: { "w1-d0": true, "w1-d2": true, ... }
@@ -3365,6 +3417,23 @@ function openWkDay(i){
     html+='<button class="wk-complete-btn" onclick="completeSession('+i+')">'+(de?'✓ SESSION ABSCHLIESSEN':'✓ COMPLETE SESSION')+'</button>';
   }else{
     html+='<div class="wk-done">'+(de?'✓ Erledigt':'✓ Completed')+'</div>';
+    // Estimated kcal burned — based on MET tables, body weight, duration.
+    // Skip on rest days (no workout to estimate). Only show when we can produce
+    // a sensible number (weight + duration must be present in user data).
+    if(d.type!=='rest'){
+      var burnedKcal=estimateBurnedKcal(ud.sport,ud.level,d.duration||ud.dur,ud.weight);
+      if(burnedKcal!==null&&burnedKcal>0){
+        // Range hint: ±20% so users understand this isn't a measurement.
+        var lo=Math.round(burnedKcal*0.8);
+        var hi=Math.round(burnedKcal*1.2);
+        html+='<div class="wk-burned">'+
+          '<div class="wk-burned-lbl">'+(de?'Geschätzt verbrannt':'Estimated burn')+'</div>'+
+          '<div class="wk-burned-val">~'+burnedKcal+' kcal</div>'+
+          '<div class="wk-burned-range">'+(de?'Spanne: ':'Range: ')+lo+'–'+hi+' kcal</div>'+
+          '<div class="wk-burned-note">'+(de?'Schätzung basierend auf Sportart, Dauer und Körpergewicht. Für genaue Werte: Pulsmesser nutzen.':'Estimate based on sport, duration and body weight. For accurate numbers, use a heart-rate monitor.')+'</div>'+
+        '</div>';
+      }
+    }
     html+='<div class="wk-fb-lbl">'+(de?'Wie war\'s?':'How was it?')+'</div>';
     html+='<div class="wk-fb-btns">';
     html+='<button class="wk-fb '+(currentFb==='easy'?'sel':'')+'" onclick="rateFeedback('+i+',\'easy\')">'+(de?'🟢 Zu leicht':'🟢 Too easy')+'</button>';
