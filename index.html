@@ -879,6 +879,28 @@ function toggleMealCheck(idx,ev){
   }
 }
 
+// ── MEAL-MACRO HELPERS ────────────────────────────────────────────────
+// Per-meal macros may come from two sources:
+//   1. New schema: m.protein, m.carbs, m.fat as numeric grams (set by AI)
+//   2. Legacy schema: only m.macro = "28g protein" string
+// These helpers handle both so cached plans don't crash after a frontend update.
+function mealMacro(m,key){
+  // key: 'protein' | 'carbs' | 'fat'. Returns numeric grams or 0.
+  if(!m)return 0;
+  // Prefer explicit numeric field (new schema)
+  if(typeof m[key]==='number')return m[key];
+  if(typeof m[key]==='string'){
+    var n=parseFloat(m[key]);
+    if(isFinite(n))return n;
+  }
+  // Legacy fallback: only protein is parseable from m.macro string
+  if(key==='protein'){
+    var match=String(m.macro||'').match(/(\d+(?:\.\d+)?)\s*g/);
+    if(match)return parseFloat(match[1]);
+  }
+  return 0;
+}
+
 // Sum of kcal from checked planned-meals (used in Nutrition stats).
 function trackedMealKcal(meals){
   if(!Array.isArray(meals))return 0;
@@ -892,9 +914,23 @@ function trackedMealProtein(meals){
   if(mealTrack.date!==todayDateStr())return 0;
   return meals.reduce(function(a,m,i){
     if(!mealTrack.checked[String(i)])return a;
-    // Parse "28g protein" → 28
-    var match=String(m.macro||'').match(/(\d+(?:\.\d+)?)\s*g/);
-    return a+(match?parseFloat(match[1]):0);
+    return a+mealMacro(m,'protein');
+  },0);
+}
+function trackedMealCarbs(meals){
+  if(!Array.isArray(meals))return 0;
+  if(mealTrack.date!==todayDateStr())return 0;
+  return meals.reduce(function(a,m,i){
+    if(!mealTrack.checked[String(i)])return a;
+    return a+mealMacro(m,'carbs');
+  },0);
+}
+function trackedMealFat(meals){
+  if(!Array.isArray(meals))return 0;
+  if(mealTrack.date!==todayDateStr())return 0;
+  return meals.reduce(function(a,m,i){
+    if(!mealTrack.checked[String(i)])return a;
+    return a+mealMacro(m,'fat');
   },0);
 }
 // Training progression state.
@@ -924,7 +960,7 @@ var T={en:{
   bld:'Build my plan',
   s6:'Plan Ready',plRdy:'PLAN READY',ul:'UNLOCK YOUR FULL PLAN',uls:'Your meals, workouts and recovery are ready.',
   tBas:'Basic',tPrem:'Premium',tCh:'CHOOSE YOUR PLAN',
-  tBasF:['Preset nutrition plan','Preset training plan','Preset recovery plan','Meal tracking & daily progress','Calorie & protein targets'],
+  tBasF:['Preset nutrition plan','Preset training plan','Preset recovery plan','Meal tracking & daily progress','Calorie, protein, carb & fat targets','Shopping list with quantities'],
   tPremF:['Full AI meal plan + recipes','Sport-specific workout programme','Recovery guide + reminders','Live shopping mode + scanner','Real-time plan adaptation','Recipe builder','Cuisine mood picker'],
   tEv:'Everything in Basic, plus:',perMo:'/mo',perYr:'/yr',inAnn:'in annual plan',
   pxOnly:'Premium only',upgTxt:'Upgrade to Premium to unlock this feature.',upgBtn:'Upgrade to Premium',
@@ -973,7 +1009,7 @@ var T={en:{
   bld:'Meinen Plan erstellen',
   s6:'Plan bereit',plRdy:'PLAN BEREIT',ul:'DEINEN PLAN FREISCHALTEN',uls:'Deine Mahlzeiten, Workouts und Regeneration sind bereit.',
   tBas:'Basic',tPrem:'Premium',tCh:'WÄHLE DEINEN PLAN',
-  tBasF:['Vorgegebener Ernährungsplan','Vorgegebener Trainingsplan','Vorgegebener Regenerationsplan','Meal-Tracking & Tagesfortschritt','Kalorien- & Eiweißziele'],
+  tBasF:['Vorgegebener Ernährungsplan','Vorgegebener Trainingsplan','Vorgegebener Regenerationsplan','Meal-Tracking & Tagesfortschritt','Kalorien-, Eiweiß-, KH- & Fettziele','Einkaufsliste mit Mengenangaben'],
   tPremF:['Vollständiger KI-Ernährungsplan + Rezepte','Sportspezifisches Trainingsprogramm','Regenerationsguide + Erinnerungen','Live-Shopping-Modus + Scanner','Echtzeit-Anpassung','Rezept-Builder','Cuisine Mood Picker'],
   tEv:'Alles aus Basic, plus:',perMo:'/Mon',perYr:'/Jahr',inAnn:'im Jahresplan',
   pxOnly:'Nur Premium',upgTxt:'Upgrade auf Premium, um diese Funktion freizuschalten.',upgBtn:'Auf Premium upgraden',
@@ -1369,7 +1405,7 @@ async function fetchPlan(isRegen){
   // stays consistent across pre-AI fallback and post-AI-failure rendering.
   var exFallback=getSportTips(sport,lang);
   var langInstr=lang==='de'?'IMPORTANT: Respond entirely in GERMAN (Deutsch). All text fields including headline, meal names, workout names, exercise names, tips, shopping items, milestones must be in German. Keep meal time values as English labels "Breakfast","Lunch","Dinner","Snack" for app compatibility.':'IMPORTANT: Respond entirely in ENGLISH. All text fields must be in English.';
-  var prompt='You are PEAK AI by MJ Performance.\n'+langInstr+'\nUser: '+ud.name+', age '+ud.age+', '+ud.weight+'kg→'+ud.dweight+'kg, '+ud.height+'cm, sleep '+ud.sleep+'hrs\nJob: '+ud.job+', stress '+ud.stress+'/10\nSport: '+sport+' ('+level+'), '+ud.sessions+'×/wk, '+ud.dur+'min, at '+ud.equip+'\nAllergies: '+(ud.al||[]).join(',')+'\nDiet: '+(ud.di||[]).join(',')+'\nCuisines: '+(ud.cu||[]).join(',')+'\nCooking: '+ud.cook+'\nGoal: '+goalStr()+', Calories: '+kcal+'\n\nCreate a personalised plan. For workout: create 4-5 SPECIFIC exercises for '+sport+' at '+level+' level that improve performance in '+sport+'. NOT generic gym. Include drills, technique, sport-specific conditioning. Each needs name + sets/reps/duration.\n\nRespond ONLY with valid JSON, no markdown:\n{"headline":"<12 words>","calories":'+kcal+',"protein":<g>,"carbs":<g>,"fat":<g>,"timeline":"<weeks>","todayMeals":[{"emoji":"🍳","name":"<meal>","time":"Breakfast","kcal":<n>,"macro":"<e.g. 28g protein>"},{"emoji":"🥗","name":"<meal>","time":"Lunch","kcal":<n>,"macro":"<e.g. 42g protein>"},{"emoji":"🍽️","name":"<meal>","time":"Dinner","kcal":<n>,"macro":"<e.g. 38g protein>"},{"emoji":"🍎","name":"<snack>","time":"Snack","kcal":<n>,"macro":"<e.g. 15g protein>"}],"workout":{"title":"<sport-specific title>","focus":"<what this improves in '+sport+'>","desc":"<2 sentences why>","duration":<min>,"exercises":[{"name":"<exercise>","detail":"<sets/reps/duration>"},{"name":"<exercise>","detail":"<sets/reps>"},{"name":"<exercise>","detail":"<sets/reps>"},{"name":"<exercise>","detail":"<duration>"}]},"recovery":{"tip":"<tip>","sleep":"<advice>","hydration":"<target>"},"shopping":["<item1>","<item2>","<item3>","<item4>","<item5>"],"milestones":["<wk2-3>","<wk5-7>","<final>"]}';
+  var prompt='You are PEAK AI by MJ Performance.\n'+langInstr+'\nUser: '+ud.name+', age '+ud.age+', '+ud.weight+'kg→'+ud.dweight+'kg, '+ud.height+'cm, sleep '+ud.sleep+'hrs\nJob: '+ud.job+', stress '+ud.stress+'/10\nSport: '+sport+' ('+level+'), '+ud.sessions+'×/wk, '+ud.dur+'min, at '+ud.equip+'\nAllergies: '+(ud.al||[]).join(',')+'\nDiet: '+(ud.di||[]).join(',')+'\nCuisines: '+(ud.cu||[]).join(',')+'\nCooking: '+ud.cook+'\nGoal: '+goalStr()+', Calories: '+kcal+'\n\nCreate a personalised plan. For workout: create 4-5 SPECIFIC exercises for '+sport+' at '+level+' level that improve performance in '+sport+'. NOT generic gym. Include drills, technique, sport-specific conditioning. Each needs name + sets/reps/duration.\n\nIMPORTANT for nutrition tracking: Each meal MUST include numeric protein/carbs/fat in grams (no units, just numbers). Sum across all 4 meals should approximately match the day-level protein/carbs/fat targets.\n\nIMPORTANT for shopping list: Each item MUST be an object with "item" and "qty" (e.g. {"item":"Chicken breast","qty":"500g"} or {"item":"Eggs","qty":"6"}). Quantities should reflect what the day\'s meals require. Use grams (g), milliliters (ml), or counts as appropriate.\n\nRespond ONLY with valid JSON, no markdown:\n{"headline":"<12 words>","calories":'+kcal+',"protein":<g>,"carbs":<g>,"fat":<g>,"timeline":"<weeks>","todayMeals":[{"emoji":"🍳","name":"<meal>","time":"Breakfast","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 28g protein>"},{"emoji":"🥗","name":"<meal>","time":"Lunch","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 42g protein>"},{"emoji":"🍽️","name":"<meal>","time":"Dinner","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 38g protein>"},{"emoji":"🍎","name":"<snack>","time":"Snack","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 15g protein>"}],"workout":{"title":"<sport-specific title>","focus":"<what this improves in '+sport+'>","desc":"<2 sentences why>","duration":<min>,"exercises":[{"name":"<exercise>","detail":"<sets/reps/duration>"},{"name":"<exercise>","detail":"<sets/reps>"},{"name":"<exercise>","detail":"<sets/reps>"},{"name":"<exercise>","detail":"<duration>"}]},"recovery":{"tip":"<tip>","sleep":"<advice>","hydration":"<target>"},"shopping":[{"item":"<item1>","qty":"<qty1>"},{"item":"<item2>","qty":"<qty2>"},{"item":"<item3>","qty":"<qty3>"},{"item":"<item4>","qty":"<qty4>"},{"item":"<item5>","qty":"<qty5>"}],"milestones":["<wk2-3>","<wk5-7>","<final>"]}';
   try{
     // Initial onboarding plan is FREE (comes with signup). Only regenerations count toward monthly quota.
     var planPurpose=isRegen?'plan_generation':'plan_generation_initial';
@@ -1387,7 +1423,7 @@ async function fetchPlan(isRegen){
     }
     var k=kcal||2000;
     var deF=lang==='de';
-    plan={headline:(deF?'Deine ':'Your ')+sport+(deF?'-Transformation beginnt jetzt':' transformation starts now'),_lang:lang,calories:k,protein:Math.round(parseFloat(ud.weight||75)*1.8),carbs:Math.round(k*0.4/4),fat:Math.round(k*0.3/9),timeline:(deF?'12 Wochen':'12 weeks'),todayMeals:[{emoji:'🍳',name:t('fbMealEggs'),time:'Breakfast',kcal:420,macro:'28g '+t('macroProtein')},{emoji:'🥗',name:t('fbMealChicken'),time:'Lunch',kcal:550,macro:'45g '+t('macroProtein')},{emoji:'🍽️',name:t('fbMealSalmon'),time:'Dinner',kcal:580,macro:'40g '+t('macroProtein')},{emoji:'🍎',name:t('fbMealYoghurt'),time:'Snack',kcal:180,macro:'15g '+t('macroProtein')}],workout:{title:sport+' '+t('fbWorkTitle'),focus:t('fbWorkFocus'),desc:(deF?'Sportspezifische Übungen für einen besseren ':'Sport-specific exercises to make you a better ')+sport+(deF?'-Athleten.':' athlete.'),duration:parseInt(ud.dur||60),exercises:exFallback},recovery:{tip:t('tipToday'),sleep:t('tipSleep'),hydration:t('tipHydration')},shopping:[t('fbShopChicken'),t('fbShopSalmon'),t('fbShopQuinoa'),t('fbShopYoghurt'),t('fbShopVeg')],milestones:[t('fbMileW3'),t('fbMileW7'),t('fbMileW12')]};
+    plan={headline:(deF?'Deine ':'Your ')+sport+(deF?'-Transformation beginnt jetzt':' transformation starts now'),_lang:lang,calories:k,protein:Math.round(parseFloat(ud.weight||75)*1.8),carbs:Math.round(k*0.4/4),fat:Math.round(k*0.3/9),timeline:(deF?'12 Wochen':'12 weeks'),todayMeals:[{emoji:'🍳',name:t('fbMealEggs'),time:'Breakfast',kcal:420,protein:28,carbs:42,fat:14,macro:'28g '+t('macroProtein')},{emoji:'🥗',name:t('fbMealChicken'),time:'Lunch',kcal:550,protein:45,carbs:48,fat:18,macro:'45g '+t('macroProtein')},{emoji:'🍽️',name:t('fbMealSalmon'),time:'Dinner',kcal:580,protein:40,carbs:55,fat:22,macro:'40g '+t('macroProtein')},{emoji:'🍎',name:t('fbMealYoghurt'),time:'Snack',kcal:180,protein:15,carbs:18,fat:5,macro:'15g '+t('macroProtein')}],workout:{title:sport+' '+t('fbWorkTitle'),focus:t('fbWorkFocus'),desc:(deF?'Sportspezifische Übungen für einen besseren ':'Sport-specific exercises to make you a better ')+sport+(deF?'-Athleten.':' athlete.'),duration:parseInt(ud.dur||60),exercises:exFallback},recovery:{tip:t('tipToday'),sleep:t('tipSleep'),hydration:t('tipHydration')},shopping:[{item:t('fbShopChicken'),qty:'500g'},{item:t('fbShopSalmon'),qty:'400g'},{item:t('fbShopQuinoa'),qty:'250g'},{item:t('fbShopYoghurt'),qty:'500g'},{item:t('fbShopVeg'),qty:'600g'}],milestones:[t('fbMileW3'),t('fbMileW7'),t('fbMileW12')]};
     plan.week=synthWeekPlan(sport,level,parseInt(ud.sessions||3),parseInt(ud.dur||60),plan.workout);
     saveSession();
     enrichWeekWithAI();
@@ -2451,10 +2487,10 @@ function fp(){
     timeline:(deE?'12 Wochen':'12 weeks'),
     headline:t('fbHeadline'),
     todayMeals:[
-      {emoji:'🍳',name:t('fbMealEggs'),time:'Breakfast',kcal:420,macro:'28g '+t('macroProtein')},
-      {emoji:'🥗',name:t('fbMealChicken'),time:'Lunch',kcal:550,macro:'45g '+t('macroProtein')},
-      {emoji:'🍽️',name:t('fbMealSalmon'),time:'Dinner',kcal:580,macro:'40g '+t('macroProtein')},
-      {emoji:'🍎',name:t('fbMealYoghurt'),time:'Snack',kcal:180,macro:'15g '+t('macroProtein')}
+      {emoji:'🍳',name:t('fbMealEggs'),time:'Breakfast',kcal:420,protein:28,carbs:42,fat:14,macro:'28g '+t('macroProtein')},
+      {emoji:'🥗',name:t('fbMealChicken'),time:'Lunch',kcal:550,protein:45,carbs:48,fat:18,macro:'45g '+t('macroProtein')},
+      {emoji:'🍽️',name:t('fbMealSalmon'),time:'Dinner',kcal:580,protein:40,carbs:55,fat:22,macro:'40g '+t('macroProtein')},
+      {emoji:'🍎',name:t('fbMealYoghurt'),time:'Snack',kcal:180,protein:15,carbs:18,fat:5,macro:'15g '+t('macroProtein')}
     ],
     workout:{
       title:sportLbl+' '+t('fbWorkTitle'),
@@ -2464,7 +2500,13 @@ function fp(){
       exercises:fallbackEx
     },
     recovery:{tip:t('tipToday'),sleep:t('tipSleep'),hydration:t('tipHydration')},
-    shopping:[t('fbShopChicken'),t('fbShopSalmon'),t('fbShopQuinoa'),t('fbShopYoghurt'),t('fbShopVeg')],
+    shopping:[
+      {item:t('fbShopChicken'),qty:'500g'},
+      {item:t('fbShopSalmon'),qty:'400g'},
+      {item:t('fbShopQuinoa'),qty:'250g'},
+      {item:t('fbShopYoghurt'),qty:'500g'},
+      {item:t('fbShopVeg'),qty:'600g'}
+    ],
     milestones:[t('fbMileW3'),t('fbMileW7'),t('fbMileW12')]
   };
 }
@@ -2997,11 +3039,15 @@ function tNu(p){
   var rm=p.calories-lg;
   // Protein progress (Basic+: includes tracked meal protein, otherwise 0)
   var trackedProt=trackedMealProtein(p.todayMeals);
+  var trackedCarb=trackedMealCarbs(p.todayMeals);
+  var trackedFat=trackedMealFat(p.todayMeals);
   var protPct=p.protein?Math.min(100,Math.round(trackedProt/p.protein*100)):0;
+  var carbPct=p.carbs?Math.min(100,Math.round(trackedCarb/p.carbs*100)):0;
+  var fatPct=p.fat?Math.min(100,Math.round(trackedFat/p.fat*100)):0;
   var c='<div class="sg"><div class="stat"><div class="stl">'+t('dt')+'</div><div class="stv">'+p.calories+' kcal</div></div><div class="stat"><div class="stl">'+(de?'Protokolliert':'Logged')+'</div><div class="stv">'+lg+'</div></div><div class="stat"><div class="stl">'+(de?'Verbleibend':'Remaining')+'</div><div class="stv" style="color:var(--red)">'+rm+'</div></div><div class="stat"><div class="stl">'+t('pg')+'</div><div class="stv">'+p.protein+'g</div></div></div>';
   c+='<div class="mbw"><div class="mbl"><span>'+(de?'Eiweiß':'Protein')+'</span><span>'+trackedProt+' / '+p.protein+'g</span></div><div class="mb"><div class="mf" style="width:'+protPct+'%;background:var(--red)"></div></div></div>';
-  c+='<div class="mbw"><div class="mbl"><span>'+(de?'Kohlenhydrate':'Carbs')+'</span><span>'+p.carbs+'g</span></div><div class="mb"><div class="mf" style="width:58%;background:#4A90D9"></div></div></div>';
-  c+='<div class="mbw"><div class="mbl"><span>'+(de?'Fette':'Fat')+'</span><span>'+p.fat+'g</span></div><div class="mb"><div class="mf" style="width:48%;background:var(--dim)"></div></div></div>';
+  c+='<div class="mbw"><div class="mbl"><span>'+(de?'Kohlenhydrate':'Carbs')+'</span><span>'+trackedCarb+' / '+p.carbs+'g</span></div><div class="mb"><div class="mf" style="width:'+carbPct+'%;background:#4A90D9"></div></div></div>';
+  c+='<div class="mbw"><div class="mbl"><span>'+(de?'Fette':'Fat')+'</span><span>'+trackedFat+' / '+p.fat+'g</span></div><div class="mb"><div class="mf" style="width:'+fatPct+'%;background:var(--dim)"></div></div></div>';
   c+='<div class="dst">'+t('tm')+'</div>';
   c+=p.todayMeals.map(function(m,i){
     var r=mrat[i];
@@ -3014,7 +3060,37 @@ function tNu(p){
     return '<div class="mc"'+rowStyle+'>'+checkBox+'<span class="me" onclick="showMealDetail('+i+')" style="cursor:pointer">'+m.emoji+'</span><div class="mi" onclick="showMealDetail('+i+')" style="cursor:pointer"><div class="mn"'+nameStyle+'>'+m.name+'</div><div class="mm">'+mealTimeLabel(m.time)+' · '+translateMacro(m.macro)+'</div>'+(!r?'<div class="rrow" onclick="event.stopPropagation()">'+[1,2,3,4,5].map(function(s){return '<span class="star" onclick="rateMeal('+i+','+s+',this)">⭐</span>';}).join('')+'</div>':'<div style="font-size:10px;color:var(--red);margin-top:3px">'+(de?'BEWERTET':'RATED')+' '+r+'/5 ✓</div>')+'</div><span class="mk" onclick="showMealDetail('+i+')" style="cursor:pointer">'+m.kcal+' kcal</span><span style="color:var(--faint);font-size:10px;margin-left:5px;cursor:pointer" onclick="showMealDetail('+i+')">→</span></div>';
   }).join('');
   if(!isBasic()&&!isFree()){c+='<div class="aib" style="margin-top:11px"><div class="ailbl"><div class="aidot"></div>PEAK AI</div><p>'+(de?'Nicht nach Plan? ':'Not feeling the plan? ')+'<span style="color:var(--red);cursor:pointer;font-weight:700" onclick="showMoodPicker()">'+(de?'Küche wählen →':'Pick a cuisine →')+'</span></p></div><div id="moodA"></div>';}
-  if(p&&p.shopping&&p.shopping.length){c+='<div class="dst" style="margin-top:14px">'+(de?'Einkaufsliste':'Shopping List')+'</div>';c+='<div class="aib">'+p.shopping.map(function(s){return '<div style="font-size:12px;padding:4px 0;color:var(--ink2);border-bottom:1px solid var(--border)">🛒 '+s+'</div>';}).join('')+'</div>';}
+  if(p&&p.shopping&&p.shopping.length){
+    c+='<div class="dst" style="margin-top:14px">'+(de?'Einkaufsliste':'Shopping List')+'</div>';
+    var qtyBlurred=isFree();
+    // Backwards compat: shopping items can be {item,qty} (new schema) OR plain
+    // strings (legacy). Render both, but legacy strings have no qty to show.
+    var rows=p.shopping.map(function(s){
+      var name='', qty='';
+      if(typeof s==='string'){
+        name=s;
+      }else if(s&&typeof s==='object'){
+        name=s.item||s.name||'';
+        qty=s.qty||'';
+      }
+      var qtyHtml='';
+      if(qty){
+        if(qtyBlurred){
+          // Visual blur — qty value still in DOM but unreadable. Tap-area
+          // routes to upgrade flow so the user knows what unlocks it.
+          qtyHtml='<span style="color:var(--red);font-size:11px;font-weight:700;letter-spacing:1px;filter:blur(4px);cursor:pointer;user-select:none" onclick="goUpgrade()" title="'+(de?'Mit Basic freischalten':'Unlock with Basic')+'">'+qty+'</span>';
+        }else{
+          qtyHtml='<span style="color:var(--red);font-size:11px;font-weight:700;letter-spacing:1px">'+qty+'</span>';
+        }
+      }
+      return '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:6px 0;color:var(--ink2);border-bottom:1px solid var(--border)"><span>🛒 '+name+'</span>'+qtyHtml+'</div>';
+    }).join('');
+    c+='<div class="aib">'+rows;
+    if(qtyBlurred){
+      c+='<div style="font-size:10px;color:var(--faint);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);text-align:center">'+(de?'🔒 Mengenangaben mit ':'🔒 Quantities with ')+'<span onclick="goUpgrade()" style="color:var(--red);cursor:pointer;font-weight:700">'+(de?'Basic freischalten →':'Basic unlock →')+'</span></div>';
+    }
+    c+='</div>';
+  }
   dshell('nutrition',c);
 }
 
@@ -3036,7 +3112,7 @@ async function pickMood(cuisine){
   var de=lang==='de';
   a.innerHTML='<div class="aib" style="margin-top:8px"><div class="ailbl"><div class="aidot"></div>PEAK AI</div><p>'+(de?'Passe Tagesplan an '+esc(cuisine)+' an...':'Adapting day plan to '+esc(cuisine)+'...')+'</p><div class="spin" style="width:22px;height:22px;margin:8px 0 0;border-width:2px"></div></div>';
   var p=fp();
-  var prompt='Rework today\'s meal plan in '+cuisine+' style. Language: '+lang+'. Goal: '+goalStr()+', total ~'+p.calories+' kcal, ~'+p.protein+'g protein. Allergies: '+(ud.al||[]).join(',')+'. Cooking level: '+ud.cook+'.\nKeep the same structure (Breakfast, Lunch, Dinner, Snack) but all dishes should be authentic '+cuisine+' cuisine. Respect macros.\nRespond ONLY with valid JSON, no markdown:\n{"todayMeals":[{"emoji":"<emoji>","name":"<breakfast dish>","time":"Breakfast","kcal":<n>,"macro":"<e.g. 28g protein>"},{"emoji":"<emoji>","name":"<lunch dish>","time":"Lunch","kcal":<n>,"macro":"<e.g. 42g protein>"},{"emoji":"<emoji>","name":"<dinner dish>","time":"Dinner","kcal":<n>,"macro":"<e.g. 38g protein>"},{"emoji":"<emoji>","name":"<snack>","time":"Snack","kcal":<n>,"macro":"<e.g. 15g protein>"}]}';
+  var prompt='Rework today\'s meal plan in '+cuisine+' style. Language: '+lang+'. Goal: '+goalStr()+', total ~'+p.calories+' kcal, ~'+p.protein+'g protein. Allergies: '+(ud.al||[]).join(',')+'. Cooking level: '+ud.cook+'.\nKeep the same structure (Breakfast, Lunch, Dinner, Snack) but all dishes should be authentic '+cuisine+' cuisine. Respect macros.\nIMPORTANT: Each meal MUST include numeric protein/carbs/fat in grams (no units, just numbers). Sum should approximately match daily targets.\nRespond ONLY with valid JSON, no markdown:\n{"todayMeals":[{"emoji":"<emoji>","name":"<breakfast dish>","time":"Breakfast","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 28g protein>"},{"emoji":"<emoji>","name":"<lunch dish>","time":"Lunch","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 42g protein>"},{"emoji":"<emoji>","name":"<dinner dish>","time":"Dinner","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 38g protein>"},{"emoji":"<emoji>","name":"<snack>","time":"Snack","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 15g protein>"}]}';
   try{
     var result=await aiGenJSON(prompt,800,'mood_recipe');
     if(!result.todayMeals||!Array.isArray(result.todayMeals)||result.todayMeals.length===0)throw new Error('Invalid data');
