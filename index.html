@@ -3164,13 +3164,19 @@ async function pickMood(cuisine){
   var de=lang==='de';
   a.innerHTML='<div class="aib" style="margin-top:8px"><div class="ailbl"><div class="aidot"></div>PEAK AI</div><p>'+(de?'Passe Tagesplan an '+esc(cuisine)+' an...':'Adapting day plan to '+esc(cuisine)+'...')+'</p><div class="spin" style="width:22px;height:22px;margin:8px 0 0;border-width:2px"></div></div>';
   var p=fp();
-  var prompt='Rework today\'s meal plan in '+cuisine+' style. Language: '+lang+'. Goal: '+goalStr()+', total ~'+p.calories+' kcal, ~'+p.protein+'g protein. Allergies: '+(ud.al||[]).join(',')+'. Cooking level: '+ud.cook+'.\nKeep the same structure (Breakfast, Lunch, Dinner, Snack) but all dishes should be authentic '+cuisine+' cuisine. Respect macros.\nIMPORTANT: Each meal MUST include numeric protein/carbs/fat in grams (no units, just numbers). Sum should approximately match daily targets.\nRespond ONLY with valid JSON, no markdown:\n{"todayMeals":[{"emoji":"<emoji>","name":"<breakfast dish>","time":"Breakfast","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 28g protein>"},{"emoji":"<emoji>","name":"<lunch dish>","time":"Lunch","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 42g protein>"},{"emoji":"<emoji>","name":"<dinner dish>","time":"Dinner","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 38g protein>"},{"emoji":"<emoji>","name":"<snack>","time":"Snack","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 15g protein>"}]}';
+  var prompt='Rework today\'s meal plan in '+cuisine+' style. Language: '+lang+'. Goal: '+goalStr()+', total ~'+p.calories+' kcal, ~'+p.protein+'g protein. Allergies: '+(ud.al||[]).join(',')+'. Cooking level: '+ud.cook+'.\nKeep the same structure (Breakfast, Lunch, Dinner, Snack) but all dishes should be authentic '+cuisine+' cuisine. Respect macros.\nIMPORTANT: Each meal MUST include numeric protein/carbs/fat in grams (no units, just numbers). Sum should approximately match daily targets.\nALSO regenerate the shopping list to match the new '+cuisine+' meals — items as objects with "item" and "qty" (e.g. {"item":"Chicken breast","qty":"500g"}). Use grams (g), milliliters (ml), or counts as appropriate.\nRespond ONLY with valid JSON, no markdown:\n{"todayMeals":[{"emoji":"<emoji>","name":"<breakfast dish>","time":"Breakfast","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 28g protein>"},{"emoji":"<emoji>","name":"<lunch dish>","time":"Lunch","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 42g protein>"},{"emoji":"<emoji>","name":"<dinner dish>","time":"Dinner","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 38g protein>"},{"emoji":"<emoji>","name":"<snack>","time":"Snack","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 15g protein>"}],"shopping":[{"item":"<item1>","qty":"<qty1>"},{"item":"<item2>","qty":"<qty2>"},{"item":"<item3>","qty":"<qty3>"},{"item":"<item4>","qty":"<qty4>"},{"item":"<item5>","qty":"<qty5>"}]}';
   try{
-    var result=await aiGenJSON(prompt,800,'mood_recipe');
+    var result=await aiGenJSON(prompt,1000,'mood_recipe');
     if(!result.todayMeals||!Array.isArray(result.todayMeals)||result.todayMeals.length===0)throw new Error('Invalid data');
-    // Update plan with new meals
+    // Update plan with new meals + matching shopping list
     if(plan){
       plan.todayMeals=result.todayMeals;
+      // Replace shopping list to match the new cuisine. If the AI didn't
+      // return one (older models, partial JSON), keep the previous list
+      // rather than wiping it — better to show stale items than nothing.
+      if(Array.isArray(result.shopping)&&result.shopping.length){
+        plan.shopping=result.shopping;
+      }
       mrat={}; // reset ratings
       // Reset meal-tracking checkmarks too — without this, checked indices
       // from the OLD meals would still light up the corresponding new
@@ -4697,17 +4703,34 @@ async function bootApp(){
   // null, causing us to bounce the user back to the intro/onboarding even
   // though they're moments away from being signed in. Detect the hash and
   // wait briefly for the session to settle.
+  //
+  // Same applies on regular page reload: Supabase has to deserialize the
+  // persisted session from localStorage, which is fast but not synchronous.
+  // We always poll briefly to give it a chance to surface before falling
+  // back to the intro screen.
   try{
     var hasAuthHash=window.location.hash&&/access_token=|refresh_token=|type=(magiclink|recovery|invite|signup)/.test(window.location.hash);
-    if(hasAuthHash){
-      // Poll up to ~3s for the session to appear. Most magic-link flows resolve
-      // within 100-300ms; the longer ceiling protects users on slow networks.
+    // Look for a Supabase session token in localStorage directly. If one
+    // exists, the user is logged in and we should wait for the JS client to
+    // pick it up, rather than bouncing them to the intro screen.
+    var hasPersistedSession=false;
+    try{
+      for(var i=0;i<localStorage.length;i++){
+        var k=localStorage.key(i);
+        if(k&&k.indexOf('sb-')===0&&k.indexOf('-auth-token')>0){
+          hasPersistedSession=true;break;
+        }
+      }
+    }catch(_){}
+    if(hasAuthHash||hasPersistedSession){
+      // Poll up to ~3s (auth-hash) / ~1.5s (reload) for the session.
+      var maxWait=hasAuthHash?3000:1500;
       var waited=0;
-      while(waited<3000){
+      while(waited<maxWait){
         var s=await window.sb.auth.getSession();
         if(s?.data?.session)break;
-        await new Promise(function(r){setTimeout(r,150);});
-        waited+=150;
+        await new Promise(function(r){setTimeout(r,100);});
+        waited+=100;
       }
     }
     var sess=await window.sb.auth.getSession();
