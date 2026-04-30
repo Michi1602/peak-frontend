@@ -323,6 +323,15 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;hei
 .ex-num{width:19px;height:19px;background:var(--red);color:var(--white);font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
 .ex-name{font-size:13px;font-weight:700;color:var(--white)}.ex-detail{font-size:11px;color:var(--faint);margin-top:1px}
 .ex-tip{font-size:11px;color:var(--ink2);margin-top:3px;font-style:italic;line-height:1.4}
+.ex-info-btn{flex-shrink:0;width:22px;height:22px;border:1px solid var(--border);background:transparent;color:var(--dim);border-radius:50%;font-size:12px;font-weight:700;cursor:pointer;padding:0;line-height:1;display:inline-flex;align-items:center;justify-content:center;transition:all .15s}
+.ex-info-btn:hover,.ex-info-btn:focus{color:var(--red);border-color:var(--red);outline:none}
+.ex-explain-modal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .15s ease-out}
+.ex-explain-box{background:var(--bg);border:1px solid var(--red);max-width:420px;width:100%;max-height:80vh;overflow-y:auto;padding:20px}
+.ex-explain-h{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:18px;letter-spacing:1px;color:var(--white);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ex-explain-close{background:transparent;border:none;color:var(--dim);font-size:22px;cursor:pointer;line-height:1;padding:0 4px}
+.ex-explain-close:hover{color:var(--red)}
+.ex-explain-body{font-size:13px;line-height:1.6;color:var(--ink2)}
+.ex-explain-loading{display:flex;align-items:center;gap:10px;padding:14px 0;color:var(--faint);font-size:12px}
 /* Weekly plan grid */
 .wk-meta{font-size:11px;color:var(--faint);letter-spacing:1px;margin-bottom:8px;text-transform:uppercase;font-weight:700}
 .wk-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px}
@@ -804,6 +813,15 @@ function todayDateStr(){
   var d=new Date();
   // Use local YYYY-MM-DD so reset happens at the user's midnight, not UTC
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+// Index into week.days for today's session. The training week starts Monday
+// (index 0). JS Date.getDay() returns Sunday=0..Saturday=6, so we remap to
+// Mo=0, Tu=1, ... Su=6 to match the week-template ordering used everywhere
+// else in the app (see renderWeekPlan, openWkDay).
+function todayWeekdayIndex(){
+  var d=(new Date()).getDay();
+  return (d+6)%7;
 }
 
 function loadMealTrack(){
@@ -1457,7 +1475,7 @@ async function fetchPlan(isRegen){
   // stays consistent across pre-AI fallback and post-AI-failure rendering.
   var exFallback=getSportTips(sport,lang);
   var langInstr=lang==='de'?'IMPORTANT: Respond entirely in GERMAN (Deutsch). All text fields including headline, meal names, workout names, exercise names, tips, shopping items, milestones must be in German. Keep meal time values as English labels "Breakfast","Lunch","Dinner","Snack" for app compatibility.':'IMPORTANT: Respond entirely in ENGLISH. All text fields must be in English.';
-  var prompt='You are PEAK AI by MJ Performance.\n'+langInstr+'\nUser: '+ud.name+', age '+ud.age+', '+ud.weight+'kg→'+ud.dweight+'kg, '+ud.height+'cm, sleep '+ud.sleep+'hrs\nJob: '+ud.job+', stress '+ud.stress+'/10\nSport: '+sport+' ('+level+'), '+ud.sessions+'×/wk, '+ud.dur+'min, at '+ud.equip+'\nAllergies: '+(ud.al||[]).join(',')+'\nDiet: '+(ud.di||[]).join(',')+'\nCuisines: '+(ud.cu||[]).join(',')+'\nCooking: '+ud.cook+'\nGoal: '+goalStr()+', Calories: '+kcal+'\n\nCreate a personalised plan. For workout: create 4-5 SPECIFIC exercises for '+sport+' at '+level+' level that improve performance in '+sport+'. NOT generic gym. Include drills, technique, sport-specific conditioning. Each needs name + sets/reps/duration.\n\nIMPORTANT for nutrition tracking: Each meal MUST include numeric protein/carbs/fat in grams (no units, just numbers). Sum across all 4 meals should approximately match the day-level protein/carbs/fat targets.\n\nIMPORTANT for shopping list: Each item MUST be an object with "item" and "qty" (e.g. {"item":"Chicken breast","qty":"500g"} or {"item":"Eggs","qty":"6"}). Quantities should reflect what the day\'s meals require. Use grams (g), milliliters (ml), or counts as appropriate.\n\nRespond ONLY with valid JSON, no markdown:\n{"headline":"<12 words>","calories":'+kcal+',"protein":<g>,"carbs":<g>,"fat":<g>,"timeline":"<weeks>","todayMeals":[{"emoji":"🍳","name":"<meal>","time":"Breakfast","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 28g protein>"},{"emoji":"🥗","name":"<meal>","time":"Lunch","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 42g protein>"},{"emoji":"🍽️","name":"<meal>","time":"Dinner","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 38g protein>"},{"emoji":"🍎","name":"<snack>","time":"Snack","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 15g protein>"}],"workout":{"title":"<sport-specific title>","focus":"<what this improves in '+sport+'>","desc":"<2 sentences why>","duration":<min>,"exercises":[{"name":"<exercise>","detail":"<sets/reps/duration>"},{"name":"<exercise>","detail":"<sets/reps>"},{"name":"<exercise>","detail":"<sets/reps>"},{"name":"<exercise>","detail":"<duration>"}]},"recovery":{"tip":"<tip>","sleep":"<advice>","hydration":"<target>"},"shopping":[{"item":"<item1>","qty":"<qty1>"},{"item":"<item2>","qty":"<qty2>"},{"item":"<item3>","qty":"<qty3>"},{"item":"<item4>","qty":"<qty4>"},{"item":"<item5>","qty":"<qty5>"}],"milestones":["<wk2-3>","<wk5-7>","<final>"]}';
+  var prompt='You are PEAK AI by MJ Performance.\n'+langInstr+'\nUser: '+ud.name+', age '+ud.age+', '+ud.weight+'kg→'+ud.dweight+'kg, '+ud.height+'cm, sleep '+ud.sleep+'hrs\nJob: '+ud.job+', stress '+ud.stress+'/10\nSport: '+sport+' ('+level+'), '+ud.sessions+'×/wk, '+ud.dur+'min, at '+ud.equip+'\nAllergies: '+(ud.al||[]).join(',')+'\nDiet: '+(ud.di||[]).join(',')+'\nCuisines: '+(ud.cu||[]).join(',')+'\nCooking: '+ud.cook+'\nGoal: '+goalStr()+', Calories: '+kcal+'\n\nCreate a personalised plan. For workout: create 4-5 SPECIFIC exercises for '+sport+' at '+level+' level that improve performance in '+sport+'. NOT generic gym. Include drills, technique, sport-specific conditioning. Each needs name + sets/reps/duration.\n\nSTRETCHING RULE (sport science): Dynamic stretching/mobility ONLY in warm-up. Static stretching ONLY in cooldown. Never put static stretching before main work, never put dynamic stretching as the cooldown.\n\nIMPORTANT for nutrition tracking: Each meal MUST include numeric protein/carbs/fat in grams (no units, just numbers). Sum across all 4 meals should approximately match the day-level protein/carbs/fat targets.\n\nIMPORTANT for shopping list: Each item MUST be an object with "item" and "qty" (e.g. {"item":"Chicken breast","qty":"500g"} or {"item":"Eggs","qty":"6"}). Quantities should reflect what the day\'s meals require. Use grams (g), milliliters (ml), or counts as appropriate.\n\nRespond ONLY with valid JSON, no markdown:\n{"headline":"<12 words>","calories":'+kcal+',"protein":<g>,"carbs":<g>,"fat":<g>,"timeline":"<weeks>","todayMeals":[{"emoji":"🍳","name":"<meal>","time":"Breakfast","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 28g protein>"},{"emoji":"🥗","name":"<meal>","time":"Lunch","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 42g protein>"},{"emoji":"🍽️","name":"<meal>","time":"Dinner","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 38g protein>"},{"emoji":"🍎","name":"<snack>","time":"Snack","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 15g protein>"}],"workout":{"title":"<sport-specific title>","focus":"<what this improves in '+sport+'>","desc":"<2 sentences why>","duration":<min>,"exercises":[{"name":"<exercise>","detail":"<sets/reps/duration>"},{"name":"<exercise>","detail":"<sets/reps>"},{"name":"<exercise>","detail":"<sets/reps>"},{"name":"<exercise>","detail":"<duration>"}]},"recovery":{"tip":"<tip>","sleep":"<advice>","hydration":"<target>"},"shopping":[{"item":"<item1>","qty":"<qty1>"},{"item":"<item2>","qty":"<qty2>"},{"item":"<item3>","qty":"<qty3>"},{"item":"<item4>","qty":"<qty4>"},{"item":"<item5>","qty":"<qty5>"}],"milestones":["<wk2-3>","<wk5-7>","<final>"]}';
   try{
     // Initial onboarding plan is FREE (comes with signup). Only regenerations count toward monthly quota.
     var planPurpose=isRegen?'plan_generation':'plan_generation_initial';
@@ -1743,7 +1761,7 @@ var TPL={
             {name:'Warm-up',detail:'10 min easy + drills',tip:'Full activation — speed needs it'},
             {name:'Intervals',detail:'6×200m at 5K pace, 200m jog recovery',tip:'Relaxed shoulders, quick cadence'},
             {name:'Strides',detail:'4×100m building to near-max',tip:'Smooth acceleration — don\'t force it'},
-            {name:'Cool-down jog + stretch',detail:'10 min',tip:'Gentle — not static stretching'}
+            {name:'Cool-down jog + stretch',detail:'10 min jog + 5 min static stretching',tip:'Static holds (30-60s) on calves, hamstrings, hip flexors'}
           ]},
         int:{title:'VO2max Intervals',focus:'Aerobic power, lactate threshold',desc:'The workout that lifts your ceiling.',
           exercises:[
@@ -2310,7 +2328,13 @@ async function aiBuildWeek(sport,level,sessionsPerWk,duration,typeSequence,weekN
     ?'CRITICAL: Respond ENTIRELY in GERMAN (Deutsch). ALL text fields — especially "title", "focus", "desc", exercise "name", "detail", and "tip" — MUST be in natural German. Examples: "Explosive Lower Body" → "Explosive Beinkraft", "Advanced Ball Mastery" → "Fortgeschrittene Ballbeherrschung", "Match-Specific Conditioning" → "Spielspezifische Kondition", "Ball control" → "Ballkontrolle", "Sprint intervals" → "Sprint-Intervalle". Keep numbers + units unchanged (3×10min, 6×30m, @75%).'
     :'IMPORTANT: Respond ENTIRELY in ENGLISH. All text fields must be in English.';
   var phaseInstr={foundation:'Foundation phase: moderate intensity, focus on movement quality.',build:'Build phase: progressively heavier loads and higher volume (+15% vs foundation).',peak:'Peak phase: maximum intensity, sport-specific demands (+30% vs foundation).'}[phase]||'';
-  var prompt='You are an expert strength & conditioning coach for '+sport+'.\n'+langInstr+'\nBuild '+sessionsPerWk+' training sessions for a '+level+'-level athlete, week '+weekNum+' of a 12-week program.\n'+phaseInstr+'\nSession types (in order): '+typeSequence.join(', ')+'.\nEach session: '+duration+' minutes. 4-5 exercises with sets/reps/duration and one technique tip.\n\nRespond ONLY with valid JSON:\n{"sessions":[{"type":"<type>","title":"<session title>","focus":"<what this trains>","desc":"<1-2 sentences>","exercises":[{"name":"<exercise>","detail":"<sets/reps/duration>","tip":"<technique tip>"},{"name":"<exercise>","detail":"<detail>","tip":"<tip>"},{"name":"<exercise>","detail":"<detail>","tip":"<tip>"},{"name":"<exercise>","detail":"<detail>","tip":"<tip>"}]}]}';
+  // Sport-science correctness: dynamic stretching/mobility BEFORE training
+  // (warm-up, prepares body), static stretching AFTER training (cooldown,
+  // helps recovery and ROM). The reverse — static stretching before workout
+  // — is associated with reduced power output and is widely considered
+  // outdated. We instruct the AI explicitly to avoid that mistake.
+  var stretchRule='STRETCHING RULE (sport science): Dynamic stretching/mobility ONLY in warm-up (start of session). Static stretching ONLY in cooldown (end of session). Never put static stretching before the main work, never put dynamic stretching as the cooldown. If a session includes a warm-up, use dynamic mobility drills. If it includes a cooldown, use static holds (30-60s).';
+  var prompt='You are an expert strength & conditioning coach for '+sport+'.\n'+langInstr+'\n'+stretchRule+'\nBuild '+sessionsPerWk+' training sessions for a '+level+'-level athlete, week '+weekNum+' of a 12-week program.\n'+phaseInstr+'\nSession types (in order): '+typeSequence.join(', ')+'.\nEach session: '+duration+' minutes. 4-5 exercises with sets/reps/duration and one technique tip.\n\nRespond ONLY with valid JSON:\n{"sessions":[{"type":"<type>","title":"<session title>","focus":"<what this trains>","desc":"<1-2 sentences>","exercises":[{"name":"<exercise>","detail":"<sets/reps/duration>","tip":"<technique tip>"},{"name":"<exercise>","detail":"<detail>","tip":"<tip>"},{"name":"<exercise>","detail":"<detail>","tip":"<tip>"},{"name":"<exercise>","detail":"<detail>","tip":"<tip>"}]}]}';
   try{
     var res=await aiGenJSON(prompt,2000);
     return (res&&res.sessions)||null;
@@ -3146,6 +3170,73 @@ function tNu(p){
   dshell('nutrition',c);
 }
 
+// ── EXERCISE EXPLAINER ────────────────────────────────────────────────
+// On-demand AI explanation of an exercise. Renders a small modal, fetches
+// a 2-3 sentence description, and caches results in sessionStorage so
+// repeat taps for the same exercise are instant. Each user only spends
+// tokens on exercises they actually want to know about — much cheaper
+// than pre-generating descriptions for every exercise in every plan.
+function getExplainCache(){
+  try{var raw=sessionStorage.getItem('peak_ex_explain');if(raw)return JSON.parse(raw);}catch(_){}
+  return {};
+}
+function saveExplainCache(c){
+  try{sessionStorage.setItem('peak_ex_explain',JSON.stringify(c));}catch(_){}
+}
+function closeExplainModal(){
+  var m=document.getElementById('exExplainModal');
+  if(m)m.remove();
+}
+async function explainExercise(payloadEnc){
+  var de=lang==='de';
+  var ex;
+  try{ex=JSON.parse(decodeURIComponent(payloadEnc));}catch(e){return;}
+  if(!ex||!ex.name)return;
+  // Build modal shell first so the user gets immediate feedback
+  closeExplainModal();
+  var modal=document.createElement('div');
+  modal.id='exExplainModal';
+  modal.className='ex-explain-modal';
+  modal.onclick=function(e){if(e.target===modal)closeExplainModal();};
+  modal.innerHTML=
+    '<div class="ex-explain-box" role="dialog" aria-modal="true" aria-labelledby="exExplainHead">'+
+      '<div class="ex-explain-h" id="exExplainHead"><span>'+esc(ex.name)+'</span>'+
+        '<button class="ex-explain-close" onclick="closeExplainModal()" aria-label="'+(de?'Schliessen':'Close')+'">×</button>'+
+      '</div>'+
+      '<div class="ex-explain-body" id="exExplainBody">'+
+        '<div class="ex-explain-loading"><span style="width:14px;height:14px;border:2px solid var(--red);border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite"></span>'+(de?'Erklärung wird geladen…':'Loading explanation…')+'</div>'+
+      '</div>'+
+    '</div>';
+  document.body.appendChild(modal);
+
+  var cache=getExplainCache();
+  var cacheKey=lang+'|'+ex.name.toLowerCase().trim();
+  if(cache[cacheKey]){
+    var body=document.getElementById('exExplainBody');
+    if(body)body.innerHTML=cache[cacheKey];
+    return;
+  }
+  var langInstr=de
+    ?'Antworte auf Deutsch in 2-3 kurzen Sätzen.'
+    :'Reply in English in 2-3 short sentences.';
+  var prompt='Briefly explain what this exercise is and how to perform it correctly. '+langInstr+
+    ' Cover: 1) what the exercise looks like, 2) the key technique cue. '+
+    'Skip safety disclaimers and motivational text. Plain text only, no headings, no lists.\n\n'+
+    'Exercise: '+ex.name+(ex.detail?'\nDetail: '+ex.detail:'')+(ex.tip?'\nExisting coach tip (do not repeat verbatim): '+ex.tip:'');
+  try{
+    var text=await aiGen(prompt,250,'exercise_explain');
+    if(!text||!text.trim())throw new Error('empty');
+    var html=esc(text.trim()).replace(/\n+/g,'<br><br>');
+    cache[cacheKey]=html;
+    saveExplainCache(cache);
+    var body2=document.getElementById('exExplainBody');
+    if(body2)body2.innerHTML=html;
+  }catch(e){
+    var body3=document.getElementById('exExplainBody');
+    if(body3)body3.innerHTML='<div style="color:var(--faint)">'+(de?'Erklärung konnte nicht geladen werden. Bitte erneut versuchen.':'Could not load explanation. Please try again.')+'</div>';
+  }
+}
+
 function showMoodPicker(){
   if(gateFree('meal_rating'))return;
   var cu=['🇲🇽 Mexican','🍝 Italian','🍜 Asian','🥗 Mediterranean','🍔 American','🍛 Indian','🇯🇵 Japanese','🥙 Middle Eastern'];
@@ -3294,13 +3385,63 @@ function tFi(p){
     c+=renderWeekPlan(p.week);
   }
 
-  // TODAY'S WORKOUT (backwards-compat OR today's session from week)
-  if(p&&p.workout){
+  // TODAY'S SESSION — derived from the week plan when available, so the
+  // "today" block respects the user's actual training schedule (rest days
+  // show recovery, training days show that day's session). Falls back to
+  // the legacy p.workout only for old cached plans without a week.
+  var todayD=null;
+  if(p&&p.week&&p.week.days&&p.week.days.length){
+    var idx=todayWeekdayIndex();
+    todayD=p.week.days[idx]||null;
+  }
+
+  if(todayD&&todayD.type==='rest'){
+    // Rest day — show a clean recovery card instead of forcing a workout.
+    // Encourages the user to actually rest rather than improvise extra work.
+    c+='<div class="dst" style="margin-top:16px">'+(de?'HEUTE':'TODAY')+'</div>';
+    c+='<div class="wc"><div class="wt">'+(de?'PAUSE & REGENERATION':'REST & RECOVERY')+'</div>';
+    c+='<div class="wd" style="margin-top:6px;line-height:1.5">'+(de?'Heute keine Einheit. Erholung gehört zum Plan — sie ist es, in der dein Körper sich anpasst und stärker wird.':'No session today. Recovery is part of the plan — it\'s when your body adapts and gets stronger.')+'</div>';
+    c+='<div style="margin-top:10px;font-size:11px;color:var(--faint);line-height:1.6">'+(de?'Empfehlung: 7-9h Schlaf, ausreichend Wasser, leichte Bewegung wenn du magst (Spaziergang, Mobility).':'Recommended: 7-9h sleep, plenty of water, light movement if you feel like it (walk, mobility).')+'</div>';
+    c+='</div>';
+  } else if(todayD&&todayD.title){
+    // Training day from the week plan — render its exercises in the
+    // familiar "today" layout, plus the adjust + rate widgets.
+    c+='<div class="dst" style="margin-top:16px">'+t('tw')+'</div>';
+    var dur=todayD.duration||(ud.dur||60);
+    c+='<div class="wc"><div class="wt">'+todayD.title+' · '+dur+' MIN</div>';
+    if(todayD.desc)c+='<div class="wd" style="margin-bottom:5px">'+todayD.desc+'</div>';
+    if(todayD.focus)c+='<div style="font-size:9px;color:var(--red);font-weight:700;letter-spacing:1px;margin-top:3px">'+(de?'FOKUS':'FOCUS')+': '+todayD.focus+'</div>';
+    c+='</div>';
+    (todayD.exercises||[]).forEach(function(e,i){
+      var nm=typeof e==='string'?e:(e.name||'Exercise');
+      var dt=typeof e==='string'?'':(e.detail||'');
+      var tip=typeof e==='object'?(e.tip||''):'';
+      var exJson=encodeURIComponent(JSON.stringify({name:nm,detail:dt,tip:tip}));
+      c+='<div class="ex-row"><div class="ex-num">'+(i+1)+'</div><div style="flex:1;min-width:0"><div class="ex-name" style="display:flex;align-items:center;gap:6px"><span style="flex:1">'+nm+'</span><button class="ex-info-btn" onclick="explainExercise(\''+exJson+'\')" title="'+(de?'Was ist das?':'What is this?')+'" aria-label="'+(de?'Übung erklären':'Explain exercise')+'">ⓘ</button></div>';
+      if(dt)c+='<div class="ex-detail">'+dt+'</div>';
+      if(tip)c+='<div class="ex-tip">💡 '+tip+'</div>';
+      c+='</div></div>';
+    });
+    c+='<div class="aib" style="margin-top:13px"><div class="ailbl"><div class="aidot"></div>'+(de?'Nächstes Training anpassen':'Adjust next session')+'</div><p style="margin-bottom:9px;font-size:12px;color:var(--faint)">'+(de?'Wie war das heutige Workout?':'How was today\'s workout?')+'</p>';
+    c+='<div class="tiles c2" style="margin-bottom:7px">';
+    c+='<div class="tile" onclick="adjustWorkout(\'way_too_easy\')"><span class="tl">'+(de?'🔼 Zu leicht':'🔼 Too easy')+'</span></div>';
+    c+='<div class="tile" onclick="adjustWorkout(\'just_right\')"><span class="tl">'+(de?'✓ Passt genau':'✓ Just right')+'</span></div>';
+    c+='<div class="tile" onclick="adjustWorkout(\'slightly_hard\')"><span class="tl">'+(de?'↓ Etwas zu viel':'↓ A bit much')+'</span></div>';
+    c+='<div class="tile" onclick="adjustWorkout(\'way_too_hard\')"><span class="tl">'+(de?'🔽 Zu viel':'🔽 Too much')+'</span></div>';
+    c+='</div><div id="adj"></div></div>';
+    c+='<div class="aib" style="margin-top:9px"><div class="ailbl"><div class="aidot"></div>'+(de?'Workout bewerten':'Rate your workout')+'</div>';
+    var cats=de?['Anstrengung','Energie','Spaß']:['Effort','Energy','Enjoyment'];var keys=['Effort','Energy','Enjoyment'];
+    cats.forEach(function(cat,ci){var r=wrat[keys[ci]];c+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><span style="font-size:9px;font-weight:700;letter-spacing:1px;width:80px;flex-shrink:0;color:var(--faint)">'+cat.toUpperCase()+'</span>'+[1,2,3,4,5].map(function(s){return '<span style="font-size:16px;cursor:pointer;opacity:'+(r&&s<=r?1:0.2)+'" onclick="rateWk(\''+keys[ci]+'\','+s+',this)">⭐</span>';}).join('')+'</div>';});
+    c+='</div>';
+  } else if(p&&p.workout){
+    // Legacy fallback: no week plan available, fall back to the standalone
+    // p.workout that older AI responses returned. Kept for backwards
+    // compatibility with cached pre-week-plan plans.
     c+='<div class="dst" style="margin-top:16px">'+t('tw')+'</div>';
     c+='<div class="wc"><div class="wt">'+p.workout.title+' · '+p.workout.duration+' MIN</div><div class="wd" style="margin-bottom:5px">'+p.workout.desc+'</div>';
     if(p.workout.focus)c+='<div style="font-size:9px;color:var(--red);font-weight:700;letter-spacing:1px;margin-top:3px">'+(de?'FOKUS':'FOCUS')+': '+p.workout.focus+'</div>';
     c+='</div>';
-    (p.workout.exercises||[]).forEach(function(e,i){var nm=typeof e==='string'?e:(e.name||'Exercise');var dt=typeof e==='string'?'':(e.detail||'');c+='<div class="ex-row"><div class="ex-num">'+(i+1)+'</div><div><div class="ex-name">'+nm+'</div>'+(dt?'<div class="ex-detail">'+dt+'</div>':'')+'</div></div>';});
+    (p.workout.exercises||[]).forEach(function(e,i){var nm=typeof e==='string'?e:(e.name||'Exercise');var dt=typeof e==='string'?'':(e.detail||'');var exJson=encodeURIComponent(JSON.stringify({name:nm,detail:dt,tip:''}));c+='<div class="ex-row"><div class="ex-num">'+(i+1)+'</div><div style="flex:1;min-width:0"><div class="ex-name" style="display:flex;align-items:center;gap:6px"><span style="flex:1">'+nm+'</span><button class="ex-info-btn" onclick="explainExercise(\''+exJson+'\')" title="'+(de?'Was ist das?':'What is this?')+'" aria-label="'+(de?'Übung erklären':'Explain exercise')+'">ⓘ</button></div>'+(dt?'<div class="ex-detail">'+dt+'</div>':'')+'</div></div>';});
     c+='<div class="aib" style="margin-top:13px"><div class="ailbl"><div class="aidot"></div>'+(de?'Nächstes Training anpassen':'Adjust next session')+'</div><p style="margin-bottom:9px;font-size:12px;color:var(--faint)">'+(de?'Wie war das heutige Workout?':'How was today\'s workout?')+'</p>';
     c+='<div class="tiles c2" style="margin-bottom:7px">';
     c+='<div class="tile" onclick="adjustWorkout(\'way_too_easy\')"><span class="tl">'+(de?'🔼 Zu leicht':'🔼 Too easy')+'</span></div>';
@@ -3398,6 +3539,29 @@ function openWkDay(i){
     return;
   }
   el.setAttribute('data-day',String(i));
+  // DE: if this session looks English (template not yet translated), kick
+  // off a translation so the detail view doesn't stay in English when the
+  // user opens it before tFi's bulk translate finished or for sessions the
+  // bulk pass missed. Re-render this detail block once the translation
+  // returns. Cache hits are instant; a real translate adds ~1-2s.
+  if(de&&d&&d.title&&(looksEnglish(d.title)||looksEnglish(d.focus)||looksEnglish(d.desc))){
+    var lk=levelKey(ud.level);
+    var sport=ud.sport||'';
+    var key=sport+'|'+d.type+'|'+lk+'|'+d.title;
+    translateSessionToDE(d,key).then(function(translated){
+      // Replace the day in the plan so subsequent renders use DE
+      if(plan&&plan.week&&plan.week.days&&plan.week.days[i]){
+        plan.week.days[i]=Object.assign({},plan.week.days[i],translated);
+        saveSession();
+      }
+      // Re-render this detail if still open on the same day
+      var el2=document.getElementById('wkDayDetail');
+      if(el2&&el2.getAttribute('data-day')===String(i)){
+        el2.removeAttribute('data-day');
+        openWkDay(i);
+      }
+    }).catch(function(e){console.warn('[i18n] detail translate failed:',e&&e.message||e);});
+  }
   var weekNum=(p.week.weekNum||trainState.currentWeek||1);
   var key='w'+weekNum+'-d'+i;
   var isCompleted=!!trainState.completed[key];
@@ -3411,7 +3575,8 @@ function openWkDay(i){
     var nm=typeof e==='string'?e:(e.name||'Exercise');
     var dt=typeof e==='string'?'':(e.detail||'');
     var tip=typeof e==='object'?(e.tip||''):'';
-    html+='<div class="ex-row"><div class="ex-num">'+(idx+1)+'</div><div><div class="ex-name">'+nm+'</div>';
+    var exJson=encodeURIComponent(JSON.stringify({name:nm,detail:dt,tip:tip}));
+    html+='<div class="ex-row"><div class="ex-num">'+(idx+1)+'</div><div style="flex:1;min-width:0"><div class="ex-name" style="display:flex;align-items:center;gap:6px"><span style="flex:1">'+nm+'</span><button class="ex-info-btn" onclick="explainExercise(\''+exJson+'\')" title="'+(de?'Was ist das?':'What is this?')+'" aria-label="'+(de?'Übung erklären':'Explain exercise')+'">ⓘ</button></div>';
     if(dt)html+='<div class="ex-detail">'+dt+'</div>';
     if(tip)html+='<div class="ex-tip">💡 '+tip+'</div>';
     html+='</div></div>';
