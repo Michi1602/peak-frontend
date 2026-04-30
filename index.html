@@ -2567,10 +2567,10 @@ function s7(){
   var vPlh=de?'z.B. LAUNCH10':'e.g. LAUNCH10';
   var vBtn=de?'Prüfen':'Check';
   var prefillVoucher=ud.voucherCode||'';
-  card('<div class="ch"><div class="chip">✦ '+t('s7')+'</div><div class="ct">'+t('os')+' <em>'+t('rs')+'</em></div><p class="cs" id="s7price">'+priceTxt+'</p></div><div class="cb"><div class="tbdg"><div class="tbi">✅</div><div class="tbt"><strong>'+t('nc')+'</strong> '+t('rn')+'</div></div><div id="ep" class="ebox"></div><div class="field"><label>'+t('el')+'</label><input type="email" id="em" placeholder="michael@example.com" value="'+(ud.email||'')+'"></div><p style="font-size:10px;color:var(--faint);margin-top:-4px;margin-bottom:12px">'+t('ph')+'</p><div class="field"><label>'+vLbl+'</label><div style="display:flex;gap:6px"><input type="text" id="vc" placeholder="'+vPlh+'" value="'+prefillVoucher+'" style="flex:1;text-transform:uppercase"><button class="bnx inline-btn" id="vcBtn" onclick="checkVoucher()" style="flex:0 0 auto;padding:0 18px;font-size:11px">'+vBtn+'</button></div><div id="vcMsg" style="font-size:11px;margin-top:6px;display:none"></div></div><div class="cbox"><div class="cbox-t">'+t('cst')+'</div><label class="cbx"><input type="checkbox" id="cc1" '+(ud.consent_health_data?'checked':'')+' onchange="updConsent()"><span>'+t('cs1')+'</span></label><label class="cbx"><input type="checkbox" id="cc2" '+(ud.consent_terms?'checked':'')+' onchange="updConsent()"><span>'+t('cs2')+' <a href="https://peak-mj-performance.app/impressum" target="_blank" rel="noopener">'+t('cs2l')+'</a> '+t('cs2a')+' <a href="https://peak-mj-performance.app/datenschutz" target="_blank" rel="noopener">'+t('cs2p')+'</a>'+t('cs2e')+'</span></label></div></div><div class="cf"><button class="bbk" onclick="step=6;render()">← Back</button><button class="bnx" id="pb2" onclick="doPay()" style="opacity:.5;cursor:not-allowed" disabled>🔒 '+t('tp')+' →</button></div>');
+  card('<div class="ch"><div class="chip">✦ '+t('s7')+'</div><div class="ct">'+t('os')+' <em>'+t('rs')+'</em></div><p class="cs" id="s7price">'+priceTxt+'</p></div><div class="cb"><div class="tbdg"><div class="tbi">✅</div><div class="tbt"><strong>'+t('nc')+'</strong> '+t('rn')+'</div></div><div id="ep" class="ebox"></div><div class="field"><label>'+t('el')+'</label><input type="email" id="em" placeholder="michael@example.com" value="'+(ud.email||'')+'"></div><p style="font-size:10px;color:var(--faint);margin-top:-4px;margin-bottom:12px">'+t('ph')+'</p><div class="field"><label>'+vLbl+'</label><div style="display:flex;gap:6px"><input type="text" id="vc" placeholder="'+vPlh+'" value="'+prefillVoucher+'" style="flex:1;text-transform:uppercase"><button class="bnx inline-btn" id="vcBtn" onclick="checkVoucher()" style="flex:0 0 auto;padding:0 18px;font-size:11px">'+vBtn+'</button></div><div id="vcMsg" style="font-size:11px;margin-top:6px;display:none"></div></div><div class="cbox"><div class="cbox-t">'+t('cst')+'</div><label class="cbx"><input type="checkbox" id="cc1" onchange="updConsent()"><span>'+t('cs1')+'</span></label><label class="cbx"><input type="checkbox" id="cc2" onchange="updConsent()"><span>'+t('cs2')+' <a href="https://peak-mj-performance.app/impressum" target="_blank" rel="noopener">'+t('cs2l')+'</a> '+t('cs2a')+' <a href="https://peak-mj-performance.app/datenschutz" target="_blank" rel="noopener">'+t('cs2p')+'</a>'+t('cs2e')+'</span></label></div></div><div class="cf"><button class="bbk" onclick="step=6;render()">← Back</button><button class="bnx" id="pb2" onclick="doPay()" style="opacity:.5;cursor:not-allowed" disabled>🔒 '+t('tp')+' →</button></div>');
   // If voucher came from URL, auto-validate
   if(prefillVoucher)setTimeout(checkVoucher,100);
-  // If consent was already given via health disclaimer modal, activate button
+  // Sync button state with checkbox state (both unchecked initially → disabled)
   setTimeout(updConsent,50);
 }
 
@@ -2748,8 +2748,8 @@ function s7f(){
       '<p style="font-size:10px;color:var(--faint);margin-top:-4px;margin-bottom:12px">'+privacyText+'</p>'+
       '<div class="cbox">'+
         '<div class="cbox-t">'+t('cst')+'</div>'+
-        '<label class="cbx"><input type="checkbox" id="ccf1" '+(ud.consent_health_data?'checked':'')+' onchange="updFreeConsent()"><span>'+t('cs1')+'</span></label>'+
-        '<label class="cbx"><input type="checkbox" id="ccf2" '+(ud.consent_terms?'checked':'')+' onchange="updFreeConsent()"><span>'+t('cs2')+' <a href="https://peak-mj-performance.app/impressum" target="_blank" rel="noopener">'+t('cs2l')+'</a> '+t('cs2a')+' <a href="https://peak-mj-performance.app/datenschutz" target="_blank" rel="noopener">'+t('cs2p')+'</a>'+t('cs2e')+'</span></label>'+
+        '<label class="cbx"><input type="checkbox" id="ccf1" onchange="updFreeConsent()"><span>'+t('cs1')+'</span></label>'+
+        '<label class="cbx"><input type="checkbox" id="ccf2" onchange="updFreeConsent()"><span>'+t('cs2')+' <a href="https://peak-mj-performance.app/impressum" target="_blank" rel="noopener">'+t('cs2l')+'</a> '+t('cs2a')+' <a href="https://peak-mj-performance.app/datenschutz" target="_blank" rel="noopener">'+t('cs2p')+'</a>'+t('cs2e')+'</span></label>'+
       '</div>'+
     '</div>'+
     '<div class="cf">'+
@@ -2757,7 +2757,7 @@ function s7f(){
       '<button class="bnx" id="pbf" onclick="doFreeSignup()" style="opacity:.5;cursor:not-allowed" disabled>'+btnLabel+' →</button>'+
     '</div>'
   );
-  // If consent was already given via health disclaimer modal, activate button
+  // Sync button state with checkbox state (both unchecked initially → disabled)
   setTimeout(updFreeConsent,50);
 }
 
@@ -2931,11 +2931,15 @@ function upgHTMLFree(featureKey){
   var de=lang==='de';
   var titles={
     recovery_tools: de?'Recovery-Tools':'Recovery Tools',
-    scanner: de?'Scanner':'Scanner',
+    scanner:        de?'Scanner':'Scanner',
+    log:            de?'Protokoll':'Log',
+    recipes:        de?'Rezepte':'Recipes',
   };
   var descs={
     recovery_tools: de?'Schlaf, Mobilität, Sauna, Kältebad, Meditation und mehr. Mit Premium voll dabei.':'Sleep, mobility, sauna, cold plunge, meditation and more. Unlock with Premium.',
-    scanner: de?'Barcode- und Menüscanner für smartes Tracking. Nur Premium.':'Barcode and menu scanner for smart tracking. Premium only.',
+    scanner:        de?'Barcode- und Menüscanner für smartes Tracking. Nur Premium.':'Barcode and menu scanner for smart tracking. Premium only.',
+    log:            de?'Protokollier Mahlzeiten, Snacks und Drinks. Verfügbar mit Premium.':'Log meals, snacks and drinks. Available with Premium.',
+    recipes:        de?'KI-Rezepte passend zu deinen Makros und Zielen. Nur mit Premium.':'AI recipes matched to your macros and goals. Premium only.',
   };
   var label=titles[featureKey]||(de?'Premium':'Premium');
   var desc=descs[featureKey]||(de?'Dieses Feature ist Premium.':'This feature is Premium.');
@@ -4542,8 +4546,25 @@ async function bootApp(){
     step=8;render();return;
   }
 
-  // Check for existing Supabase session (magic link, Google, or persisted)
+  // Check for existing Supabase session (magic link, Google, or persisted).
+  // If the URL contains an auth hash (from a magic-link redirect), Supabase's
+  // JS client parses it asynchronously — getSession() called too early returns
+  // null, causing us to bounce the user back to the intro/onboarding even
+  // though they're moments away from being signed in. Detect the hash and
+  // wait briefly for the session to settle.
   try{
+    var hasAuthHash=window.location.hash&&/access_token=|refresh_token=|type=(magiclink|recovery|invite|signup)/.test(window.location.hash);
+    if(hasAuthHash){
+      // Poll up to ~3s for the session to appear. Most magic-link flows resolve
+      // within 100-300ms; the longer ceiling protects users on slow networks.
+      var waited=0;
+      while(waited<3000){
+        var s=await window.sb.auth.getSession();
+        if(s?.data?.session)break;
+        await new Promise(function(r){setTimeout(r,150);});
+        waited+=150;
+      }
+    }
     var sess=await window.sb.auth.getSession();
     if(sess?.data?.session){
       // Signed in — load profile and route appropriately
