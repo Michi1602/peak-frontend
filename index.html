@@ -539,8 +539,31 @@ async function aiGen(prompt, maxTokens, purpose){
 }
 async function aiGenJSON(prompt, maxTokens, purpose){
   var text=await aiGen(prompt, maxTokens, purpose);
+  // Strip Markdown code fences (the AI sometimes wraps even when told not to)
   var clean=text.replace(/```json|```/g,'').trim();
-  return JSON.parse(clean);
+  // If the AI prepended a sentence ("Here's your JSON:"), grab the first {…}
+  // block. Last-resort recovery — preferred output is a clean JSON string,
+  // but this is a frequent failure mode for older models / truncation.
+  if(clean&&clean[0]!=='{'&&clean[0]!=='['){
+    var firstBrace=clean.indexOf('{');
+    var firstBracket=clean.indexOf('[');
+    var start=-1;
+    if(firstBrace>=0&&firstBracket>=0)start=Math.min(firstBrace,firstBracket);
+    else if(firstBrace>=0)start=firstBrace;
+    else if(firstBracket>=0)start=firstBracket;
+    if(start>0)clean=clean.slice(start);
+  }
+  try{
+    return JSON.parse(clean);
+  }catch(e){
+    // Log a snippet of the raw response so we can debug bad outputs in
+    // production without surfacing raw AI text to the user.
+    console.error('[aiGenJSON] parse failed for purpose='+purpose+', length='+(text||'').length+', snippet:',(text||'').slice(0,300));
+    var err=new Error('AI returned invalid JSON');
+    err.aiRaw=text;
+    err.aiPurpose=purpose;
+    throw err;
+  }
 }
 
 // Build goal string for AI prompts — includes primary + secondary goals
@@ -3274,7 +3297,7 @@ async function pickMood(cuisine){
   var p=fp();
   var prompt='Rework today\'s meal plan in '+cuisine+' style. Language: '+lang+'. Goal: '+goalStr()+', total ~'+p.calories+' kcal, ~'+p.protein+'g protein. Allergies: '+(ud.al||[]).join(',')+'. Cooking level: '+ud.cook+'.\nKeep the same structure (Breakfast, Lunch, Dinner, Snack) but all dishes should be authentic '+cuisine+' cuisine. Respect macros.\nIMPORTANT: Each meal MUST include numeric protein/carbs/fat in grams (no units, just numbers). Sum should approximately match daily targets.\nALSO regenerate the shopping list to match the new '+cuisine+' meals — items as objects with "item" and "qty" (e.g. {"item":"Chicken breast","qty":"500g"}). Use grams (g), milliliters (ml), or counts as appropriate.\nRespond ONLY with valid JSON, no markdown:\n{"todayMeals":[{"emoji":"<emoji>","name":"<breakfast dish>","time":"Breakfast","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 28g protein>"},{"emoji":"<emoji>","name":"<lunch dish>","time":"Lunch","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 42g protein>"},{"emoji":"<emoji>","name":"<dinner dish>","time":"Dinner","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 38g protein>"},{"emoji":"<emoji>","name":"<snack>","time":"Snack","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 15g protein>"}],"shopping":[{"item":"<item1>","qty":"<qty1>"},{"item":"<item2>","qty":"<qty2>"},{"item":"<item3>","qty":"<qty3>"},{"item":"<item4>","qty":"<qty4>"},{"item":"<item5>","qty":"<qty5>"}]}';
   try{
-    var result=await aiGenJSON(prompt,1000,'mood_recipe');
+    var result=await aiGenJSON(prompt,1400,'mood_recipe');
     if(!result.todayMeals||!Array.isArray(result.todayMeals)||result.todayMeals.length===0)throw new Error('Invalid data');
     // Update plan with new meals + matching shopping list
     if(plan){
