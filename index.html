@@ -16,13 +16,13 @@
 <meta name="application-name" content="PEAK">
 
 <!-- Icons -->
-<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png?v=3">
-<link rel="shortcut icon" href="/icons/favicon-32.png?v=3">
-<link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png?v=3">
-<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=3">
-<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png?v=3">
-<link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.png?v=3">
-<link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png?v=3">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png?v=4">
+<link rel="shortcut icon" href="/icons/favicon-32.png?v=4">
+<link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png?v=4">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=4">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png?v=4">
+<link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.png?v=4">
+<link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png?v=4">
 <link rel="mask-icon" href="/icons/safari-pinned-tab.svg" color="#E8001A">
 
 <!-- Open Graph (for when URL is shared) -->
@@ -3589,6 +3589,11 @@ function openWkDay(i){
     });
     restHtml+='</div>';
     el.innerHTML=restHtml;
+    // Scroll detail into view so users see what changed when tapping another
+    // day from the grid above. Uses smooth scrolling on supported browsers.
+    setTimeout(function(){
+      try{el.scrollIntoView({behavior:'smooth',block:'nearest'});}catch(_){el.scrollIntoView();}
+    },50);
     return;
   }
   // DE: if this session looks English (template not yet translated), kick
@@ -3596,23 +3601,51 @@ function openWkDay(i){
   // user opens it before tFi's bulk translate finished or for sessions the
   // bulk pass missed. Re-render this detail block once the translation
   // returns. Cache hits are instant; a real translate adds ~1-2s.
+  //
+  // DEFENSIVE: This branch had a pathological case where a failed AI call
+  // returned the original (still-English) session, the re-render saw it
+  // still looked English, kicked off translation again — endless loop that
+  // froze the app. Three guards now:
+  //   1. Per-day in-flight lock (don't fire a second call while one is pending)
+  //   2. Per-day failed-attempt counter (give up after 2 failures so the user
+  //      can at least see the English version)
+  //   3. Equality check (only re-render if the translation actually changed)
   if(de&&d&&d.title&&(looksEnglish(d.title)||looksEnglish(d.focus)||looksEnglish(d.desc))){
     var lk=levelKey(ud.level);
     var sport=ud.sport||'';
-    var key=sport+'|'+d.type+'|'+lk+'|'+d.title;
-    translateSessionToDE(d,key).then(function(translated){
-      // Replace the day in the plan so subsequent renders use DE
-      if(plan&&plan.week&&plan.week.days&&plan.week.days[i]){
-        plan.week.days[i]=Object.assign({},plan.week.days[i],translated);
-        saveSession();
-      }
-      // Re-render this detail if still open on the same day
-      var el2=document.getElementById('wkDayDetail');
-      if(el2&&el2.getAttribute('data-day')===String(i)){
-        el2.removeAttribute('data-day');
-        openWkDay(i);
-      }
-    }).catch(function(e){console.warn('[i18n] detail translate failed:',e&&e.message||e);});
+    var transKey=sport+'|'+d.type+'|'+lk+'|'+d.title;
+    window.__pkTransInFlight=window.__pkTransInFlight||{};
+    window.__pkTransFailed=window.__pkTransFailed||{};
+    if(!window.__pkTransInFlight[transKey]&&(window.__pkTransFailed[transKey]||0)<2){
+      window.__pkTransInFlight[transKey]=true;
+      var origTitle=d.title;
+      translateSessionToDE(d,transKey).then(function(translated){
+        window.__pkTransInFlight[transKey]=false;
+        // Did the translation actually change anything? If not, the AI either
+        // failed silently or returned the same content — either way, no point
+        // re-rendering and risking a loop.
+        var changed=translated&&translated.title&&translated.title!==origTitle;
+        if(!changed){
+          window.__pkTransFailed[transKey]=(window.__pkTransFailed[transKey]||0)+1;
+          return;
+        }
+        // Persist the translated session in the plan so future renders use it
+        if(plan&&plan.week&&plan.week.days&&plan.week.days[i]){
+          plan.week.days[i]=Object.assign({},plan.week.days[i],translated);
+          saveSession();
+        }
+        // Re-render this detail if still open on the same day
+        var el2=document.getElementById('wkDayDetail');
+        if(el2&&el2.getAttribute('data-day')===String(i)){
+          el2.removeAttribute('data-day');
+          openWkDay(i);
+        }
+      }).catch(function(e){
+        window.__pkTransInFlight[transKey]=false;
+        window.__pkTransFailed[transKey]=(window.__pkTransFailed[transKey]||0)+1;
+        console.warn('[i18n] detail translate failed:',e&&e.message||e);
+      });
+    }
   }
   var weekNum=(p.week.weekNum||trainState.currentWeek||1);
   var key='w'+weekNum+'-d'+i;
@@ -3666,6 +3699,11 @@ function openWkDay(i){
   }
   html+='</div></div>';
   el.innerHTML=html;
+  // Scroll detail into view so users see what changed when tapping another
+  // day from the grid above.
+  setTimeout(function(){
+    try{el.scrollIntoView({behavior:'smooth',block:'nearest'});}catch(_){el.scrollIntoView();}
+  },50);
 }
 
 // Mark session as completed
