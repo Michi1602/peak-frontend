@@ -1507,11 +1507,11 @@ async function fetchPlan(isRegen){
   // stays consistent across pre-AI fallback and post-AI-failure rendering.
   var exFallback=getSportTips(sport,lang);
   var langInstr=lang==='de'?'IMPORTANT: Respond entirely in GERMAN (Deutsch). All text fields including headline, meal names, workout names, exercise names, tips, shopping items, milestones must be in German. Keep meal time values as English labels "Breakfast","Lunch","Dinner","Snack" for app compatibility.':'IMPORTANT: Respond entirely in ENGLISH. All text fields must be in English.';
-  var prompt='You are PEAK AI by MJ Performance.\n'+langInstr+'\nUser: '+ud.name+', age '+ud.age+', '+ud.weight+'kg→'+ud.dweight+'kg, '+ud.height+'cm, sleep '+ud.sleep+'hrs\nJob: '+ud.job+', stress '+ud.stress+'/10\nSport: '+sport+' ('+level+'), '+ud.sessions+'×/wk, '+ud.dur+'min, at '+ud.equip+'\nAllergies: '+(ud.al||[]).join(',')+'\nDiet: '+(ud.di||[]).join(',')+'\nCuisines: '+(ud.cu||[]).join(',')+'\nCooking: '+ud.cook+'\nGoal: '+goalStr()+', Calories: '+kcal+'\n\nCreate a personalised plan. For workout: create 4-5 SPECIFIC exercises for '+sport+' at '+level+' level that improve performance in '+sport+'. NOT generic gym. Include drills, technique, sport-specific conditioning. Each needs name + sets/reps/duration.\n\nSTRETCHING RULE (sport science): Dynamic stretching/mobility ONLY in warm-up. Static stretching ONLY in cooldown. Never put static stretching before main work, never put dynamic stretching as the cooldown.\n\nIMPORTANT for nutrition tracking: Each meal MUST include numeric protein/carbs/fat in grams (no units, just numbers). Sum across all 4 meals should approximately match the day-level protein/carbs/fat targets.\n\nIMPORTANT for shopping list: Each item MUST be an object with "item" and "qty" (e.g. {"item":"Chicken breast","qty":"500g"} or {"item":"Eggs","qty":"6"}). Quantities should reflect what the day\'s meals require. Use grams (g), milliliters (ml), or counts as appropriate.\n\nRespond ONLY with valid JSON, no markdown:\n{"headline":"<12 words>","calories":'+kcal+',"protein":<g>,"carbs":<g>,"fat":<g>,"timeline":"<weeks>","todayMeals":[{"emoji":"🍳","name":"<meal>","time":"Breakfast","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 28g protein>"},{"emoji":"🥗","name":"<meal>","time":"Lunch","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 42g protein>"},{"emoji":"🍽️","name":"<meal>","time":"Dinner","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 38g protein>"},{"emoji":"🍎","name":"<snack>","time":"Snack","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 15g protein>"}],"workout":{"title":"<sport-specific title>","focus":"<what this improves in '+sport+'>","desc":"<2 sentences why>","duration":<min>,"exercises":[{"name":"<exercise>","detail":"<sets/reps/duration>"},{"name":"<exercise>","detail":"<sets/reps>"},{"name":"<exercise>","detail":"<sets/reps>"},{"name":"<exercise>","detail":"<duration>"}]},"recovery":{"tip":"<tip>","sleep":"<advice>","hydration":"<target>"},"shopping":[{"item":"<item1>","qty":"<qty1>"},{"item":"<item2>","qty":"<qty2>"},{"item":"<item3>","qty":"<qty3>"},{"item":"<item4>","qty":"<qty4>"},{"item":"<item5>","qty":"<qty5>"}],"milestones":["<wk2-3>","<wk5-7>","<final>"]}';
+  var prompt='You are PEAK AI by MJ Performance.\n'+langInstr+'\nUser: '+ud.name+', age '+ud.age+', '+ud.weight+'kg→'+ud.dweight+'kg, '+ud.height+'cm, sleep '+ud.sleep+'hrs\nJob: '+ud.job+', stress '+ud.stress+'/10\nSport: '+sport+' ('+level+'), '+ud.sessions+'×/wk, '+ud.dur+'min, at '+ud.equip+'\nAllergies: '+(ud.al||[]).join(',')+'\nDiet: '+(ud.di||[]).join(',')+'\nCuisines: '+(ud.cu||[]).join(',')+'\nCooking: '+ud.cook+'\nGoal: '+goalStr()+', Calories: '+kcal+'\n\nCreate a personalised plan. For workout: create 4-5 SPECIFIC exercises for '+sport+' at '+level+' level that improve performance in '+sport+'. NOT generic gym. Include drills, technique, sport-specific conditioning. Each needs name + sets/reps/duration.\n\nSTRETCHING RULE (sport science): Dynamic stretching/mobility ONLY in warm-up. Static stretching ONLY in cooldown. Never put static stretching before main work, never put dynamic stretching as the cooldown.\n\nIMPORTANT for nutrition tracking: Each meal MUST include numeric protein/carbs/fat in grams (no units, just numbers). Sum across all 4 meals should approximately match the day-level protein/carbs/fat targets.\n\nIMPORTANT for ingredients: Each meal MUST include an "ingredients" array of objects with "item" and "qty" fields (e.g. {"item":"Chicken breast","qty":"200g"}). Quantities reflect ONE serving of THAT meal. Use grams (g), milliliters (ml), or counts as appropriate. Aim for 4-6 ingredients per meal.\n\nRespond ONLY with valid JSON, no markdown:\n{"headline":"<12 words>","calories":'+kcal+',"protein":<g>,"carbs":<g>,"fat":<g>,"timeline":"<weeks>","todayMeals":[{"emoji":"🍳","name":"<meal>","time":"Breakfast","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 28g protein>","ingredients":[{"item":"<i1>","qty":"<q1>"},{"item":"<i2>","qty":"<q2>"},{"item":"<i3>","qty":"<q3>"},{"item":"<i4>","qty":"<q4>"}]},{"emoji":"🥗","name":"<meal>","time":"Lunch","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 42g protein>","ingredients":[{"item":"<i1>","qty":"<q1>"},{"item":"<i2>","qty":"<q2>"},{"item":"<i3>","qty":"<q3>"},{"item":"<i4>","qty":"<q4>"}]},{"emoji":"🍽️","name":"<meal>","time":"Dinner","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 38g protein>","ingredients":[{"item":"<i1>","qty":"<q1>"},{"item":"<i2>","qty":"<q2>"},{"item":"<i3>","qty":"<q3>"},{"item":"<i4>","qty":"<q4>"}]},{"emoji":"🍎","name":"<snack>","time":"Snack","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 15g protein>","ingredients":[{"item":"<i1>","qty":"<q1>"},{"item":"<i2>","qty":"<q2>"},{"item":"<i3>","qty":"<q3>"}]}],"workout":{"title":"<sport-specific title>","focus":"<what this improves in '+sport+'>","desc":"<2 sentences why>","duration":<min>,"exercises":[{"name":"<exercise>","detail":"<sets/reps/duration>"},{"name":"<exercise>","detail":"<sets/reps>"},{"name":"<exercise>","detail":"<sets/reps>"},{"name":"<exercise>","detail":"<duration>"}]},"recovery":{"tip":"<tip>","sleep":"<advice>","hydration":"<target>"},"milestones":["<wk2-3>","<wk5-7>","<final>"]}';
   try{
     // Initial onboarding plan is FREE (comes with signup). Only regenerations count toward monthly quota.
     var planPurpose=isRegen?'plan_generation':'plan_generation_initial';
-    plan=await aiGenJSON(prompt,1600,planPurpose);
+    plan=await aiGenJSON(prompt,2200,planPurpose);
     plan._lang=lang; // Track which language this plan was generated in
     if(plan.workout&&plan.workout.exercises&&typeof plan.workout.exercises[0]==='string'){plan.workout.exercises=plan.workout.exercises.map(function(e){return{name:e,detail:''};});}
     // Ensure weekly plan exists (Chat 1: synthesise from today's workout; Chat 2+ will use templates)
@@ -1525,7 +1525,7 @@ async function fetchPlan(isRegen){
     }
     var k=kcal||2000;
     var deF=lang==='de';
-    plan={headline:(deF?'Deine ':'Your ')+sport+(deF?'-Transformation beginnt jetzt':' transformation starts now'),_lang:lang,calories:k,protein:Math.round(parseFloat(ud.weight||75)*1.8),carbs:Math.round(k*0.4/4),fat:Math.round(k*0.3/9),timeline:(deF?'12 Wochen':'12 weeks'),todayMeals:[{emoji:'🍳',name:t('fbMealEggs'),time:'Breakfast',kcal:420,protein:28,carbs:42,fat:14,macro:'28g '+t('macroProtein')},{emoji:'🥗',name:t('fbMealChicken'),time:'Lunch',kcal:550,protein:45,carbs:48,fat:18,macro:'45g '+t('macroProtein')},{emoji:'🍽️',name:t('fbMealSalmon'),time:'Dinner',kcal:580,protein:40,carbs:55,fat:22,macro:'40g '+t('macroProtein')},{emoji:'🍎',name:t('fbMealYoghurt'),time:'Snack',kcal:180,protein:15,carbs:18,fat:5,macro:'15g '+t('macroProtein')}],workout:{title:sport+' '+t('fbWorkTitle'),focus:t('fbWorkFocus'),desc:(deF?'Sportspezifische Übungen für einen besseren ':'Sport-specific exercises to make you a better ')+sport+(deF?'-Athleten.':' athlete.'),duration:parseInt(ud.dur||60),exercises:exFallback},recovery:{tip:t('tipToday'),sleep:t('tipSleep'),hydration:t('tipHydration')},shopping:[{item:t('fbShopChicken'),qty:'500g'},{item:t('fbShopSalmon'),qty:'400g'},{item:t('fbShopQuinoa'),qty:'250g'},{item:t('fbShopYoghurt'),qty:'500g'},{item:t('fbShopVeg'),qty:'600g'}],milestones:[t('fbMileW3'),t('fbMileW7'),t('fbMileW12')]};
+    plan={headline:(deF?'Deine ':'Your ')+sport+(deF?'-Transformation beginnt jetzt':' transformation starts now'),_lang:lang,calories:k,protein:Math.round(parseFloat(ud.weight||75)*1.8),carbs:Math.round(k*0.4/4),fat:Math.round(k*0.3/9),timeline:(deF?'12 Wochen':'12 weeks'),todayMeals:[{emoji:'🍳',name:t('fbMealEggs'),time:'Breakfast',kcal:420,protein:28,carbs:42,fat:14,macro:'28g '+t('macroProtein'),ingredients:deF?[{item:'Eier',qty:'3'},{item:'Avocado',qty:'1/2'},{item:'Vollkornbrot',qty:'2 Scheiben'},{item:'Olivenöl',qty:'1 EL'}]:[{item:'Eggs',qty:'3'},{item:'Avocado',qty:'1/2'},{item:'Whole grain bread',qty:'2 slices'},{item:'Olive oil',qty:'1 tbsp'}]},{emoji:'🥗',name:t('fbMealChicken'),time:'Lunch',kcal:550,protein:45,carbs:48,fat:18,macro:'45g '+t('macroProtein'),ingredients:deF?[{item:'Hähnchenbrust',qty:'200g'},{item:'Quinoa',qty:'80g'},{item:'Gemüse (gemischt)',qty:'150g'},{item:'Olivenöl',qty:'1 EL'}]:[{item:'Chicken breast',qty:'200g'},{item:'Quinoa',qty:'80g'},{item:'Mixed vegetables',qty:'150g'},{item:'Olive oil',qty:'1 tbsp'}]},{emoji:'🍽️',name:t('fbMealSalmon'),time:'Dinner',kcal:580,protein:40,carbs:55,fat:22,macro:'40g '+t('macroProtein'),ingredients:deF?[{item:'Lachsfilet',qty:'180g'},{item:'Süßkartoffel',qty:'200g'},{item:'Brokkoli',qty:'150g'},{item:'Zitrone',qty:'1/2'}]:[{item:'Salmon filet',qty:'180g'},{item:'Sweet potato',qty:'200g'},{item:'Broccoli',qty:'150g'},{item:'Lemon',qty:'1/2'}]},{emoji:'🍎',name:t('fbMealYoghurt'),time:'Snack',kcal:180,protein:15,carbs:18,fat:5,macro:'15g '+t('macroProtein'),ingredients:deF?[{item:'Griechischer Joghurt',qty:'200g'},{item:'Beeren (gemischt)',qty:'80g'},{item:'Honig',qty:'1 TL'}]:[{item:'Greek yoghurt',qty:'200g'},{item:'Mixed berries',qty:'80g'},{item:'Honey',qty:'1 tsp'}]}],workout:{title:sport+' '+t('fbWorkTitle'),focus:t('fbWorkFocus'),desc:(deF?'Sportspezifische Übungen für einen besseren ':'Sport-specific exercises to make you a better ')+sport+(deF?'-Athleten.':' athlete.'),duration:parseInt(ud.dur||60),exercises:exFallback},recovery:{tip:t('tipToday'),sleep:t('tipSleep'),hydration:t('tipHydration')},milestones:[t('fbMileW3'),t('fbMileW7'),t('fbMileW12')]};
     plan.week=synthWeekPlan(sport,level,parseInt(ud.sessions||3),parseInt(ud.dur||60),plan.workout);
     saveSession();
     enrichWeekWithAI();
@@ -2595,10 +2595,10 @@ function fp(){
     timeline:(deE?'12 Wochen':'12 weeks'),
     headline:t('fbHeadline'),
     todayMeals:[
-      {emoji:'🍳',name:t('fbMealEggs'),time:'Breakfast',kcal:420,protein:28,carbs:42,fat:14,macro:'28g '+t('macroProtein')},
-      {emoji:'🥗',name:t('fbMealChicken'),time:'Lunch',kcal:550,protein:45,carbs:48,fat:18,macro:'45g '+t('macroProtein')},
-      {emoji:'🍽️',name:t('fbMealSalmon'),time:'Dinner',kcal:580,protein:40,carbs:55,fat:22,macro:'40g '+t('macroProtein')},
-      {emoji:'🍎',name:t('fbMealYoghurt'),time:'Snack',kcal:180,protein:15,carbs:18,fat:5,macro:'15g '+t('macroProtein')}
+      {emoji:'🍳',name:t('fbMealEggs'),time:'Breakfast',kcal:420,protein:28,carbs:42,fat:14,macro:'28g '+t('macroProtein'),ingredients:deE?[{item:'Eier',qty:'3'},{item:'Avocado',qty:'1/2'},{item:'Vollkornbrot',qty:'2 Scheiben'},{item:'Olivenöl',qty:'1 EL'}]:[{item:'Eggs',qty:'3'},{item:'Avocado',qty:'1/2'},{item:'Whole grain bread',qty:'2 slices'},{item:'Olive oil',qty:'1 tbsp'}]},
+      {emoji:'🥗',name:t('fbMealChicken'),time:'Lunch',kcal:550,protein:45,carbs:48,fat:18,macro:'45g '+t('macroProtein'),ingredients:deE?[{item:'Hähnchenbrust',qty:'200g'},{item:'Quinoa',qty:'80g'},{item:'Gemüse (gemischt)',qty:'150g'},{item:'Olivenöl',qty:'1 EL'}]:[{item:'Chicken breast',qty:'200g'},{item:'Quinoa',qty:'80g'},{item:'Mixed vegetables',qty:'150g'},{item:'Olive oil',qty:'1 tbsp'}]},
+      {emoji:'🍽️',name:t('fbMealSalmon'),time:'Dinner',kcal:580,protein:40,carbs:55,fat:22,macro:'40g '+t('macroProtein'),ingredients:deE?[{item:'Lachsfilet',qty:'180g'},{item:'Süßkartoffel',qty:'200g'},{item:'Brokkoli',qty:'150g'},{item:'Zitrone',qty:'1/2'}]:[{item:'Salmon filet',qty:'180g'},{item:'Sweet potato',qty:'200g'},{item:'Broccoli',qty:'150g'},{item:'Lemon',qty:'1/2'}]},
+      {emoji:'🍎',name:t('fbMealYoghurt'),time:'Snack',kcal:180,protein:15,carbs:18,fat:5,macro:'15g '+t('macroProtein'),ingredients:deE?[{item:'Griechischer Joghurt',qty:'200g'},{item:'Beeren (gemischt)',qty:'80g'},{item:'Honig',qty:'1 TL'}]:[{item:'Greek yoghurt',qty:'200g'},{item:'Mixed berries',qty:'80g'},{item:'Honey',qty:'1 tsp'}]}
     ],
     workout:{
       title:sportLbl+' '+t('fbWorkTitle'),
@@ -2608,13 +2608,6 @@ function fp(){
       exercises:fallbackEx
     },
     recovery:{tip:t('tipToday'),sleep:t('tipSleep'),hydration:t('tipHydration')},
-    shopping:[
-      {item:t('fbShopChicken'),qty:'500g'},
-      {item:t('fbShopSalmon'),qty:'400g'},
-      {item:t('fbShopQuinoa'),qty:'250g'},
-      {item:t('fbShopYoghurt'),qty:'500g'},
-      {item:t('fbShopVeg'),qty:'600g'}
-    ],
     milestones:[t('fbMileW3'),t('fbMileW7'),t('fbMileW12')]
   };
 }
@@ -3197,55 +3190,62 @@ function tNu(p){
     moodAiHtml+='</div><div id="moodA"></div>';
     c+=moodAiHtml;
   }
-  // SHOPPING LIST — two render modes:
-  // 1. NEW (per-meal): if every meal has its own `ingredients` array, build
-  //    a flat list from those. Items inherit the checked state of their
-  //    parent meal — once a meal is logged, its ingredients are struck
-  //    through (the user has eaten them, no longer relevant for shopping).
-  // 2. LEGACY (global): older plans only have `plan.shopping` as a flat
-  //    array with no meal mapping. Render as-is, no strikethrough.
+  // SHOPPING LIST — Variant D: grouped by meal.
+  // Each meal section shows its own ingredients with quantities. When a meal
+  // is checked off (logged), its section is visually struck through —
+  // signalling "you've eaten this, no longer needs to be shopped for".
+  //
+  // Roadmap (post-launch v1.1+): unify into a weekly shopping list (variant C)
+  // that aggregates across the full meal week. Bigger refactor, parked until
+  // launch is complete.
+  //
+  // Two data sources for backwards compat:
+  // - NEW (per-meal): every meal has its own `ingredients` array → render groups
+  // - LEGACY (global): older plans only have `plan.shopping` → render flat
   var hasPerMealIngredients=Array.isArray(p&&p.todayMeals)&&p.todayMeals.length>0&&p.todayMeals.every(function(m){
     return m&&Array.isArray(m.ingredients)&&m.ingredients.length>0;
   });
   if(hasPerMealIngredients){
-    c+='<div class="dst" style="margin-top:14px">'+(de?'Einkaufsliste':'Shopping List')+'</div>';
     var qtyBlurred=isFree();
     var todayChecked=mealTrack.date===todayDateStr()?(mealTrack.checked||{}):{};
-    // Flatten ingredients across all meals, tagged with their meal's checked state
-    var flat=[];
+    var mealLabelMap=de?{Breakfast:'Frühstück',Lunch:'Mittag',Dinner:'Abend',Snack:'Snack'}:{Breakfast:'Breakfast',Lunch:'Lunch',Dinner:'Dinner',Snack:'Snack'};
+    c+='<div class="dst" style="margin-top:14px">'+(de?'Einkaufsliste':'Shopping List')+'</div>';
+    c+='<div class="aib">';
     p.todayMeals.forEach(function(m,mi){
       var consumed=!!todayChecked[String(mi)];
+      var sectionLabel=(m.emoji||'')+' '+(mealLabelMap[m.time]||m.time||'')+' · '+esc(m.name||'');
+      // Section header — meal name + time. Struck through if consumed.
+      var headStyle='font-size:10px;font-weight:700;color:var(--red);letter-spacing:1.5px;text-transform:uppercase;margin:10px 0 6px;padding-top:'+(mi===0?'0':'8px')+';border-top:'+(mi===0?'none':'1px dashed var(--border)');
+      if(consumed){headStyle+=';opacity:.45;text-decoration:line-through';}
+      c+='<div style="'+headStyle+'">'+sectionLabel+(consumed?' ✓':'')+'</div>';
+      // Ingredients for this meal
       (m.ingredients||[]).forEach(function(ing){
         var name='', qty='';
         if(typeof ing==='string'){name=ing;}
         else if(ing&&typeof ing==='object'){name=ing.item||ing.name||''; qty=ing.qty||'';}
         if(!name)return;
-        flat.push({name:name,qty:qty,consumed:consumed});
+        var qtyHtml='';
+        if(qty){
+          if(qtyBlurred){
+            qtyHtml='<span style="color:var(--red);font-size:11px;font-weight:700;letter-spacing:1px;filter:blur(4px);cursor:pointer;user-select:none" onclick="goUpgrade()" title="'+(de?'Mit Basic freischalten':'Unlock with Basic')+'">'+esc(qty)+'</span>';
+          }else{
+            qtyHtml='<span style="color:var(--red);font-size:11px;font-weight:700;letter-spacing:1px'+(consumed?';opacity:.45':'')+'">'+esc(qty)+'</span>';
+          }
+        }
+        var itemStyle=consumed?'text-decoration:line-through;text-decoration-color:var(--faint);opacity:.5':'';
+        c+='<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:5px 0;color:var(--ink2)"><span style="'+itemStyle+'">→ '+esc(name)+'</span>'+qtyHtml+'</div>';
       });
     });
-    var rowsHtml=flat.map(function(it){
-      var qtyHtml='';
-      if(it.qty){
-        if(qtyBlurred){
-          qtyHtml='<span style="color:var(--red);font-size:11px;font-weight:700;letter-spacing:1px;filter:blur(4px);cursor:pointer;user-select:none" onclick="goUpgrade()" title="'+(de?'Mit Basic freischalten':'Unlock with Basic')+'">'+esc(it.qty)+'</span>';
-        }else{
-          qtyHtml='<span style="color:var(--red);font-size:11px;font-weight:700;letter-spacing:1px'+(it.consumed?';opacity:.45':'')+'">'+esc(it.qty)+'</span>';
-        }
-      }
-      var nameStyle=it.consumed?'text-decoration:line-through;text-decoration-color:var(--faint);opacity:.55':'';
-      return '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:6px 0;color:var(--ink2);border-bottom:1px solid var(--border)"><span style="'+nameStyle+'">🛒 '+esc(it.name)+'</span>'+qtyHtml+'</div>';
-    }).join('');
-    c+='<div class="aib">'+rowsHtml;
     if(qtyBlurred){
       c+='<div style="font-size:10px;color:var(--faint);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);text-align:center">'+(de?'🔒 Mengenangaben mit ':'🔒 Quantities with ')+'<span onclick="goUpgrade()" style="color:var(--red);cursor:pointer;font-weight:700">'+(de?'Basic freischalten →':'Basic unlock →')+'</span></div>';
     }
     c+='</div>';
   }else if(p&&p.shopping&&p.shopping.length){
-    // LEGACY render path
+    // LEGACY render path: flat global list, used only for old cached plans
+    // that pre-date the per-meal ingredients schema. New plans always use
+    // the grouped renderer above.
     c+='<div class="dst" style="margin-top:14px">'+(de?'Einkaufsliste':'Shopping List')+'</div>';
-    var qtyBlurred=isFree();
-    // Backwards compat: shopping items can be {item,qty} (new schema) OR plain
-    // strings (legacy). Render both, but legacy strings have no qty to show.
+    var qtyBlurredL=isFree();
     var rows=p.shopping.map(function(s){
       var name='', qty='';
       if(typeof s==='string'){
@@ -3256,9 +3256,7 @@ function tNu(p){
       }
       var qtyHtml='';
       if(qty){
-        if(qtyBlurred){
-          // Visual blur — qty value still in DOM but unreadable. Tap-area
-          // routes to upgrade flow so the user knows what unlocks it.
+        if(qtyBlurredL){
           qtyHtml='<span style="color:var(--red);font-size:11px;font-weight:700;letter-spacing:1px;filter:blur(4px);cursor:pointer;user-select:none" onclick="goUpgrade()" title="'+(de?'Mit Basic freischalten':'Unlock with Basic')+'">'+qty+'</span>';
         }else{
           qtyHtml='<span style="color:var(--red);font-size:11px;font-weight:700;letter-spacing:1px">'+qty+'</span>';
@@ -3267,7 +3265,7 @@ function tNu(p){
       return '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:6px 0;color:var(--ink2);border-bottom:1px solid var(--border)"><span>🛒 '+name+'</span>'+qtyHtml+'</div>';
     }).join('');
     c+='<div class="aib">'+rows;
-    if(qtyBlurred){
+    if(qtyBlurredL){
       c+='<div style="font-size:10px;color:var(--faint);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);text-align:center">'+(de?'🔒 Mengenangaben mit ':'🔒 Quantities with ')+'<span onclick="goUpgrade()" style="color:var(--red);cursor:pointer;font-weight:700">'+(de?'Basic freischalten →':'Basic unlock →')+'</span></div>';
     }
     c+='</div>';
@@ -3479,7 +3477,7 @@ async function showMealDetail(idx){
     c+=rec.steps.map(function(s,i){return '<div style="display:flex;gap:7px;padding:5px 0;border-bottom:1px solid var(--border)"><span style="color:var(--red);font-weight:900;flex-shrink:0">'+(i+1)+'.</span><span style="font-size:12px;color:var(--ink2);line-height:1.5">'+s+'</span></div>';}).join('');
     if(rec.tip)c+='<div class="aib" style="margin-top:12px"><div class="ailbl"><div class="aidot"></div>'+(de?'Koch-Tipp':'Chef Tip')+'</div><p>'+rec.tip+'</p></div>';
     if(Array.isArray(rec.shoppingList)&&rec.shoppingList.length){
-      c+='<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:var(--red);text-transform:uppercase;margin:13px 0 7px">'+(de?'Einkaufsliste':'Shopping List')+'</div>';
+      c+='<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:var(--red);text-transform:uppercase;margin:13px 0 7px">'+(de?'Zutaten':'Ingredients')+'</div>';
       c+=rec.shoppingList.map(function(s){return '<div style="font-size:12px;padding:4px 0;color:var(--ink2);border-bottom:1px solid var(--border)">🛒 '+s+'</div>';}).join('');
     }
     document.getElementById('db').innerHTML=c;
@@ -4656,7 +4654,7 @@ async function genRec(){
     html+=rec.ingredients.map(function(i){return '<div style="font-size:12px;padding:3px 0;color:var(--ink2);border-bottom:1px solid var(--border)">→ '+i+'</div>';}).join('');
     html+='<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:var(--red);text-transform:uppercase;margin:10px 0 6px">'+(de?'Zubereitung':'Steps')+'</div>';
     html+=rec.steps.map(function(s,i){return '<div style="display:flex;gap:7px;padding:4px 0;border-bottom:1px solid var(--border)"><span style="color:var(--red);font-weight:900;flex-shrink:0">'+(i+1)+'.</span><span style="font-size:12px;color:var(--ink2);line-height:1.5">'+s+'</span></div>';}).join('');
-    html+='<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:var(--red);text-transform:uppercase;margin:10px 0 6px">'+(de?'Einkaufsliste':'Shopping List')+'</div>';
+    html+='<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:var(--red);text-transform:uppercase;margin:10px 0 6px">'+(de?'Zutaten':'Ingredients')+'</div>';
     html+=rec.shoppingList.map(function(s){return '<div style="font-size:12px;padding:3px 0;color:var(--ink2);border-bottom:1px solid var(--border)">🛒 '+s+'</div>';}).join('');
     if(rec.tip)html+='<div class="aib" style="margin-top:9px"><div class="ailbl"><div class="aidot"></div>'+(de?'Tipp':'Chef Tip')+'</div><p>'+rec.tip+'</p></div>';
     html+='</div>';
