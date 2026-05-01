@@ -26,36 +26,6 @@
     { "src": "/icons/icon-192-maskable.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
     { "src": "/icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
-  "screenshots": [
-    {
-      "src": "/screenshots/narrow-1.png",
-      "sizes": "750x1334",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Dein personalisierter Tagesplan"
-    },
-    {
-      "src": "/screenshots/narrow-2.png",
-      "sizes": "750x1334",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Trainingsplan mit Übungen"
-    },
-    {
-      "src": "/screenshots/narrow-3.png",
-      "sizes": "750x1334",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Foto-Scanner für Restaurant-Menüs"
-    },
-    {
-      "src": "/screenshots/wide-1.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "PEAK Dashboard auf dem Desktop"
-    }
-  ],
   "shortcuts": [
     {
       "name": "Ernährung",
