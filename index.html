@@ -162,7 +162,7 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;hei
 .bgoog{width:100%;background:var(--ibg);color:var(--ink2);border:1.5px solid var(--ibd);font-family:'Barlow',sans-serif;font-size:13px;font-weight:600;padding:11px 16px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:9px}
 .div{display:flex;align-items:center;gap:8px;margin:10px 0;color:var(--faint);font-size:10px;letter-spacing:1px}
 .div::before,.div::after{content:'';flex:1;height:1px;background:var(--border)}
-.aib{background:var(--rbg);border:1px solid var(--rbd);border-left:3px solid var(--red);padding:12px 14px;margin-bottom:12px}
+.aib{background:var(--ibg);border:1px solid var(--ibd);padding:12px 14px;margin-bottom:12px}
 .ailbl{font-size:8px;font-weight:700;color:var(--red);letter-spacing:2.5px;text-transform:uppercase;margin-bottom:4px;display:flex;align-items:center;gap:4px}
 .aidot{width:5px;height:5px;background:var(--red);animation:pulse 1.5s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.2}}
@@ -278,6 +278,8 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;hei
 .rrow{display:flex;gap:3px;margin-top:4px}
 .star{font-size:14px;cursor:pointer;opacity:.2;transition:opacity .12s}.star.on{opacity:1}
 .wc{background:var(--rbg);border:1px solid var(--rbd);border-left:3px solid var(--red);padding:12px 14px;margin-bottom:6px}
+.wc-rest{background:var(--ibg);border:1px solid var(--ibd);padding:12px 14px;margin-bottom:6px}
+.wc-rest .wt{color:var(--ink2)}
 .wt{font-size:11px;font-weight:700;color:var(--red);margin-bottom:4px;letter-spacing:1px;text-transform:uppercase}
 .wd{font-size:13px;color:var(--ink2);line-height:1.55}
 .rc{background:var(--s2);border:1px solid var(--b2);padding:11px 13px;margin-bottom:6px;cursor:pointer;transition:border-color .15s}
@@ -336,7 +338,8 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;hei
 .wk-meta{font-size:11px;color:var(--faint);letter-spacing:1px;margin-bottom:8px;text-transform:uppercase;font-weight:700}
 .wk-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px}
 .wk-day{background:var(--s2);border:1px solid var(--border);border-top:3px solid var(--red);padding:8px 6px;cursor:pointer;transition:all .15s;min-height:78px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start}
-.wk-day.rest{border-top-color:var(--border);opacity:.55;cursor:default}
+.wk-day.rest{border-top-color:var(--border);opacity:.7;cursor:pointer}
+.wk-day.rest:hover{opacity:.9}
 .wk-day-lbl{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:11px;color:var(--red);letter-spacing:1.5px;margin-bottom:4px}
 .wk-day.rest .wk-day-lbl{color:var(--faint)}
 .wk-day-type{font-size:8px;font-weight:700;color:var(--white);letter-spacing:1px;text-align:center;line-height:1.2;margin-bottom:3px}
@@ -3091,6 +3094,20 @@ function dshell(tab,content){
     '</div>';
   }
   card('<div class="dhead"><div class="dgreet">'+t('gd')+' '+(ud.name||'ATHLETE').toUpperCase()+' ⚡</div><div class="dsub">'+(ud.goal||'PEAK')+' · '+(p.timeline||defaultTimeline)+' · '+(p.headline||'')+'</div>'+freeBanner+'</div><div class="dnav">'+tabs.map(function(tb){return '<button class="ntab '+(tab===tb.k?'act':'')+'" data-tab="'+tb.k+'" onclick="showTab(\''+tb.k+'\')">'+tb.l+'</button>';}).join('')+'</div><div class="dbody" id="db">'+content+'</div>');
+  // After rendering, scroll the tab bar so the active tab is centered. Without
+  // this, switching to a tab that's off-screen (e.g. Recipes on narrow phones,
+  // since it's the 6th tab) leaves the active tab invisible while the body
+  // shows its content — creating the visual illusion that the body has shifted.
+  // Defer with rAF so the DOM is painted before we measure offsets.
+  requestAnimationFrame(function(){
+    var navEl=document.querySelector('.dnav');
+    if(!navEl)return;
+    var actBtn=navEl.querySelector('.ntab.act');
+    if(!actBtn)return;
+    // Center the active tab within the scroll viewport
+    var target=actBtn.offsetLeft-(navEl.clientWidth/2)+(actBtn.offsetWidth/2);
+    navEl.scrollTo({left:Math.max(0,target),behavior:'smooth'});
+  });
 }
 
 function showTab(tab){
@@ -3399,7 +3416,7 @@ function tFi(p){
     // Rest day — show a clean recovery card instead of forcing a workout.
     // Encourages the user to actually rest rather than improvise extra work.
     c+='<div class="dst" style="margin-top:16px">'+(de?'HEUTE':'TODAY')+'</div>';
-    c+='<div class="wc"><div class="wt">'+(de?'PAUSE & REGENERATION':'REST & RECOVERY')+'</div>';
+    c+='<div class="wc wc-rest"><div class="wt">'+(de?'PAUSE & REGENERATION':'REST & RECOVERY')+'</div>';
     c+='<div class="wd" style="margin-top:6px;line-height:1.5">'+(de?'Heute keine Einheit. Erholung gehört zum Plan — sie ist es, in der dein Körper sich anpasst und stärker wird.':'No session today. Recovery is part of the plan — it\'s when your body adapts and gets stronger.')+'</div>';
     c+='<div style="margin-top:10px;font-size:11px;color:var(--faint);line-height:1.6">'+(de?'Empfehlung: 7-9h Schlaf, ausreichend Wasser, leichte Bewegung wenn du magst (Spaziergang, Mobility).':'Recommended: 7-9h sleep, plenty of water, light movement if you feel like it (walk, mobility).')+'</div>';
     c+='</div>';
@@ -3499,7 +3516,10 @@ function renderWeekPlan(week){
     };
     var tl=isRest?(de?'PAUSE':'REST'):(typeLabel[d.type]||{en:d.type.toUpperCase(),de:d.type.toUpperCase()})[de?'de':'en'];
     var cls='wk-day'+(isRest?' rest':'')+(isDone?' done':'');
-    c+='<div class="'+cls+'" onclick="'+(isRest?'':'openWkDay('+i+')')+'">';
+    // Both training and rest days are tappable — rest days show a recovery
+    // detail (lets users plan ahead, e.g. preview Friday's rest expectations
+    // on a Thursday).
+    c+='<div class="'+cls+'" onclick="openWkDay('+i+')">';
     c+='<div class="wk-day-lbl">'+dayLabel+(isDone?' ✓':'')+'</div>';
     c+='<div class="wk-day-type">'+tl+'</div>';
     if(!isRest){
@@ -3539,6 +3559,38 @@ function openWkDay(i){
     return;
   }
   el.setAttribute('data-day',String(i));
+  // Rest-day branch: no exercises to render, but still show a useful detail
+  // card so users can "preview" their plan ahead of time and understand the
+  // recovery intent for that day.
+  var isRestDay=!d.type||d.type==='rest';
+  if(isRestDay){
+    var restHtml='<div class="wk-detail">';
+    restHtml+='<div class="wk-detail-t">'+(de?'PAUSE & REGENERATION':'REST & RECOVERY').toUpperCase()+'</div>';
+    restHtml+='<div class="wk-detail-f">'+(de?'FOKUS: Erholung & Adaption':'FOCUS: Recovery & adaptation')+'</div>';
+    restHtml+='<div class="wk-detail-d">'+(de?'Heute keine Trainingseinheit. Erholung ist kein Ausfall — sie ist der Teil des Plans, in dem dein Körper sich anpasst und stärker wird.':'No training session. Recovery isn\'t a gap — it\'s the part of the plan where your body adapts and gets stronger.')+'</div>';
+    var restItems=de
+      ?[
+        {n:'Schlaf',d:'7-9 Stunden, möglichst gleichbleibender Rhythmus',t:'Schlaf ist der wichtigste Recovery-Hebel'},
+        {n:'Hydration',d:'2-3 Liter Wasser über den Tag verteilt',t:'Auch ohne Training: gleichbleibend trinken'},
+        {n:'Leichte Bewegung (optional)',d:'20-30 min Spaziergang oder Mobility-Flow',t:'Nicht intensiv — nur die Durchblutung halten'},
+        {n:'Ernährung',d:'Bleibe bei deinen Tageszielen aus dem Plan',t:'Recovery ohne Nährstoffe = keine Anpassung'}
+      ]
+      :[
+        {n:'Sleep',d:'7-9 hours, keep a consistent rhythm',t:'Sleep is the single biggest recovery lever'},
+        {n:'Hydration',d:'2-3 liters of water spread across the day',t:'Even without training — stay consistent'},
+        {n:'Light movement (optional)',d:'20-30 min walk or mobility flow',t:'Not intense — just keep blood flowing'},
+        {n:'Nutrition',d:'Stick to your daily targets from the plan',t:'Recovery without fuel = no adaptation'}
+      ];
+    restItems.forEach(function(it,idx){
+      restHtml+='<div class="ex-row"><div class="ex-num">'+(idx+1)+'</div><div style="flex:1;min-width:0"><div class="ex-name">'+it.n+'</div>';
+      restHtml+='<div class="ex-detail">'+it.d+'</div>';
+      restHtml+='<div class="ex-tip">💡 '+it.t+'</div>';
+      restHtml+='</div></div>';
+    });
+    restHtml+='</div>';
+    el.innerHTML=restHtml;
+    return;
+  }
   // DE: if this session looks English (template not yet translated), kick
   // off a translation so the detail view doesn't stay in English when the
   // user opens it before tFi's bulk translate finished or for sessions the
