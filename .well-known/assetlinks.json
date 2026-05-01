@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "app.peak_mj_performance",
+    "sha256_cert_fingerprints": ["BF:ED:72:5C:A8:36:C1:DF:95:0B:C1:2F:A5:3E:8C:7D:A2:CF:B9:A9:50:70:4E:9A:0E:08:9F:4B:60:38:2F:52"]
+  }
+}]
