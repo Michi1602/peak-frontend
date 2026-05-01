@@ -920,6 +920,12 @@ function toggleMealCheck(idx,ev){
     delete mealTrack.checked[key];
   }else{
     mealTrack.checked[key]=true;
+    // Once a meal is checked off, the "re-roll this meal" hint becomes
+    // confusing — re-rolling would replace the meal we just logged. Drop
+    // the lastMoodPick anchor if it points at this slot.
+    if(window.__lastMoodPick&&window.__lastMoodPick.mealIdx===idx){
+      window.__lastMoodPick=null;
+    }
   }
   saveMealTrack();
   // Re-render Nutrition tab so totals update
@@ -3175,8 +3181,67 @@ function tNu(p){
     var nameStyle=checked?' style="text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:2px"':'';
     return '<div class="mc"'+rowStyle+'>'+checkBox+'<span class="me" onclick="showMealDetail('+i+')" style="cursor:pointer">'+m.emoji+'</span><div class="mi" onclick="showMealDetail('+i+')" style="cursor:pointer"><div class="mn"'+nameStyle+'>'+m.name+'</div><div class="mm">'+mealTimeLabel(m.time)+' · '+translateMacro(m.macro)+'</div>'+(!r?'<div class="rrow" onclick="event.stopPropagation()">'+[1,2,3,4,5].map(function(s){return '<span class="star" onclick="rateMeal('+i+','+s+',this)">⭐</span>';}).join('')+'</div>':'<div style="font-size:10px;color:var(--red);margin-top:3px">'+(de?'BEWERTET':'RATED')+' '+r+'/5 ✓</div>')+'</div><span class="mk" onclick="showMealDetail('+i+')" style="cursor:pointer">'+m.kcal+' kcal</span><span style="color:var(--faint);font-size:10px;margin-left:5px;cursor:pointer" onclick="showMealDetail('+i+')">→</span></div>';
   }).join('');
-  if(!isBasic()&&!isFree()){c+='<div class="aib" style="margin-top:11px"><div class="ailbl"><div class="aidot"></div>PEAK AI</div><p>'+(de?'Nicht nach Plan? ':'Not feeling the plan? ')+'<span style="color:var(--red);cursor:pointer;font-weight:700" onclick="showMoodPicker()">'+(de?'Küche wählen →':'Pick a cuisine →')+'</span></p></div><div id="moodA"></div>';}
-  if(p&&p.shopping&&p.shopping.length){
+  if(!isBasic()&&!isFree()){
+    var moodAiHtml='<div class="aib" style="margin-top:11px"><div class="ailbl"><div class="aidot"></div>PEAK AI</div><p>'+(de?'Nicht nach Plan? ':'Not feeling the plan? ')+'<span style="color:var(--red);cursor:pointer;font-weight:700" onclick="showMoodPicker()">'+(de?'Küche wählen →':'Pick a cuisine →')+'</span></p>';
+    // If a meal was just generated via mood-pick, offer a quick "re-roll"
+    // button so the user can try another dish in the same cuisine without
+    // walking through the picker UI again.
+    if(window.__lastMoodPick&&typeof window.__lastMoodPick.mealIdx==='number'){
+      var lp=window.__lastMoodPick;
+      var lpMeal=p.todayMeals&&p.todayMeals[lp.mealIdx];
+      if(lpMeal){
+        var slotLabel=de?({Breakfast:'Frühstück',Lunch:'Mittag',Dinner:'Abend',Snack:'Snack'}[lpMeal.time]||lpMeal.time):lpMeal.time;
+        moodAiHtml+='<div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);font-size:11px;color:var(--ink2)">'+(de?'Keine Lust auf ':'Not feeling ')+'<strong>'+esc(lpMeal.name)+'</strong>? <span style="color:var(--red);cursor:pointer;font-weight:700" onclick="rerollLastMood()">'+(de?'Anderes '+esc(lp.cuisine)+' '+esc(slotLabel)+' →':'Another '+esc(lp.cuisine)+' '+esc(slotLabel)+' →')+'</span></div>';
+      }
+    }
+    moodAiHtml+='</div><div id="moodA"></div>';
+    c+=moodAiHtml;
+  }
+  // SHOPPING LIST — two render modes:
+  // 1. NEW (per-meal): if every meal has its own `ingredients` array, build
+  //    a flat list from those. Items inherit the checked state of their
+  //    parent meal — once a meal is logged, its ingredients are struck
+  //    through (the user has eaten them, no longer relevant for shopping).
+  // 2. LEGACY (global): older plans only have `plan.shopping` as a flat
+  //    array with no meal mapping. Render as-is, no strikethrough.
+  var hasPerMealIngredients=Array.isArray(p&&p.todayMeals)&&p.todayMeals.length>0&&p.todayMeals.every(function(m){
+    return m&&Array.isArray(m.ingredients)&&m.ingredients.length>0;
+  });
+  if(hasPerMealIngredients){
+    c+='<div class="dst" style="margin-top:14px">'+(de?'Einkaufsliste':'Shopping List')+'</div>';
+    var qtyBlurred=isFree();
+    var todayChecked=mealTrack.date===todayDateStr()?(mealTrack.checked||{}):{};
+    // Flatten ingredients across all meals, tagged with their meal's checked state
+    var flat=[];
+    p.todayMeals.forEach(function(m,mi){
+      var consumed=!!todayChecked[String(mi)];
+      (m.ingredients||[]).forEach(function(ing){
+        var name='', qty='';
+        if(typeof ing==='string'){name=ing;}
+        else if(ing&&typeof ing==='object'){name=ing.item||ing.name||''; qty=ing.qty||'';}
+        if(!name)return;
+        flat.push({name:name,qty:qty,consumed:consumed});
+      });
+    });
+    var rowsHtml=flat.map(function(it){
+      var qtyHtml='';
+      if(it.qty){
+        if(qtyBlurred){
+          qtyHtml='<span style="color:var(--red);font-size:11px;font-weight:700;letter-spacing:1px;filter:blur(4px);cursor:pointer;user-select:none" onclick="goUpgrade()" title="'+(de?'Mit Basic freischalten':'Unlock with Basic')+'">'+esc(it.qty)+'</span>';
+        }else{
+          qtyHtml='<span style="color:var(--red);font-size:11px;font-weight:700;letter-spacing:1px'+(it.consumed?';opacity:.45':'')+'">'+esc(it.qty)+'</span>';
+        }
+      }
+      var nameStyle=it.consumed?'text-decoration:line-through;text-decoration-color:var(--faint);opacity:.55':'';
+      return '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:6px 0;color:var(--ink2);border-bottom:1px solid var(--border)"><span style="'+nameStyle+'">🛒 '+esc(it.name)+'</span>'+qtyHtml+'</div>';
+    }).join('');
+    c+='<div class="aib">'+rowsHtml;
+    if(qtyBlurred){
+      c+='<div style="font-size:10px;color:var(--faint);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);text-align:center">'+(de?'🔒 Mengenangaben mit ':'🔒 Quantities with ')+'<span onclick="goUpgrade()" style="color:var(--red);cursor:pointer;font-weight:700">'+(de?'Basic freischalten →':'Basic unlock →')+'</span></div>';
+    }
+    c+='</div>';
+  }else if(p&&p.shopping&&p.shopping.length){
+    // LEGACY render path
     c+='<div class="dst" style="margin-top:14px">'+(de?'Einkaufsliste':'Shopping List')+'</div>';
     var qtyBlurred=isFree();
     // Backwards compat: shopping items can be {item,qty} (new schema) OR plain
@@ -3279,57 +3344,115 @@ async function explainExercise(payloadEnc){
 
 function showMoodPicker(){
   if(gateFree('meal_rating'))return;
-  var cu=['🇲🇽 Mexican','🍝 Italian','🍜 Asian','🥗 Mediterranean','🍔 American','🍛 Indian','🇯🇵 Japanese','🥙 Middle Eastern'];
-  var a=document.getElementById('moodA');
-  if(!a)return;
-  a.innerHTML='<div style="margin-top:8px"><div class="chips" id="cuisineChips">'+cu.map(function(c,i){return '<div class="chip2" data-cuisine="'+i+'" style="cursor:pointer">'+c+'</div>';}).join('')+'</div></div>';
-  // Attach click handlers after render
-  document.querySelectorAll('#cuisineChips .chip2').forEach(function(el,i){
-    el.addEventListener('click',function(){pickMood(cu[i]);});
-  });
-}
-
-async function pickMood(cuisine){
   var a=document.getElementById('moodA');
   if(!a)return;
   var de=lang==='de';
-  a.innerHTML='<div class="aib" style="margin-top:8px"><div class="ailbl"><div class="aidot"></div>PEAK AI</div><p>'+(de?'Passe Tagesplan an '+esc(cuisine)+' an...':'Adapting day plan to '+esc(cuisine)+'...')+'</p><div class="spin" style="width:22px;height:22px;margin:8px 0 0;border-width:2px"></div></div>';
   var p=fp();
-  var prompt='Rework today\'s meal plan in '+cuisine+' style. Language: '+lang+'. Goal: '+goalStr()+', total ~'+p.calories+' kcal, ~'+p.protein+'g protein. Allergies: '+(ud.al||[]).join(',')+'. Cooking level: '+ud.cook+'.\nKeep the same structure (Breakfast, Lunch, Dinner, Snack) but all dishes should be authentic '+cuisine+' cuisine. Respect macros.\nIMPORTANT: Each meal MUST include numeric protein/carbs/fat in grams (no units, just numbers). Sum should approximately match daily targets.\nALSO regenerate the shopping list to match the new '+cuisine+' meals — items as objects with "item" and "qty" (e.g. {"item":"Chicken breast","qty":"500g"}). Use grams (g), milliliters (ml), or counts as appropriate.\nRespond ONLY with valid JSON, no markdown:\n{"todayMeals":[{"emoji":"<emoji>","name":"<breakfast dish>","time":"Breakfast","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 28g protein>"},{"emoji":"<emoji>","name":"<lunch dish>","time":"Lunch","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 42g protein>"},{"emoji":"<emoji>","name":"<dinner dish>","time":"Dinner","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 38g protein>"},{"emoji":"<emoji>","name":"<snack>","time":"Snack","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 15g protein>"}],"shopping":[{"item":"<item1>","qty":"<qty1>"},{"item":"<item2>","qty":"<qty2>"},{"item":"<item3>","qty":"<qty3>"},{"item":"<item4>","qty":"<qty4>"},{"item":"<item5>","qty":"<qty5>"}]}';
+  if(!p||!Array.isArray(p.todayMeals)){
+    a.innerHTML='';
+    return;
+  }
+  // Step 1: which meal slot? Show only meals not yet checked off.
+  // Once a meal is logged, its kcal/macros are locked into today's totals
+  // and a Mood Pick on that slot would erase those gains. Filtering them
+  // out of the picker prevents that footgun.
+  var unchecked=[];
+  p.todayMeals.forEach(function(m,i){
+    if(mealTrack.date!==todayDateStr()||!mealTrack.checked[String(i)]){
+      unchecked.push({idx:i,meal:m});
+    }
+  });
+  if(unchecked.length===0){
+    a.innerHTML='<div style="font-size:12px;color:var(--faint);margin-top:8px;padding:10px;border:1px solid var(--border)">'+(de?'Alle Mahlzeiten heute schon abgehakt — nichts mehr zu ändern.':'All meals already checked off — nothing left to change.')+'</div>';
+    return;
+  }
+  var mealLabel=function(time){
+    if(de){return {Breakfast:'Frühstück',Lunch:'Mittag',Dinner:'Abend',Snack:'Snack'}[time]||time;}
+    return time;
+  };
+  a.innerHTML='<div style="margin-top:8px"><div style="font-size:11px;font-weight:700;color:var(--faint);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:7px">'+(de?'Welche Mahlzeit anpassen?':'Which meal to swap?')+'</div><div class="chips" id="mealSlotChips">'+unchecked.map(function(u){return '<div class="chip2" data-idx="'+u.idx+'" style="cursor:pointer">'+u.meal.emoji+' '+esc(mealLabel(u.meal.time))+'</div>';}).join('')+'</div></div>';
+  document.querySelectorAll('#mealSlotChips .chip2').forEach(function(el){
+    el.addEventListener('click',function(){
+      var idx=parseInt(el.getAttribute('data-idx'),10);
+      showCuisinePickerFor(idx);
+    });
+  });
+}
+
+// Step 2: pick a cuisine for the chosen meal slot.
+function showCuisinePickerFor(mealIdx){
+  var a=document.getElementById('moodA');
+  if(!a)return;
+  var de=lang==='de';
+  var cu=['🇲🇽 Mexican','🍝 Italian','🍜 Asian','🥗 Mediterranean','🍔 American','🍛 Indian','🇯🇵 Japanese','🥙 Middle Eastern'];
+  a.innerHTML='<div style="margin-top:8px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><button class="ex-info-btn" onclick="showMoodPicker()" title="'+(de?'Zurück':'Back')+'" aria-label="'+(de?'Zurück':'Back')+'">←</button><div style="font-size:11px;font-weight:700;color:var(--faint);letter-spacing:1.5px;text-transform:uppercase">'+(de?'Welche Küche?':'Which cuisine?')+'</div></div><div class="chips" id="cuisineChips">'+cu.map(function(c,i){return '<div class="chip2" data-cuisine="'+i+'" style="cursor:pointer">'+c+'</div>';}).join('')+'</div></div>';
+  document.querySelectorAll('#cuisineChips .chip2').forEach(function(el,i){
+    el.addEventListener('click',function(){pickMood(cu[i],mealIdx);});
+  });
+}
+
+async function pickMood(cuisine, mealIdx){
+  var a=document.getElementById('moodA');
+  if(!a)return;
+  var de=lang==='de';
+  var p=fp();
+  if(!p||!Array.isArray(p.todayMeals)||!p.todayMeals[mealIdx]){
+    a.innerHTML='';
+    return;
+  }
+  var slot=p.todayMeals[mealIdx];
+  var slotTime=slot.time||'Meal';
+  var slotKcal=slot.kcal||Math.round((p.calories||2000)/4);
+  var slotProtein=mealMacro(slot,'protein')||Math.round((p.protein||120)/4);
+  a.innerHTML='<div class="aib" style="margin-top:8px"><div class="ailbl"><div class="aidot"></div>PEAK AI</div><p>'+(de?'Generiere '+esc(cuisine)+' '+esc(slotTime)+'…':'Generating '+esc(cuisine)+' '+esc(slotTime)+'…')+'</p><div class="spin" style="width:22px;height:22px;margin:8px 0 0;border-width:2px"></div></div>';
+  // Build prompt for a SINGLE meal (not the whole day) — keeps already
+  // logged meals' kcal/macros in today's tracker untouched. AI also returns
+  // the ingredients for THIS meal so the shopping list can show what's
+  // bought specifically for it (and strike them through when consumed).
+  var prompt='Generate a single '+cuisine+' '+slotTime.toLowerCase()+' recipe. Language: '+lang+'. '+
+    'Goal: '+goalStr()+'. Target: ~'+slotKcal+' kcal, ~'+slotProtein+'g protein for this single meal. '+
+    'Allergies: '+(ud.al||[]).join(',')+'. Cooking level: '+ud.cook+'. '+
+    'The meal must be authentic '+cuisine+' cuisine, not generic. '+
+    'IMPORTANT: protein/carbs/fat MUST be numbers in grams (no units, just numbers). '+
+    'IMPORTANT: ingredients MUST be objects with "item" and "qty" fields. Use grams (g), milliliters (ml), or counts. '+
+    'Respond ONLY with valid JSON, no markdown:\n'+
+    '{"emoji":"<emoji>","name":"<dish name>","time":"'+slotTime+'","kcal":<n>,"protein":<g>,"carbs":<g>,"fat":<g>,"macro":"<e.g. 28g protein>","ingredients":[{"item":"<ingredient1>","qty":"<qty1>"},{"item":"<ingredient2>","qty":"<qty2>"},{"item":"<ingredient3>","qty":"<qty3>"},{"item":"<ingredient4>","qty":"<qty4>"}]}';
   try{
-    var result=await aiGenJSON(prompt,1400,'mood_recipe');
-    if(!result.todayMeals||!Array.isArray(result.todayMeals)||result.todayMeals.length===0)throw new Error('Invalid data');
-    // Update plan with new meals + matching shopping list
-    if(plan){
-      plan.todayMeals=result.todayMeals;
-      // Replace shopping list to match the new cuisine. If the AI didn't
-      // return one (older models, partial JSON), keep the previous list
-      // rather than wiping it — better to show stale items than nothing.
-      if(Array.isArray(result.shopping)&&result.shopping.length){
-        plan.shopping=result.shopping;
-      }
-      mrat={}; // reset ratings
-      // Reset meal-tracking checkmarks too — without this, checked indices
-      // from the OLD meals would still light up the corresponding new
-      // (mexican/italian/etc.) meals as "eaten", and their kcals would
-      // count toward the day's "logged" total.
-      mealTrack={date:todayDateStr(),checked:{}};
-      saveMealTrack();
+    var meal=await aiGenJSON(prompt,700,'mood_recipe');
+    if(!meal||!meal.name)throw new Error('Invalid data');
+    // Replace ONLY the targeted meal slot. Other meals stay intact, and
+    // mealTrack.checked indices stay aligned because we don't reshuffle.
+    if(plan&&Array.isArray(plan.todayMeals)&&plan.todayMeals[mealIdx]){
+      // Preserve the time slot identity (in case AI returned a different label)
+      meal.time=slotTime;
+      plan.todayMeals[mealIdx]=meal;
+      // Reset rating for this slot only
+      if(mrat&&mrat[mealIdx]!=null)delete mrat[mealIdx];
       saveSession();
     }
-    peakToast((de?'Tagesplan auf ':'Day plan adapted to ')+cuisine+(de?' angepasst ✓':' ✓'),{kind:'success'});
-    // Re-render Nutrition tab with new meals
+    peakToast((de?esc(cuisine)+' '+esc(slotTime)+' bereit ✓':esc(cuisine)+' '+esc(slotTime)+' ready ✓'),{kind:'success',duration:1400});
+    // Re-render Nutrition tab to show new meal in place + remember which slot
+    // was just generated so we can offer "Re-roll" without going through the
+    // whole picker again.
+    window.__lastMoodPick={mealIdx:mealIdx,cuisine:cuisine};
     showTab('nutrition');
   }catch(e){
     console.error('pickMood error:',e);
     if(e&&e.premiumRequired){
-      // Backend rejected for tier — show upgrade modal instead of generic error
       a.innerHTML='';
       showUpgradePrompt('mood_recipe');
       return;
     }
-    a.innerHTML='<div style="font-size:12px;color:var(--faint);margin-top:8px;padding:10px;border:1px solid var(--border)">'+(de?'Fehler. Bitte erneut versuchen.':'Could not generate. Please try again.')+'</div><button class="blog" style="margin-top:8px" onclick="showMoodPicker()">'+(de?'Nochmal versuchen':'Try again')+'</button>';
+    a.innerHTML='<div style="font-size:12px;color:var(--faint);margin-top:8px;padding:10px;border:1px solid var(--border)">'+(de?'Fehler. Bitte erneut versuchen.':'Could not generate. Please try again.')+'</div><button class="blog" style="margin-top:8px" onclick="pickMood(\''+esc(cuisine).replace(/'/g,"\\'")+'\','+mealIdx+')">'+(de?'Nochmal versuchen':'Try again')+'</button>';
   }
+}
+
+// Re-roll the last mood-picked meal (same slot, same cuisine, new dish).
+// Triggered from a button shown next to the freshly generated meal.
+function rerollLastMood(){
+  if(!window.__lastMoodPick)return;
+  var p=window.__lastMoodPick;
+  pickMood(p.cuisine,p.mealIdx);
 }
 
 // ── MEAL DETAIL ───────────────────────────────────────────────────────
