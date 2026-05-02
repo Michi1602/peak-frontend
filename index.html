@@ -1918,6 +1918,13 @@ async function fetchPlan(isRegen){
   if(isRegen&&plan){
     delete plan.mealPool;
     delete plan.mealPoolAnchor;
+    // Same logic for stretching: a regen shifts the user's plan context
+    // (sport, level, week structure), so the existing stretch pool may
+    // no longer match. Drop it so enrichStretchPoolWithAI() rebuilds.
+    delete plan.stretchPool;
+    delete plan.stretchPoolAnchor;
+    delete plan.stretchPoolLastRefresh;
+    delete plan.stretchPoolRefreshCount;
   }
   // ── BMR via Mifflin-St Jeor (1990) — modern standard, gender-aware.
   // Replaces older Harris-Benedict (1984) which over/under-shoots for women.
@@ -3324,6 +3331,11 @@ async function enrichStretchPoolWithAI(){
   if(!isPremium())return;
   // Pool already populated? Skip
   if(Array.isArray(plan.stretchPool)&&plan.stretchPool.length>=14)return;
+  // In-flight guard: prevent duplicate API calls if multiple triggers
+  // fire in quick succession (e.g. user toggles 3 chips → 3 saveProfile
+  // calls in 5 sec → 3 enrich calls in flight). Only one should run.
+  if(window.__stretchPoolGenerating)return;
+  window.__stretchPoolGenerating=true;
   // Stretching defaults must exist (loadSession ensures this for fresh users)
   if(!Array.isArray(ud.stretchAreas))ud.stretchAreas=[];
   if(!ud.stretchDur)ud.stretchDur=10;
@@ -3439,6 +3451,10 @@ async function enrichStretchPoolWithAI(){
     }
   }catch(e){
     console.warn('[stretch-pool] generation failed (using static fallback):',e&&e.message);
+  }finally{
+    // Release the in-flight lock either way — success or failure both
+    // mean a future trigger should be free to retry.
+    window.__stretchPoolGenerating=false;
   }
 }
 
@@ -7031,6 +7047,18 @@ async function saveProfile(key){
     }
     saveSession();
     if(key==='name')updateAuthUI(); // Initials might change
+    // When stretching prefs change, the existing pool is no longer
+    // aligned with the user's focus areas / duration. Drop it and let
+    // enrichStretchPoolWithAI() rebuild on the next render. We don't
+    // await — the user gets a toast immediately, regen happens in BG.
+    if((key==='stretchAreas'||key==='stretchDur')&&plan){
+      delete plan.stretchPool;
+      delete plan.stretchPoolAnchor;
+      delete plan.stretchPoolLastRefresh;
+      delete plan.stretchPoolRefreshCount;
+      saveSession();
+      try{enrichStretchPoolWithAI();}catch(_){}
+    }
     profEditing=null;
     peakToast(lang==='de'?'Gespeichert ✓':'Saved ✓',{kind:'success',duration:1800});
     showProfile();
