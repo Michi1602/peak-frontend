@@ -1083,6 +1083,63 @@ async function syncMealPoolToBackend(){
   }
 }
 
+// ── STRETCH POOL HELPERS (May 2026, Phase 3) ─────────────────────────
+// Same architecture as meal pool, but with day-type variation:
+//   - Training days produce a {pre:[...], post:[...]} object
+//   - Rest days produce a {full:[...]} object
+// Each pool slot is therefore an object, not a flat array. The shape is
+// determined at generation time based on the user's week plan.
+//
+// Premium-only: Free + Basic users keep the static fallback library.
+//
+// Storage:
+//   plan.stretchPool          = Array(14) of routine objects
+//   plan.stretchPoolAnchor    = ISO date of Monday week-1
+//   plan.stretchPoolLastRefresh / RefreshCount = auto-refresh tracking
+
+// Today's stretch routine (or null if pool not built yet → caller
+// falls back to the static library).
+function getStretchForToday(){
+  if(!plan||!Array.isArray(plan.stretchPool)||plan.stretchPool.length<14)return null;
+  var idx=poolDayIndex();
+  var routine=plan.stretchPool[idx];
+  if(!routine||typeof routine!=='object')return null;
+  return routine;
+}
+
+// Backend sync — debounced, premium-only at the server level.
+var __stretchPoolSyncTimer=null;
+function scheduleStretchPoolSync(){
+  if(__stretchPoolSyncTimer)clearTimeout(__stretchPoolSyncTimer);
+  __stretchPoolSyncTimer=setTimeout(syncStretchPoolToBackend,1200);
+}
+async function syncStretchPoolToBackend(){
+  try{
+    if(!plan||!Array.isArray(plan.stretchPool)||plan.stretchPool.length!==14)return;
+    if(!window.sb)return;
+    var sess=await window.sb.auth.getSession();
+    var tok=sess?.data?.session?.access_token;
+    if(!tok)return;
+    var res=await fetch(BACKEND+'/user/stretch-pool',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+tok},
+      body:JSON.stringify({
+        stretch_pool:plan.stretchPool,
+        stretch_pool_anchor:plan.stretchPoolAnchor||null,
+        stretch_pool_last_refresh:plan.stretchPoolLastRefresh||null,
+        stretch_pool_refresh_count:plan.stretchPoolRefreshCount||0
+      })
+    });
+    // Non-premium tiers (403 premium_required) silently fail — they don't
+    // get cross-device sync (consistent with the upgrade upsell logic).
+    if(!res.ok&&res.status!==403){
+      console.warn('[stretch-pool] sync to backend failed:',res.status);
+    }
+  }catch(e){
+    console.warn('[stretch-pool] sync error:',e&&e.message);
+  }
+}
+
 function loadMealTrack(){
   try{
     var raw=localStorage.getItem('peak_meal_track');
@@ -1923,6 +1980,7 @@ async function fetchPlan(isRegen){
     saveSession();
     enrichWeekWithAI();
     enrichPoolWithAI();
+    enrichStretchPoolWithAI();
   }catch(e){
     // Free-tier cap reached — surface specific error so caller can show upgrade UI
     if(e&&e.freeLimitReached){
@@ -1935,6 +1993,7 @@ async function fetchPlan(isRegen){
     saveSession();
     enrichWeekWithAI();
     enrichPoolWithAI();
+    enrichStretchPoolWithAI();
   }
 }
 
@@ -3172,6 +3231,217 @@ async function enrichPoolWithAI(){
   }
 }
 
+// ── STRETCH POOL GENERATION (May 2026, Phase 3) ───────────────────────
+// Generates a 14-day stretching pool tailored to the user's:
+//   - sport + level (sport-specific common tightness)
+//   - selected weak spots (stretchAreas, max 3)
+//   - daily duration preference (5..30 min in 5-min steps)
+//   - week plan (training day vs. rest day, taken from plan.week)
+//
+// Unlike meals, each pool slot is an OBJECT keyed by routine type:
+//   training day → { type:'training', pre:[...], post:[...] }
+//   rest day     → { type:'rest', full:[...] }
+//
+// Generation strategy:
+//   - 2 parallel batches like meal pool (Promise.all, Haiku-friendly)
+//   - Premium-only: skip entirely if user isn't premium
+//   - Failure-tolerant: if AI fails, fall back to STRETCH_LIB (static)
+//
+// Each exercise has: { name, detail, focus } where:
+//   - name: short title (e.g. "Pigeon Pose")
+//   - detail: sets/duration (e.g. "2×45s each side")
+//   - focus: which area it targets (for UI grouping if needed later)
+
+async function generateStretchBatch(slots, batchLabel){
+  if(!slots||slots.length===0)return [];
+  var areas=Array.isArray(ud.stretchAreas)?ud.stretchAreas:[];
+  var dur=parseInt(ud.stretchDur)||10;
+  var sport=sportLabel(ud.sport||'Other');
+  var level=ud.level||'Intermediate';
+
+  // Map area keys to readable names for the prompt (English in the prompt
+  // for AI consistency; the AI will return language-matched output).
+  var AREA_NAMES={
+    hip:'hip flexors and hips',chest:'chest and shoulders',
+    upBack:'upper back',lowBack:'lower back',
+    ham:'hamstrings',calf:'calves and Achilles',
+    neck:'neck',knee:'knee mobility',ankle:'ankle mobility'
+  };
+  var areasText=areas.length>0
+    ?areas.map(function(k){return AREA_NAMES[k]||k;}).join(', ')
+    :'general full-body mobility';
+
+  // We tell the model the type of EACH slot so it can produce the right
+  // structure (training=pre+post split, rest=full mobility).
+  var slotsText=slots.map(function(s,i){
+    return '  Slot '+(i+1)+': type="'+s.type+'", weekday='+s.weekday;
+  }).join('\n');
+
+  var langInstr=lang==='de'
+    ?'Respond in German. Exercise names and details in German.'
+    :'Respond in English. Exercise names and details in English.';
+
+  var prompt=
+    'You are PEAK AI generating a stretching/mobility routine.\n'+
+    langInstr+'\n\n'+
+    'User profile:\n'+
+    '- Sport: '+sport+' ('+level+')\n'+
+    '- Daily duration: '+dur+' minutes\n'+
+    '- Focus areas: '+areasText+'\n\n'+
+    'Generate '+slots.length+' routine objects, ONE per slot.\n'+
+    'Each slot has a type:\n'+
+    '  - "training": user is working out that day → split into\n'+
+    '    "pre" (3-5 dynamic warmup moves) and "post" (3-5 static stretches).\n'+
+    '  - "rest": no workout that day → produce "full" array (5-7 moves)\n'+
+    '    covering all focus areas + general mobility.\n\n'+
+    'Slots:\n'+slotsText+'\n\n'+
+    'Each exercise must have: name (short, max 5 words), detail (sets×duration\n'+
+    'or sets×reps, e.g. "2×45s each side"), focus (area key from this list:\n'+
+    'hip, chest, upBack, lowBack, ham, calf, neck, knee, ankle, general).\n\n'+
+    'Variety: across the '+slots.length+' slots, do NOT repeat the same\n'+
+    'exercise. Mix techniques (PNF, dynamic flow, static holds, joint\n'+
+    'circles, fascia work). Sport-specific moves welcome.\n\n'+
+    'Total duration per slot ≈ '+dur+' minutes. Be realistic.\n\n'+
+    'Return ONLY a JSON array of routine objects, no markdown, no prose:\n'+
+    '[\n'+
+    '  {"type":"training","pre":[{"name":"...","detail":"...","focus":"..."}],"post":[...]},\n'+
+    '  {"type":"rest","full":[{"name":"...","detail":"...","focus":"..."}]}\n'+
+    ']';
+
+  try{
+    var result=await aiGenJSON(prompt,5500,'stretch_pool_'+batchLabel);
+    if(!Array.isArray(result))return [];
+    return result;
+  }catch(e){
+    console.warn('[stretch-pool] batch '+batchLabel+' failed:',e&&e.message);
+    return [];
+  }
+}
+
+async function enrichStretchPoolWithAI(){
+  if(!plan)return;
+  // Premium-only feature
+  if(!isPremium())return;
+  // Pool already populated? Skip
+  if(Array.isArray(plan.stretchPool)&&plan.stretchPool.length>=14)return;
+  // Stretching defaults must exist (loadSession ensures this for fresh users)
+  if(!Array.isArray(ud.stretchAreas))ud.stretchAreas=[];
+  if(!ud.stretchDur)ud.stretchDur=10;
+
+  var monday=getCurrentMondayDate();
+  var anchorIso=monday.getFullYear()+'-'+String(monday.getMonth()+1).padStart(2,'0')+'-'+String(monday.getDate()).padStart(2,'0');
+
+  // Build slot-type list: derive training/rest from plan.week if available.
+  // Fallback: assume Mon-Fri training, Sat-Sun rest (matches typical gym
+  // schedule and user's `sessions` value as best-effort approximation).
+  var WEEKDAYS=['mon','tue','wed','thu','fri','sat','sun'];
+  function deriveSlotType(idx){
+    // idx 0..13, where 0=Mon week 1, 7=Mon week 2
+    var weekday=idx%7;
+    if(plan.week&&Array.isArray(plan.week)&&plan.week[weekday]){
+      var day=plan.week[weekday];
+      var hasWorkout=day&&day.exercises&&day.exercises.length>0;
+      return hasWorkout?'training':'rest';
+    }
+    // Heuristic fallback
+    return weekday<5?'training':'rest';
+  }
+
+  var slots=[];
+  for(var i=0;i<14;i++){
+    slots.push({type:deriveSlotType(i),weekday:WEEKDAYS[i%7],idx:i});
+  }
+
+  // Split slots into 2 batches for parallel generation (Haiku throughput)
+  var halfPoint=Math.ceil(slots.length/2);
+  var slotsA=slots.slice(0,halfPoint);
+  var slotsB=slots.slice(halfPoint);
+
+  try{
+    var [batchA,batchB]=await Promise.all([
+      generateStretchBatch(slotsA,'A'),
+      generateStretchBatch(slotsB,'B')
+    ]);
+
+    // Build the 14-slot pool. Backfill any failed slot with a static
+    // routine (so the user always sees content even if AI partly fails).
+    var pool=new Array(14);
+    function staticFallback(slotType){
+      // Build a routine using STRETCH_LIB based on user's areas
+      var areas=Array.isArray(ud.stretchAreas)?ud.stretchAreas:[];
+      function fmt(ex,areaKey){return ex?{name:lang==='de'?ex.de:ex.en,detail:ex.d,focus:areaKey}:null;}
+      if(slotType==='rest'){
+        var full=[];
+        areas.forEach(function(k){
+          var lib=STRETCH_LIB[k];if(!lib)return;
+          if(lib.dyn)full.push(fmt(lib.dyn,k));
+          if(lib.sta)full.push(fmt(lib.sta,k));
+        });
+        if(full.length<3){
+          // Add generals to reach minimum content
+          full.push(fmt(STRETCH_GENERAL[0].dyn,'general'));
+          full.push(fmt(STRETCH_GENERAL[2].sta,'general'));
+        }
+        return {type:'rest',full:full.filter(Boolean)};
+      }
+      var pre=[],post=[];
+      areas.forEach(function(k){
+        var lib=STRETCH_LIB[k];if(!lib)return;
+        if(lib.dyn)pre.push(fmt(lib.dyn,k));
+        if(lib.sta)post.push(fmt(lib.sta,k));
+      });
+      if(pre.length===0)pre.push(fmt(STRETCH_GENERAL[0].dyn,'general'));
+      if(post.length===0)post.push(fmt(STRETCH_GENERAL[2].sta,'general'));
+      return {type:'training',pre:pre.filter(Boolean),post:post.filter(Boolean)};
+    }
+
+    // Fill batch A
+    if(Array.isArray(batchA)){
+      for(var a=0;a<slotsA.length;a++){
+        var idxA=slotsA[a].idx;
+        var rawA=batchA[a];
+        if(rawA&&typeof rawA==='object'&&rawA.type){
+          pool[idxA]=rawA;
+        }else{
+          pool[idxA]=staticFallback(slotsA[a].type);
+        }
+      }
+    }
+    // Fill batch B
+    if(Array.isArray(batchB)){
+      for(var bi=0;bi<slotsB.length;bi++){
+        var idxB=slotsB[bi].idx;
+        var rawB=batchB[bi];
+        if(rawB&&typeof rawB==='object'&&rawB.type){
+          pool[idxB]=rawB;
+        }else{
+          pool[idxB]=staticFallback(slotsB[bi].type);
+        }
+      }
+    }
+    // Backfill any unset slot
+    for(var b=0;b<14;b++){
+      if(!pool[b])pool[b]=staticFallback(slots[b].type);
+    }
+
+    plan.stretchPool=pool;
+    plan.stretchPoolAnchor=anchorIso;
+    plan.stretchPoolLastRefresh=anchorIso;
+    plan.stretchPoolRefreshCount=(plan.stretchPoolRefreshCount||0)+1;
+    saveSession();
+    scheduleStretchPoolSync();
+
+    // If user is currently viewing the mobility tab, re-render so they
+    // see the AI routines instead of the static fallback that was shown
+    // while generation was in flight.
+    if(dashTab==='mobility'){
+      try{tMo(plan);}catch(_){}
+    }
+  }catch(e){
+    console.warn('[stretch-pool] generation failed (using static fallback):',e&&e.message);
+  }
+}
+
 // ── AUTO-REFRESH: ROLLING POOL FOR PAID TIERS ─────────────────────────
 // Premium + Basic users get a sliding-window pool refresh every 7 days
 // so they never see the same dish within a 2-week window. Free tier
@@ -3279,6 +3549,75 @@ async function autoRefreshPoolIfDue(){
     }
   }catch(e){
     console.warn('[meal-pool] auto-refresh failed:',e&&e.message);
+  }
+}
+
+// ── STRETCH POOL AUTO-REFRESH ─────────────────────────────────────────
+// Mirrors meal pool auto-refresh: every 7 days, regenerate one half so
+// premium users always have a fresh-feeling rotation. Premium-only.
+//
+// Differences from meal pool:
+//   - No "exclusion list" needed — stretching exercises naturally repeat
+//     across days (PNF, pigeon pose, etc. are universally useful) and
+//     forcing variety would push the AI into obscure moves the user
+//     can't perform safely.
+//   - We DO refresh based on whether routine type changes for that day
+//     (e.g. user's training schedule changed → rest day became training).
+async function autoRefreshStretchIfDue(){
+  if(!plan||!Array.isArray(plan.stretchPool)||plan.stretchPool.length<14)return;
+  if(!isPremium())return;
+
+  var lastRefresh=plan.stretchPoolLastRefresh||plan.stretchPoolAnchor;
+  var daysSince=daysSinceIsoDate(lastRefresh);
+  if(daysSince<7)return;
+
+  var counter=Number(plan.stretchPoolRefreshCount||0);
+  var refreshFirstHalf=(counter%2)===0;
+  var startIdx=refreshFirstHalf?0:7;
+  var endIdx=refreshFirstHalf?7:14;
+
+  // Determine slot types for this half (in case user's week schedule changed)
+  var WEEKDAYS=['mon','tue','wed','thu','fri','sat','sun'];
+  function deriveType(idx){
+    var weekday=idx%7;
+    if(plan.week&&Array.isArray(plan.week)&&plan.week[weekday]){
+      var day=plan.week[weekday];
+      var hasWorkout=day&&day.exercises&&day.exercises.length>0;
+      return hasWorkout?'training':'rest';
+    }
+    return weekday<5?'training':'rest';
+  }
+  var slots=[];
+  for(var i=startIdx;i<endIdx;i++){
+    slots.push({type:deriveType(i),weekday:WEEKDAYS[i%7],idx:i});
+  }
+
+  try{
+    var batch=await generateStretchBatch(slots,refreshFirstHalf?'refresh-A':'refresh-B');
+    if(!Array.isArray(batch)){
+      console.warn('[stretch-pool] auto-refresh batch failed, will retry next session');
+      return;
+    }
+    // Apply
+    for(var s=0;s<slots.length;s++){
+      var poolIdx=slots[s].idx;
+      var rawSlot=batch[s];
+      if(rawSlot&&typeof rawSlot==='object'&&rawSlot.type){
+        plan.stretchPool[poolIdx]=rawSlot;
+      }
+    }
+    var nowIso=todayDateStr();
+    plan.stretchPoolLastRefresh=nowIso;
+    plan.stretchPoolRefreshCount=counter+1;
+    saveSession();
+    scheduleStretchPoolSync();
+
+    // Re-render mobility tab if active so user sees fresh content
+    if(currentView==='dashboard'&&dashTab==='mobility'){
+      try{showTab('mobility');}catch(_){ }
+    }
+  }catch(e){
+    console.warn('[stretch-pool] auto-refresh failed:',e&&e.message);
   }
 }
 
@@ -3848,6 +4187,9 @@ function showDash(){
   // Free of charge for the user even when triggered — the plan_generation_initial
   // purpose tag means it doesn't count against any monthly quota.
   try{autoRefreshPoolIfDue();}catch(_){ }
+  // Same idea for stretch pool — premium-only, 7-day cadence, both
+  // calls sit on fp() so they're invisibly tied to "user opens app".
+  try{autoRefreshStretchIfDue();}catch(_){ }
 }
 
 function isBasic(){return ud.tier==='basic';}
@@ -5040,8 +5382,28 @@ function tMo(p){
   }
 
   // ── PREMIUM USERS: full mobility tab ────────────────────────────────
-  var routine=buildMobilityRoutine();
-  var routineType=getTodayMobilityType(p);
+  // Try the AI-generated 14-day pool first; if not yet built or empty,
+  // fall back to the static STRETCH_LIB-based routine. Either way the
+  // tab always renders something — no blank state.
+  var poolRoutine=getStretchForToday();
+  var routine,routineType;
+  if(poolRoutine&&poolRoutine.type){
+    routine=poolRoutine;
+    routineType=poolRoutine.type;
+  }else{
+    // Pool not ready yet → trigger background generation if possible
+    // and show static fallback in the meantime.
+    if(!Array.isArray(plan.stretchPool)||plan.stretchPool.length<14){
+      try{enrichStretchPoolWithAI();}catch(_){ }
+    }
+    var staticR=buildMobilityRoutine();
+    routineType=getTodayMobilityType(p);
+    if(routineType==='rest'){
+      routine={type:'rest',full:staticR.full||[]};
+    }else{
+      routine={type:'training',pre:staticR.pre||[],post:staticR.post||[]};
+    }
+  }
   var dur=parseInt(ud.stretchDur)||10;
   var areas=Array.isArray(ud.stretchAreas)?ud.stretchAreas:[];
 
@@ -5064,20 +5426,23 @@ function tMo(p){
 
   // Render the routine — split for training day, single block for rest
   if(routineType==='rest'){
-    c+=renderMobilitySection(t('moRest'),routine.full);
+    c+=renderMobilitySection(t('moRest'),routine.full||[]);
   }else{
-    if(routine.pre&&routine.pre.length){
+    if(Array.isArray(routine.pre)&&routine.pre.length){
       c+=renderMobilitySection(t('moPreWk'),routine.pre);
     }
-    if(routine.post&&routine.post.length){
+    if(Array.isArray(routine.post)&&routine.post.length){
       c+=renderMobilitySection(t('moPostWk'),routine.post);
     }
   }
 
-  // Phase 2 footer note (will be removed in Phase 3 once AI pool is live)
-  c+='<div style="margin-top:16px;padding:10px 12px;background:var(--s2);border-left:3px solid var(--red);font-size:11px;color:var(--ink2);line-height:1.5">'+
-    (de?'💡 KI-personalisierte Routinen kommen bald — aktuell siehst du eine Standardroutine basierend auf deinen Schwachstellen.':'💡 AI-personalised routines coming soon — for now you see a standard routine based on your focus areas.')+
-  '</div>';
+  // If pool isn't ready yet, hint that AI routines are loading
+  var poolReady=Array.isArray(plan.stretchPool)&&plan.stretchPool.length>=14;
+  if(!poolReady){
+    c+='<div style="margin-top:16px;padding:10px 12px;background:var(--s2);border-left:3px solid var(--red);font-size:11px;color:var(--ink2);line-height:1.5">'+
+      (de?'⏳ KI-personalisierte Routinen werden gerade erstellt — lade die Seite gleich neu für aktuelle Übungen.':'⏳ AI-personalised routines are being generated — refresh in a moment to see them.')+
+    '</div>';
+  }
 
   dshell('mobility',c);
 }
@@ -6167,6 +6532,16 @@ async function loadAuthProfile(){
       if(typeof p.meal_pool_refresh_count==='number')plan.mealPoolRefreshCount=p.meal_pool_refresh_count;
       saveSession();
     }
+    // Same pattern for stretch pool — premium-only feature, but we still
+    // pull it for whatever tier the user is now (in case they downgraded
+    // and we want to preserve their last routine until the next refresh).
+    if(plan&&Array.isArray(p.stretch_pool)&&p.stretch_pool.length===14){
+      plan.stretchPool=p.stretch_pool;
+      if(p.stretch_pool_anchor)plan.stretchPoolAnchor=p.stretch_pool_anchor;
+      if(p.stretch_pool_last_refresh)plan.stretchPoolLastRefresh=p.stretch_pool_last_refresh;
+      if(typeof p.stretch_pool_refresh_count==='number')plan.stretchPoolRefreshCount=p.stretch_pool_refresh_count;
+      saveSession();
+    }
 
     showDash();
     __authLoading=false;
@@ -7059,7 +7434,7 @@ initHistoryNav();
 bootApp().finally(function(){__bootDone=true;});
 syncThemeButton();
 </script>
-<link rel="manifest" href="/manifest.json?v=10">
+<link rel="manifest" href="/manifest.json?v=11">
 <script>
 // ── PWA: Service Worker Registration ─────────────────────────────────────
 // Force-updates the SW on every page load so new deploys reach users
