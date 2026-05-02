@@ -903,6 +903,11 @@ function setMealForToday(mealIdx,meal){
   // Update the pool entry first (source of truth for tomorrow)
   if(Array.isArray(plan.mealPool)&&plan.mealPool.length>=14&&Array.isArray(plan.mealPool[idx])){
     plan.mealPool[idx][mealIdx]=meal;
+    // Pool was modified — push to backend so other devices see this swap.
+    // Wrapped because scheduleMealPoolSync is defined later in the file
+    // and setMealForToday could (in theory) be called before that block
+    // is parsed — defensive guard avoids a cold-start ReferenceError.
+    if(typeof scheduleMealPoolSync==='function')scheduleMealPoolSync();
   }
   // Mirror into todayMeals so the current-render code keeps seeing the
   // updated meal without us having to refactor 15+ call sites.
@@ -921,6 +926,50 @@ function syncTodayMealsFromPool(){
   var meals=plan.mealPool[idx];
   if(Array.isArray(meals)&&meals.length>0){
     plan.todayMeals=meals.slice(); // shallow copy so swap doesn't mutate pool through ref aliasing
+  }
+}
+
+// ── BACKEND SYNC (May 2026) ──────────────────────────────────────────
+// Push the current mealPool to the backend so other devices the user
+// is signed in on (Phone, Mac, tablet) see the same recipes.
+//
+// Tier-gated server-side: Free users get 403, we silently swallow it
+// (their pool stays device-local — exactly like the auto-refresh gate).
+// Failure is non-fatal — the pool still lives in sessionStorage. Worst
+// case: user sees different meals on different devices until next sync.
+//
+// Debounced: after a swap or auto-refresh we may write multiple times
+// in quick succession. Wait 1.2s after the last call before firing
+// (matches the trainState debounce pattern).
+var __mealPoolSyncTimer=null;
+function scheduleMealPoolSync(){
+  if(__mealPoolSyncTimer)clearTimeout(__mealPoolSyncTimer);
+  __mealPoolSyncTimer=setTimeout(syncMealPoolToBackend,1200);
+}
+async function syncMealPoolToBackend(){
+  try{
+    if(!plan||!Array.isArray(plan.mealPool)||plan.mealPool.length!==14)return;
+    if(!window.sb)return;
+    var sess=await window.sb.auth.getSession();
+    var tok=sess?.data?.session?.access_token;
+    if(!tok)return;
+    var res=await fetch(BACKEND+'/user/meal-pool',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+tok},
+      body:JSON.stringify({
+        meal_pool:plan.mealPool,
+        meal_pool_anchor:plan.mealPoolAnchor||null,
+        meal_pool_last_refresh:plan.mealPoolLastRefresh||null,
+        meal_pool_refresh_count:plan.mealPoolRefreshCount||0
+      })
+    });
+    // Free-tier users (403 basic_required) silently fail — pool stays
+    // device-local. Anything else: log but keep the local pool intact.
+    if(!res.ok&&res.status!==403){
+      console.warn('[meal-pool] sync to backend failed:',res.status);
+    }
+  }catch(e){
+    console.warn('[meal-pool] sync error:',e&&e.message);
   }
 }
 
@@ -2811,6 +2860,8 @@ async function enrichPoolWithAI(){
     plan.mealPool=pool;
     plan.mealPoolAnchor=anchorIso;
     saveSession();
+    // Push fresh pool to backend so other devices pick it up on next login
+    scheduleMealPoolSync();
 
     // If user is on the nutrition tab, refresh so they see today's pool
     // entry (which usually equals today's onboarding meals, but the
@@ -2919,6 +2970,8 @@ async function autoRefreshPoolIfDue(){
     plan.mealPoolLastRefresh=nowIso;
     plan.mealPoolRefreshCount=counter+1;
     saveSession();
+    // Push refreshed half + new timestamps to backend
+    scheduleMealPoolSync();
 
     // Toast only if user is actively on the nutrition tab (otherwise
     // it would surprise them mid-task on another screen).
@@ -5550,6 +5603,26 @@ async function loadAuthProfile(){
     if(ud.sport&&ud.goal){
       try{await fetchPlan();}catch(e){console.error('Plan fetch failed:',e);}
     }
+
+    // ── RESTORE MEAL POOL FROM BACKEND ─────────────────────────────────
+    // fetchPlan() builds a fresh plan via the AI — including a new
+    // todayMeals — but it does NOT carry the user's persisted 14-day
+    // pool from a different device. If the backend has a saved pool,
+    // splice it onto the new plan now, BEFORE enrichPoolWithAI() can
+    // wastefully re-generate one. This is what makes Phone & Mac show
+    // the same recipes for the same user.
+    //
+    // Tier-gated by the server (Free = 403), so this only meaningfully
+    // applies to Basic/Premium accounts. Free users still get a fresh
+    // pool generated locally (their 14-day loop, just device-local).
+    if(plan&&Array.isArray(p.meal_pool)&&p.meal_pool.length===14){
+      plan.mealPool=p.meal_pool;
+      if(p.meal_pool_anchor)plan.mealPoolAnchor=p.meal_pool_anchor;
+      if(p.meal_pool_last_refresh)plan.mealPoolLastRefresh=p.meal_pool_last_refresh;
+      if(typeof p.meal_pool_refresh_count==='number')plan.mealPoolRefreshCount=p.meal_pool_refresh_count;
+      saveSession();
+    }
+
     showDash();
     __authLoading=false;
     return true;
@@ -6370,7 +6443,7 @@ initHistoryNav();
 bootApp().finally(function(){__bootDone=true;});
 syncThemeButton();
 </script>
-<link rel="manifest" href="/manifest.json?v=5">
+<link rel="manifest" href="/manifest.json?v=6">
 <script>
 // ── PWA: Service Worker Registration ─────────────────────────────────────
 // Force-updates the SW on every page load so new deploys reach users
