@@ -10,8 +10,8 @@
 // Bump CACHE_VERSION when deploying to force old clients to refresh.
 // ════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'peak-v12';
-const RUNTIME_CACHE = 'peak-runtime-v12';
+const CACHE_VERSION = 'peak-v13';
+const RUNTIME_CACHE = 'peak-runtime-v13';
 
 // Core files to pre-cache on install (app shell)
 const PRECACHE_URLS = [
