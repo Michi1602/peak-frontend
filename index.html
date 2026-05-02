@@ -395,13 +395,20 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;hei
 .proto-row:last-child{border-bottom:none}
 .proto-l{color:var(--dim)}.proto-v{color:var(--white);font-weight:700}
 @media(max-width:768px){
-  .topbar{padding:0 13px;height:calc(54px + env(safe-area-inset-top))}.main{padding:28px 11px 18px}
+  /* Increased horizontal padding (13→18px topbar, 14→18px nav) — Android
+     viewports don't always respect env(safe-area-inset-*) the way iOS
+     does, so the previous tighter values left header + tab-bar visibly
+     squeezed against the edges. iPhone's notch padding compensated, but
+     edge-to-edge Android phones felt cramped. */
+  .topbar{padding:0 18px;height:calc(54px + env(safe-area-inset-top))}.main{padding:28px 14px 18px}
   .ch{padding:20px 18px 0}.cb{padding:14px 18px}.cf{padding:4px 18px 20px;flex-direction:column}
   .bbk,.bnx{width:100%}
   .bbk.inline-btn,.bnx.inline-btn{width:auto}
   .irow,.tiles.c3,.tiles.c4{grid-template-columns:1fr 1fr}
   .sg{grid-template-columns:1fr 1fr}.pg{grid-template-columns:1fr 1fr}
-  .dbody,.rdb{padding:13px}
+  .dbody,.rdb{padding:14px}
+  .dhead{padding:18px 18px 14px}
+  .dnav{padding:7px 18px}
 }
 /* ── Hover states — only on devices with real hover (desktop with mouse).
       Touch devices skip these entirely to prevent "sticky hover" where
@@ -1137,6 +1144,48 @@ async function syncStretchPoolToBackend(){
     }
   }catch(e){
     console.warn('[stretch-pool] sync error:',e&&e.message);
+  }
+}
+
+// ── PLAN SYNC (May 2026 evening) ──────────────────────────────────────
+// Pushes the freshly-generated plan to the backend so other devices
+// (Phone after Mac, or vice versa) restore from it instead of paying
+// for a redundant AI generation. Debounced 1.5s so multi-touch saves
+// (e.g. plan + week-translation + workout-detail) collapse into one push.
+var __planSyncTimer=null;
+function schedulePlanSync(){
+  if(__planSyncTimer)clearTimeout(__planSyncTimer);
+  __planSyncTimer=setTimeout(syncPlanToBackend,1500);
+}
+async function syncPlanToBackend(){
+  try{
+    if(!plan||!plan.headline)return;
+    // Don't sync the hardcoded fallback to the backend — it would block
+    // future devices from regenerating a real plan via stale-check.
+    if(plan._isFallback)return;
+    if(!window.sb)return;
+    var sess=await window.sb.auth.getSession();
+    var tok=sess?.data?.session?.access_token;
+    if(!tok)return;
+    // Strip out the heavy pool fields — they have their own sync paths
+    // and including them here would balloon the payload past the 256KB
+    // cap. Each pool already has a _updated_at timestamp the other
+    // device uses to decide which copy to trust on next login.
+    var planForSync={};
+    Object.keys(plan).forEach(function(k){
+      if(k==='mealPool'||k==='stretchPool')return;
+      planForSync[k]=plan[k];
+    });
+    var res=await fetch(BACKEND+'/user/plan',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+tok},
+      body:JSON.stringify({plan_data:planForSync})
+    });
+    if(!res.ok&&res.status!==403){
+      console.warn('[plan] sync to backend failed:',res.status);
+    }
+  }catch(e){
+    console.warn('[plan] sync error:',e&&e.message);
   }
 }
 
@@ -1985,6 +2034,10 @@ async function fetchPlan(isRegen){
     // Ensure weekly plan exists (Chat 1: synthesise from today's workout; Chat 2+ will use templates)
     if(!plan.week)plan.week=synthWeekPlan(sport,level,parseInt(ud.sessions||3),parseInt(ud.dur||60),plan.workout);
     saveSession();
+    // Push the freshly generated plan to backend so other devices the
+    // user is logged in on don't redundantly regenerate via fetchPlan.
+    // Debounced 1.5s — see schedulePlanSync.
+    schedulePlanSync();
     enrichWeekWithAI();
     enrichPoolWithAI();
     enrichStretchPoolWithAI();
@@ -5334,10 +5387,11 @@ function buildMobilityRoutine(){
   var areas=Array.isArray(ud.stretchAreas)?ud.stretchAreas:[];
   var routineType=getTodayMobilityType(fp());
 
-  // Helper to format an exercise for display
-  function fmt(ex){
+  // Helper to format an exercise for display. Includes focus key so the
+  // detail view (openStretch) can look up the right explanation.
+  function fmt(ex,focusKey){
     if(!ex)return null;
-    return {name:lang==='de'?ex.de:ex.en,detail:ex.d};
+    return {name:lang==='de'?ex.de:ex.en,detail:ex.d,focus:focusKey||'general'};
   }
 
   if(routineType==='rest'){
@@ -5347,12 +5401,12 @@ function buildMobilityRoutine(){
     areas.forEach(function(k){
       var lib=STRETCH_LIB[k];
       if(!lib)return;
-      if(lib.dyn)full.push(fmt(lib.dyn));
-      if(lib.sta)full.push(fmt(lib.sta));
+      if(lib.dyn)full.push(fmt(lib.dyn,k));
+      if(lib.sta)full.push(fmt(lib.sta,k));
     });
     // Add general mobility (2 moves)
-    full.push(fmt(STRETCH_GENERAL[0].dyn));
-    full.push(fmt(STRETCH_GENERAL[2].sta));
+    full.push(fmt(STRETCH_GENERAL[0].dyn,'general'));
+    full.push(fmt(STRETCH_GENERAL[2].sta,'general'));
     return {full:full.filter(Boolean)};
   }
 
@@ -5362,15 +5416,15 @@ function buildMobilityRoutine(){
   areas.forEach(function(k){
     var lib=STRETCH_LIB[k];
     if(!lib)return;
-    if(lib.dyn)pre.push(fmt(lib.dyn));
-    if(lib.sta)post.push(fmt(lib.sta));
+    if(lib.dyn)pre.push(fmt(lib.dyn,k));
+    if(lib.sta)post.push(fmt(lib.sta,k));
   });
   // If no areas selected, fallback to general
   if(areas.length===0){
-    pre.push(fmt(STRETCH_GENERAL[0].dyn));
-    pre.push(fmt(STRETCH_GENERAL[1].dyn));
-    post.push(fmt(STRETCH_GENERAL[2].sta));
-    post.push(fmt(STRETCH_GENERAL[3].sta));
+    pre.push(fmt(STRETCH_GENERAL[0].dyn,'general'));
+    pre.push(fmt(STRETCH_GENERAL[1].dyn,'general'));
+    post.push(fmt(STRETCH_GENERAL[2].sta,'general'));
+    post.push(fmt(STRETCH_GENERAL[3].sta,'general'));
   }
   return {pre:pre.filter(Boolean),post:post.filter(Boolean)};
 }
@@ -5442,13 +5496,13 @@ function tMo(p){
 
   // Render the routine — split for training day, single block for rest
   if(routineType==='rest'){
-    c+=renderMobilitySection(t('moRest'),routine.full||[]);
+    c+=renderMobilitySection(t('moRest'),routine.full||[],'full');
   }else{
     if(Array.isArray(routine.pre)&&routine.pre.length){
-      c+=renderMobilitySection(t('moPreWk'),routine.pre);
+      c+=renderMobilitySection(t('moPreWk'),routine.pre,'pre');
     }
     if(Array.isArray(routine.post)&&routine.post.length){
-      c+=renderMobilitySection(t('moPostWk'),routine.post);
+      c+=renderMobilitySection(t('moPostWk'),routine.post,'post');
     }
   }
 
@@ -5464,16 +5518,116 @@ function tMo(p){
 }
 
 // Renders one mobility section (Pre/Post/Full) with title + exercise list
-function renderMobilitySection(title,exercises){
+function renderMobilitySection(title,exercises,sectionKey){
   if(!Array.isArray(exercises)||exercises.length===0)return '';
   var html='<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:var(--red);text-transform:uppercase;margin:18px 0 8px">'+title+'</div>';
-  html+=exercises.map(function(ex){
-    return '<div style="padding:10px 12px;background:var(--s2);border:1px solid var(--border);margin-bottom:6px">'+
-      '<div style="font-size:13px;font-weight:600;color:var(--white);margin-bottom:2px">'+ex.name+'</div>'+
-      '<div style="font-size:11px;color:var(--ink2)">'+ex.detail+'</div>'+
+  html+=exercises.map(function(ex,idx){
+    return '<div onclick="openStretch(\''+sectionKey+'\','+idx+')" style="padding:10px 12px;background:var(--s2);border:1px solid var(--border);margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:8px">'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-size:13px;font-weight:600;color:var(--white);margin-bottom:2px">'+ex.name+'</div>'+
+        '<div style="font-size:11px;color:var(--ink2)">'+ex.detail+'</div>'+
+      '</div>'+
+      '<span style="color:var(--faint);font-size:10px;flex-shrink:0">→</span>'+
     '</div>';
   }).join('');
   return html;
+}
+
+// ── STRETCH EXERCISE EXPLANATIONS (May 2026) ──────────────────────────
+// Maps the focus-area key to a generic explanation template (what it
+// targets, why it matters, how to do it correctly). Used as a fallback
+// for AI-generated exercises that don't carry their own explanation.
+// Specific known moves (Pigeon Pose, World's Greatest Stretch, etc.)
+// can be overridden in STRETCH_EXPL_BY_NAME below.
+var STRETCH_EXPL_BY_FOCUS={
+  hip:{
+    en:{what:'Targets hip flexors (psoas, iliacus) and surrounding hip rotators that get short and tight from sitting and running.',why:'Tight hip flexors compress the lower back, limit stride length, and inhibit glute activation — fixing them improves running economy, sprint speed and reduces back pain.',how:'Move slowly, breathe deeply. For static holds, sink in only on exhale. Never bounce. If you feel sharp pain in the joint (vs muscle stretch), back off.'},
+    de:{what:'Zielt auf Hüftbeuger (Psoas, Iliacus) und Hüft-Rotatoren — verkürzen sich vom Sitzen und Laufen.',why:'Verkürzte Hüftbeuger drücken auf den unteren Rücken, verkürzen Schrittlänge und blockieren die Gesäßmuskulatur — Lösen verbessert Laufökonomie, Sprintgeschwindigkeit und reduziert Rückenschmerzen.',how:'Langsam bewegen, tief atmen. Statische Halte nur auf Ausatmung tiefer sinken. Nie federn. Bei stechendem Schmerz im Gelenk (vs Muskeldehnung) sofort zurücknehmen.'}
+  },
+  chest:{
+    en:{what:'Opens the pectoral muscles (major + minor) and front shoulder capsule that get rounded forward from desk work.',why:'Tight chest pulls shoulders into internal rotation, weakens posture, and reduces shoulder mobility for overhead work — opening it restores neutral shoulder position and prevents impingement.',how:'Keep shoulder blades pulled down and back, never shrugged up. Stop at the first deep stretch sensation, don\'t force it. Hold at end-range, don\'t bounce.'},
+    de:{what:'Öffnet die Brustmuskulatur (Pectoralis major + minor) und vordere Schulterkapsel — werden vom Schreibtisch nach vorn gerundet.',why:'Verkürzte Brust zieht Schultern in Innenrotation, schwächt die Haltung und limitiert Schulterbeweglichkeit über Kopf — Öffnen stellt neutrale Schulterposition wieder her und beugt Impingement vor.',how:'Schulterblätter nach unten und hinten halten, niemals hochziehen. Bei erstem tiefen Dehngefühl stoppen, nicht erzwingen. End-Range halten, nicht federn.'}
+  },
+  upBack:{
+    en:{what:'Mobilises the thoracic spine — the middle 12 vertebrae that need rotation and extension for healthy posture.',why:'A stiff thoracic spine forces the lower back and shoulders to compensate, leading to back pain and shoulder injuries — restoring its mobility offloads adjacent joints.',how:'Move with breath: inhale to extend/open, exhale to fold/round. Quality over range — small clean reps beat forced large ones.'},
+    de:{what:'Mobilisiert die Brustwirbelsäule — die mittleren 12 Wirbel die Rotation und Streckung brauchen für gesunde Haltung.',why:'Eine steife Brustwirbelsäule zwingt unteren Rücken und Schultern zur Kompensation — führt zu Rückenschmerzen und Schulterverletzungen. Mobilität entlastet die angrenzenden Gelenke.',how:'Mit Atem bewegen: einatmen zum Strecken/Öffnen, ausatmen zum Beugen/Runden. Qualität vor Range — saubere kleine Wiederholungen schlagen erzwungene große.'}
+  },
+  lowBack:{
+    en:{what:'Decompresses the lumbar spine and stretches the surrounding erector spinae and quadratus lumborum.',why:'Most "low back pain" comes from chronic compression and tightness, not weakness — gentle decompression restores disc hydration and relaxes guard tension.',how:'Stay relaxed, never force into pain. If a position aggravates symptoms, skip it and try a different angle. Daily consistency beats heroic single sessions.'},
+    de:{what:'Entlastet die Lendenwirbelsäule und dehnt die umgebende Rückenstrecker-Muskulatur und Quadratus lumborum.',why:'Die meisten "Kreuzschmerzen" kommen von chronischer Kompression und Verspannung, nicht Schwäche — sanfte Dekompression rehydriert Bandscheiben und entspannt Schutzspannung.',how:'Entspannt bleiben, nie in den Schmerz drücken. Wenn eine Position die Beschwerden verstärkt, überspringen und anderen Winkel testen. Tägliche Konstanz schlägt heroische Einzel-Sessions.'}
+  },
+  ham:{
+    en:{what:'Lengthens the hamstrings (biceps femoris, semitendinosus, semimembranosus) — the posterior thigh chain.',why:'Short hamstrings tilt the pelvis backward, flatten the lumbar curve, and restrict bending — lengthening them restores hip hinge mechanics for squats, deadlifts, sprinting.',how:'Hinge from the hips, NOT the lower back. Keep the spine long. Soft knee bend is fine if your back wants to round — protect the spine first.'},
+    de:{what:'Verlängert die Hamstrings (Beinbizeps, Semitendinosus, Semimembranosus) — hintere Oberschenkelkette.',why:'Verkürzte Hamstrings kippen das Becken nach hinten, flachen die Lendenkurve ab und limitieren die Beuge — Verlängern stellt die Hüft-Hinge-Mechanik wieder her für Squats, Deadlifts, Sprints.',how:'Aus der Hüfte beugen, NICHT aus dem unteren Rücken. Wirbelsäule lang halten. Leichte Kniebeuge OK wenn der Rücken rund werden will — Wirbelsäule zuerst schützen.'}
+  },
+  calf:{
+    en:{what:'Stretches the gastrocnemius (upper calf, knee straight) and soleus (lower calf, knee bent) plus the Achilles tendon.',why:'Tight calves limit ankle dorsiflexion — which forces the knee inward in squats, breaks running form, and overloads the Achilles. Mobile calves protect knees and prevent shin splints.',how:'Hold straight-knee variant for gastroc, bent-knee variant for soleus. Heel must stay glued to floor. 30-45s minimum to actually change tissue length.'},
+    de:{what:'Dehnt den Gastrocnemius (oberer Wadenmuskel, Knie gestreckt) und Soleus (unterer Wadenmuskel, Knie gebeugt) plus die Achillessehne.',why:'Verkürzte Waden limitieren die Sprunggelenks-Dorsalflexion — drückt das Knie in Squats nach innen, ruiniert die Lauftechnik und überlastet die Achilles. Mobile Waden schützen Knie und beugen Schienbeinkanten-Schmerzen vor.',how:'Strecker-Knie-Variante für Gastroc, gebeugte Knie für Soleus. Ferse MUSS am Boden bleiben. Mindestens 30-45s für tatsächliche Längenveränderung.'}
+  },
+  neck:{
+    en:{what:'Targets the upper trapezius, levator scapulae, and suboccipital muscles that hold tension from screen work and stress.',why:'Chronic neck tension causes tension headaches, restricts shoulder mobility, and contributes to forward head posture — releasing it improves both pain and posture.',how:'Move SLOWLY. Never roll the neck in full circles backwards (cervical artery risk). Use gentle hand-assist for stretches, not muscular pulling.'},
+    de:{what:'Zielt auf oberen Trapezius, Levator scapulae und suboccipitale Muskeln — halten Spannung von Bildschirmarbeit und Stress.',why:'Chronische Nackenspannung verursacht Spannungskopfschmerzen, limitiert Schulterbeweglichkeit und fördert vorgeschobene Kopfhaltung — Lösen verbessert sowohl Schmerz als auch Haltung.',how:'LANGSAM bewegen. Nie volle Kreise rückwärts rollen (Risiko für Halsschlagader). Sanfte Hand-Hilfe nutzen, nicht muskulär ziehen.'}
+  },
+  knee:{
+    en:{what:'Mobilises the knee joint and surrounding tissues — quadriceps tendon, patellar tendon, knee capsule.',why:'Knee mobility is largely determined by hip and ankle mobility above and below — direct knee work plus hip+ankle integration solves most knee pain.',how:'Avoid loading a painful knee in deep flexion. Build range gradually over weeks. If you hear popping with pain, see a physio — popping without pain is usually fine.'},
+    de:{what:'Mobilisiert das Kniegelenk und umgebendes Gewebe — Quadrizeps-Sehne, Patella-Sehne, Knie-Kapsel.',why:'Knie-Mobilität wird maßgeblich von Hüft- und Sprunggelenks-Mobilität darüber/darunter bestimmt — direkte Knie-Arbeit plus Hüft+Sprung-Integration löst die meisten Knie-Beschwerden.',how:'Schmerzhaftes Knie nicht in tiefer Beugung belasten. Range über Wochen aufbauen. Bei Knacken mit Schmerz zum Physio — Knacken ohne Schmerz ist meist harmlos.'}
+  },
+  ankle:{
+    en:{what:'Restores ankle dorsiflexion (toes-up movement) and joint glide — often locked from old sprains and prolonged sitting.',why:'Limited ankle dorsiflexion forces compensation up the chain: knees collapse inward, hips can\'t descend in squats, deadlift mechanics break — fixing the ankle fixes much of the rest.',how:'Use a wall or step for leverage. Keep heel down throughout. The "knee over toes" position should feel like ankle stretch, not knee pain.'},
+    de:{what:'Stellt Sprunggelenks-Dorsalflexion (Zehen-nach-oben-Bewegung) und Gelenk-Gleiten wieder her — oft blockiert durch alte Verstauchungen und langes Sitzen.',why:'Limitierte Sprunggelenks-Dorsalflexion erzwingt Kompensation in der Kette nach oben: Knie kollabieren einwärts, Hüfte kann in Squats nicht runter, Deadlift-Mechanik bricht — Sprunggelenk fixen löst vieles andere mit.',how:'Wand oder Stufe als Hebel nutzen. Ferse durchgehend am Boden. "Knie über Zehe" soll sich nach Sprunggelenks-Dehnung anfühlen, nicht nach Knie-Schmerz.'}
+  },
+  general:{
+    en:{what:'Whole-body mobility move that integrates multiple joints — the kind of pattern your body uses in real movement.',why:'Compound mobility moves teach joints to work together, not in isolation — closer to how sport and life actually load the body, and far more time-efficient than single-joint stretches.',how:'Quality of movement matters more than speed or range. If you can\'t do it cleanly, regress to an easier variant. Never sacrifice form for depth.'},
+    de:{what:'Ganzkörper-Mobility-Bewegung, die mehrere Gelenke integriert — der Bewegungstyp, den dein Körper im echten Leben nutzt.',why:'Komplexe Mobility-Bewegungen trainieren Gelenke zusammen zu arbeiten, nicht isoliert — näher an wie Sport und Alltag den Körper tatsächlich belasten, und deutlich zeit-effizienter als Einzelgelenks-Dehnung.',how:'Bewegungsqualität ist wichtiger als Geschwindigkeit oder Range. Wenn unsauber: leichtere Variante nehmen. Nie Form für Tiefe opfern.'}
+  }
+};
+
+// Look up an explanation. Falls back through: focus key → general.
+function getStretchExplanation(exercise){
+  var de=lang==='de';
+  var focus=(exercise&&exercise.focus)||'general';
+  var byFocus=STRETCH_EXPL_BY_FOCUS[focus]||STRETCH_EXPL_BY_FOCUS.general;
+  return de?byFocus.de:byFocus.en;
+}
+
+// Resolve an exercise from the rendered routine by section + index.
+// Sections are 'pre', 'post', 'full' depending on training/rest day.
+function getStretchExerciseRef(sectionKey,idx){
+  var poolRoutine=getStretchForToday();
+  var routine;
+  if(poolRoutine&&poolRoutine.type){
+    routine=poolRoutine;
+  }else{
+    var staticR=buildMobilityRoutine();
+    var rt=getTodayMobilityType(plan);
+    if(rt==='rest')routine={type:'rest',full:staticR.full||[]};
+    else routine={type:'training',pre:staticR.pre||[],post:staticR.post||[]};
+  }
+  if(!routine)return null;
+  var list=routine[sectionKey];
+  if(!Array.isArray(list))return null;
+  return list[idx]||null;
+}
+
+function openStretch(sectionKey,idx){
+  var ex=getStretchExerciseRef(sectionKey,idx);
+  if(!ex)return;
+  var de=lang==='de';
+  var expl=getStretchExplanation(ex);
+  var tabs=[{k:'nutrition',l:t('nu')},{k:'fitness',l:t('fi')},{k:'mobility',l:t('mo')},{k:'recovery',l:t('re')},{k:'scanner',l:t('sc')},{k:'log',l:t('lg')},{k:'recipes',l:t('rp')}];
+  var c='<div class="rdb">'+
+    '<div class="rdb-back" onclick="showTab(\'mobility\')">← '+(de?'Zurück':'Back')+'</div>'+
+    '<div style="font-size:40px;margin-bottom:10px">🧘</div>'+
+    '<h1>'+ex.name+'</h1>'+
+    '<p style="color:var(--ink2);font-size:12px;margin-bottom:4px">'+(de?'Vorgabe':'Prescription')+': '+ex.detail+'</p>'+
+    '<h3>'+(de?'Was es trainiert':'What it targets')+'</h3>'+
+    '<p>'+expl.what+'</p>'+
+    '<h3>'+(de?'Warum es wichtig ist':'Why it matters')+'</h3>'+
+    '<p>'+expl.why+'</p>'+
+    '<h3>'+(de?'So machst du es richtig':'How to do it right')+'</h3>'+
+    '<p>'+expl.how+'</p>'+
+  '</div>';
+  card('<div class="dhead"><div class="dgreet">🧘 '+ex.name.toUpperCase()+'</div><div class="dsub">'+ex.detail+'</div></div><div class="dnav">'+tabs.map(function(tb){return '<button class="ntab '+(tb.k==='mobility'?'act':'')+'" data-tab="'+tb.k+'" onclick="showTab(\''+tb.k+'\')">'+tb.l+'</button>';}).join('')+'</div>'+c);
 }
 
 function tRe(p){
@@ -6513,6 +6667,21 @@ async function loadAuthProfile(){
       //
       // The explicit "Regenerate plan" button still calls fetchPlan(true)
       // unconditionally — so users can always force a refresh manually.
+      // ── RESTORE PLAN FROM BACKEND BEFORE STALE-CHECK ──────────────────
+      // If sessionStorage doesn't have the plan (e.g. fresh device, new
+      // browser tab, or user just logged in on a second phone), restore
+      // it from the backend NOW — before the stale-check decides whether
+      // to call fetchPlan(). Without this hop, every device-without-cache
+      // triggers a redundant ~$0.05 AI generation, which is exactly the
+      // bug the user reported on 02.05.2026 evening.
+      //
+      // We don't overwrite an existing plan — sessionStorage is fresher
+      // (the user may have just rated meals, swapped one, etc.).
+      if(!plan&&p.plan_data&&typeof p.plan_data==='object'&&p.plan_data.headline){
+        plan=p.plan_data;
+        saveSession();
+        console.log('[plan] Restored from backend (cross-device sync)');
+      }
       var needsFetch=false;
       var skipReason='';
       if(!plan){
@@ -6748,6 +6917,15 @@ function profValue(key){
       }
     }
   }
+  // Stretching areas — stored as keys (hip, chest, …), display as
+  // translated labels. MUST be checked before the generic Array.isArray
+  // fallback below, otherwise it falls through to the raw join('')
+  // path and shows "hip, lowBack, ham" instead of localized labels.
+  if(key==='stretchAreas'){
+    if(!Array.isArray(v)||v.length===0)return '—';
+    var AREA_LABELS={hip:'stHip',chest:'stChest',upBack:'stUpBack',lowBack:'stLowBack',ham:'stHam',calf:'stCalf',neck:'stNeck',knee:'stKnee',ankle:'stAnkle'};
+    return v.map(function(k){return t(AREA_LABELS[k]||k);}).join(', ');
+  }
   if(Array.isArray(v))return v.length?v.join(', '):'—';
   if(v===''||v===null||v===undefined)return '—';
   // Unit suffixes
@@ -6755,13 +6933,6 @@ function profValue(key){
   if(key==='height')return v+' cm';
   if(key==='sleep')return v+' h';
   if(key==='stretchDur')return v+' min';
-  // Stretching areas — stored as keys (hip, chest, …), display as
-  // translated labels so the user sees their language.
-  if(key==='stretchAreas'){
-    if(!Array.isArray(v)||v.length===0)return '—';
-    var AREA_LABELS={hip:'stHip',chest:'stChest',upBack:'stUpBack',lowBack:'stLowBack',ham:'stHam',calf:'stCalf',neck:'stNeck',knee:'stKnee',ankle:'stAnkle'};
-    return v.map(function(k){return t(AREA_LABELS[k]||k);}).join(', ');
-  }
   if(key==='dur')return v+' min';
   if(key==='sessions')return v+(lang==='de'?'× / Woche':'× / week');
   if(key==='stress')return v+'/10';
@@ -7462,7 +7633,7 @@ initHistoryNav();
 bootApp().finally(function(){__bootDone=true;});
 syncThemeButton();
 </script>
-<link rel="manifest" href="/manifest.json?v=11">
+<link rel="manifest" href="/manifest.json?v=12">
 <script>
 // ── PWA: Service Worker Registration ─────────────────────────────────────
 // Force-updates the SW on every page load so new deploys reach users
