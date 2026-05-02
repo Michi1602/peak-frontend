@@ -850,6 +850,80 @@ function todayWeekdayIndex(){
   return (d+6)%7;
 }
 
+// ── 14-DAY MEAL POOL (May 2026) ──────────────────────────────────────
+// Plan now contains a 14-day meal rotation (mealPool[0..13]). Each entry
+// is an array of 4 meals (Breakfast/Lunch/Dinner/Snack) — same structure
+// as the legacy todayMeals so all downstream code keeps working.
+//
+// Day 0 = Monday of week 1, Day 7 = Monday of week 2, Day 13 = Sunday of
+// week 2. Then it loops back to Day 0. Two clean Mo–Su weeks of variety.
+//
+// poolDayIndex():   0..13  → today's slot in the rotation
+// getMealsForToday(): returns the 4-meal array for today (with fallback)
+// setMealForToday():  writes one meal back into today's pool slot
+//                     (used by mood-swap and re-roll, persists through
+//                     midnight rollover and across app restarts)
+//
+// Anchor: We anchor to a fixed Monday (anchorWeekStart) the first time
+// the pool is generated, so day-of-week stays stable even if the user
+// moves time zones or the date logic edge-cases.
+
+function poolDayIndex(){
+  if(!plan||!plan.mealPool||!plan.mealPoolAnchor)return todayWeekdayIndex();
+  try{
+    var anchor=new Date(plan.mealPoolAnchor);
+    var today=new Date();
+    // Strip time-of-day so the diff is whole days regardless of clock
+    anchor.setHours(0,0,0,0);
+    today.setHours(0,0,0,0);
+    var diffMs=today.getTime()-anchor.getTime();
+    var diffDays=Math.floor(diffMs/(24*60*60*1000));
+    if(diffDays<0)return todayWeekdayIndex(); // future-dated anchor, fail safe
+    return ((diffDays%14)+14)%14;
+  }catch(_){
+    return todayWeekdayIndex();
+  }
+}
+
+function getMealsForToday(){
+  if(plan&&Array.isArray(plan.mealPool)&&plan.mealPool.length>=14){
+    var idx=poolDayIndex();
+    var meals=plan.mealPool[idx];
+    if(Array.isArray(meals)&&meals.length>0)return meals;
+  }
+  // Fallback: legacy todayMeals (used during pool generation, or if
+  // pool generation failed entirely)
+  if(plan&&Array.isArray(plan.todayMeals))return plan.todayMeals;
+  return [];
+}
+
+function setMealForToday(mealIdx,meal){
+  if(!plan)return;
+  var idx=poolDayIndex();
+  // Update the pool entry first (source of truth for tomorrow)
+  if(Array.isArray(plan.mealPool)&&plan.mealPool.length>=14&&Array.isArray(plan.mealPool[idx])){
+    plan.mealPool[idx][mealIdx]=meal;
+  }
+  // Mirror into todayMeals so the current-render code keeps seeing the
+  // updated meal without us having to refactor 15+ call sites.
+  if(Array.isArray(plan.todayMeals)){
+    plan.todayMeals[mealIdx]=meal;
+  }
+}
+
+// Sync today's render-view (plan.todayMeals) to the pool. Called once
+// per render after we know the day index, so all downstream code that
+// reads p.todayMeals[i] sees today's correct meals.
+function syncTodayMealsFromPool(){
+  if(!plan)return;
+  if(!Array.isArray(plan.mealPool)||plan.mealPool.length<14)return;
+  var idx=poolDayIndex();
+  var meals=plan.mealPool[idx];
+  if(Array.isArray(meals)&&meals.length>0){
+    plan.todayMeals=meals.slice(); // shallow copy so swap doesn't mutate pool through ref aliasing
+  }
+}
+
 function loadMealTrack(){
   try{
     var raw=localStorage.getItem('peak_meal_track');
@@ -1262,7 +1336,19 @@ function rerenderCurrent(){
   }
 }
 async function goHome(){
-  if(plan){showDash();return;}
+  if(plan){
+    // Backfill the meal pool for users whose plan was created before the
+    // 14-day rotation feature shipped (May 2026). The check is cheap
+    // (object property lookup) and enrichPoolWithAI() is a no-op if the
+    // pool is already valid, so this is safe to call on every goHome.
+    if(!Array.isArray(plan.mealPool)||plan.mealPool.length<14){
+      // Fire-and-forget: user sees today's plan immediately; pool
+      // arrives in the background just like in the onboarding flow.
+      try{enrichPoolWithAI();}catch(_){ }
+    }
+    showDash();
+    return;
+  }
   try{
     var sess=await window.sb.auth.getSession();
     if(sess?.data?.session){var ok=await loadAuthProfile();if(ok)return;}
@@ -1459,6 +1545,15 @@ function s5(){var goals=[{e:'⚖️',k:'g1',d:'g1d'},{e:'💪',k:'g2',d:'g2d'},{
 function showLoad(){var de=lang==='de';var sportLbl=sportLabel(ud.sport);card('<div class="lw"><div class="spin"></div><div class="lt">'+(de?'Baue deinen Plan...':'Building your plan...')+'</div><p style="font-size:11px;color:var(--faint);margin-bottom:18px">'+(de?'Einzigartig für dich — sonst bekommt das niemand.':'Unique to you — nobody else gets this.')+'</p><div style="text-align:left">'+[['⚡',de?'Berechne Kalorien-Ziel':'Calculating calorie targets'],['🥗',de?'Rezepte nach deinem Geschmack':'Selecting recipes for your taste'],['💪',(de?'Baue ':'Building ')+sportLbl+(de?'-Übungen':' exercises')],['🔋',de?'Regenerations-Protokoll':'Designing recovery protocol'],['✦',de?'Finalisiere deinen Plan':'Finalising your roadmap']].map(function(l,i){return '<div class="lsi" id="li'+i+'"><span style="width:18px;text-align:center;flex-shrink:0">'+l[0]+'</span> '+l[1]+'</div>';}).join('')+'</div></div>');var i=0;var ti=setInterval(function(){if(i>0){var prev=document.getElementById('li'+(i-1));if(prev)prev.className='lsi done';}if(i<5){var cur=document.getElementById('li'+i);if(cur)cur.className='lsi active';i++;}else{clearInterval(ti);fetchPlan().then(function(){step=6;render();});}},700);}
 
 async function fetchPlan(isRegen){
+  // ── POOL RESET ON REGEN ───────────────────────────────────────────────
+  // Re-generation produces a new today-plan, so the existing 14-day pool
+  // is no longer aligned with it (different cuisines, calorie target, etc).
+  // Drop the pool fields so enrichPoolWithAI() rebuilds from scratch after
+  // the new today-plan lands.
+  if(isRegen&&plan){
+    delete plan.mealPool;
+    delete plan.mealPoolAnchor;
+  }
   // ── BMR via Mifflin-St Jeor (1990) — modern standard, gender-aware.
   // Replaces older Harris-Benedict (1984) which over/under-shoots for women.
   // Source: ACSM, Academy of Nutrition and Dietetics.
@@ -1518,6 +1613,7 @@ async function fetchPlan(isRegen){
     if(!plan.week)plan.week=synthWeekPlan(sport,level,parseInt(ud.sessions||3),parseInt(ud.dur||60),plan.workout);
     saveSession();
     enrichWeekWithAI();
+    enrichPoolWithAI();
   }catch(e){
     // Free-tier cap reached — surface specific error so caller can show upgrade UI
     if(e&&e.freeLimitReached){
@@ -1529,6 +1625,7 @@ async function fetchPlan(isRegen){
     plan.week=synthWeekPlan(sport,level,parseInt(ud.sessions||3),parseInt(ud.dur||60),plan.workout);
     saveSession();
     enrichWeekWithAI();
+    enrichPoolWithAI();
   }
 }
 
@@ -2503,6 +2600,338 @@ async function enrichWeekWithAI(){
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// 14-DAY MEAL POOL GENERATION (May 2026)
+// ═══════════════════════════════════════════════════════════════════════
+// Runs in the background after onboarding. Builds a 14-day rotation of
+// meals so users don't see the same plan every day.
+//
+// Strategy:
+//   • Day 0 of the pool = MONDAY of the user's current week (so the
+//     rotation aligns to a clean Mo–Su cadence even if onboarding happens
+//     mid-week).
+//   • The meals from initial onboarding (plan.todayMeals, generated for
+//     "today") are placed at pool[todayWeekdayIndex()] so today's view
+//     stays stable. The other 13 slots are AI-generated.
+//   • Compact JSON (short keys: e/n/t/k/p/c/f/i) keeps the AI response
+//     under ~9k tokens. We expand back to the legacy schema after parse.
+//   • If generation fails: pool stays partial — getMealsForToday()
+//     transparently falls back to plan.todayMeals.
+// ═══════════════════════════════════════════════════════════════════════
+
+// Returns the Date for Monday of the current local week (00:00 local time).
+function getCurrentMondayDate(){
+  var d=new Date();
+  d.setHours(0,0,0,0);
+  // JS getDay(): Sun=0, Mon=1, ... Sat=6. We want Monday-based.
+  var diff=(d.getDay()+6)%7;  // 0 if Mon, 1 if Tue, ..., 6 if Sun
+  d.setDate(d.getDate()-diff);
+  return d;
+}
+
+// Compress full meal object → short-key version for the pool prompt
+// (saves ~40% tokens). Inverse of expandPoolMeal().
+function compactMealForPrompt(m){
+  return {
+    e:m.emoji||'🍽️',
+    n:m.name||'',
+    t:m.time||'',
+    k:m.kcal||0,
+    p:m.protein||0,
+    c:m.carbs||0,
+    f:m.fat||0,
+    i:Array.isArray(m.ingredients)?m.ingredients.map(function(x){return{i:x.item,q:x.qty};}):[]
+  };
+}
+
+// Expand short-key meal back to the full schema the rest of the app uses
+function expandPoolMeal(m){
+  if(!m||typeof m!=='object')return null;
+  var protein=Number(m.p)||0;
+  return {
+    emoji:m.e||'🍽️',
+    name:m.n||'',
+    time:m.t||'',
+    kcal:Number(m.k)||0,
+    protein:protein,
+    carbs:Number(m.c)||0,
+    fat:Number(m.f)||0,
+    macro:protein+'g '+(lang==='de'?'Eiweiß':'protein'),
+    cuisine:typeof m.cu==='string'?m.cu:'',
+    ingredients:Array.isArray(m.i)?m.i.map(function(x){return{item:x.i||'',qty:x.q||''};}):[]
+  };
+}
+
+// Generate ONE batch of N meal-days. Used by enrichPoolWithAI() which
+// fires two batches in parallel for robustness + speed (Haiku 4.5 can
+// truncate very long JSON responses; smaller batches cut that risk).
+//
+// `excludeNames` is a set of dish names already used elsewhere in the
+// pool — we ask the AI to avoid them so meals stay distinct across the
+// two parallel calls. Returns an array of day-arrays (each is 4 meals)
+// or null on hard failure (caller backfills).
+async function generatePoolBatch(numDays, excludeNames, batchLabel){
+  if(numDays<=0)return [];
+  var sport=ud.sport||'Running';
+  var kcal=plan.calories||2000;
+  var protein=plan.protein||120;
+  var carbs=plan.carbs||220;
+  var fat=plan.fat||70;
+
+  var langInstr=lang==='de'
+    ? 'IMPORTANT: Respond entirely in GERMAN. All dish names, ingredient names, etc. in German. Keep "time" values as English: "Breakfast","Lunch","Dinner","Snack".'
+    : 'IMPORTANT: Respond entirely in ENGLISH.';
+
+  var allergens=(ud.al||[]).join(',')||'none';
+  var diets=(ud.di||[]).join(',')||'none';
+  var cuisines=(ud.cu||[]).join(',')||'any';
+  var excludeStr=excludeNames&&excludeNames.length?excludeNames.join(' | '):'(none)';
+
+  var prompt='You are PEAK AI. Generate '+numDays+' DAYS of meal plans (batch '+batchLabel+').\n'+
+    langInstr+'\n\n'+
+    'User: '+(ud.name||'athlete')+', '+(ud.weight||75)+'kg, sport '+sport+', goal '+goalStr()+'.\n'+
+    'Daily targets per day: ~'+kcal+' kcal, ~'+protein+'g protein, ~'+carbs+'g carbs, ~'+fat+'g fat.\n'+
+    'Preferences: allergies['+allergens+'], diets['+diets+'], cuisines['+cuisines+'], cooking '+(ud.cook||'Intermediate')+'.\n'+
+    'Already-used dishes (do NOT repeat any): '+excludeStr+'\n\n'+
+    'CRITICAL VARIETY RULES:\n'+
+    '- Each day must have 4 meals: Breakfast, Lunch, Dinner, Snack — in this exact order.\n'+
+    '- NO dish may repeat across the '+numDays+' days OR with the already-used list.\n'+
+    '- Vary proteins (chicken, fish, tofu, beef, eggs, legumes), grains, and vegetables.\n'+
+    '- Vary cooking methods (baked, grilled, pan-fried, raw/salad, slow-cooked, steamed).\n'+
+    '- Stay within the user\'s declared cuisines/diets/allergies — do NOT introduce off-list cuisines.\n'+
+    '- Macros per day must roughly match the targets above (±10%). Each meal split sensibly.\n\n'+
+    'OUTPUT FORMAT — strict, no markdown, no commentary, no leading/trailing text:\n'+
+    'Return a JSON object {"days":[ ... ]} with exactly '+numDays+' entries.\n'+
+    'Each entry is an array of 4 meal objects with these SHORT KEYS:\n'+
+    '  e=emoji, n=name, t=time("Breakfast"|"Lunch"|"Dinner"|"Snack"),\n'+
+    '  k=kcal(int), p=protein(g int), c=carbs(g int), f=fat(g int),\n'+
+    '  cu=cuisine label in ENGLISH (one of: "Italian","Asian","Mediterranean","American","Mexican","Indian","Japanese","Middle Eastern","Thai","Greek","Other"),\n'+
+    '  i=ingredients (array of {i:"item name", q:"quantity with unit"})\n'+
+    'The "cu" field is REQUIRED for every meal. Use the label that fits best; "Other" only if truly none fit.\n'+
+    'Quantity rules: weight in g/kg, volume in ml/l, '+
+    (lang==='de'?'spices use TL/EL':'spices use tsp/tbsp')+
+    ', countables include the noun '+
+    (lang==='de'?'in German ("3 Eier","2 Zehen")':'("3 eggs","2 cloves")')+
+    '. Each meal: 4-6 ingredients.\n\n'+
+    'Example shape:\n'+
+    '{"days":[[{"e":"🥣","n":"Overnight Oats","t":"Breakfast","k":420,"p":24,"c":52,"f":12,"cu":"American","i":[{"i":"Oats","q":"60g"},{"i":"Milk","q":"200ml"},{"i":"Berries","q":"80g"},{"i":"Honey","q":"1 tsp"}]}, /* ...3 more meals */ ], /* ...more days */ ]}';
+
+  try{
+    // ~5500 tokens per batch is comfortable headroom for ~7 days × 4 meals.
+    // Tag as plan_generation_initial so it doesn't count against monthly quota.
+    var data=await aiGenJSON(prompt,5500,'plan_generation_initial');
+    if(!data||!Array.isArray(data.days))return null;
+    return data.days;
+  }catch(e){
+    console.warn('[meal-pool] batch '+batchLabel+' failed:',e&&e.message);
+    return null;
+  }
+}
+
+async function enrichPoolWithAI(){
+  if(!plan||!plan.todayMeals||plan.todayMeals.length===0)return;
+  // Already enriched? Skip (idempotent — safe to call multiple times).
+  if(Array.isArray(plan.mealPool)&&plan.mealPool.length>=14)return;
+
+  // Anchor pool day 0 to Monday of the current week. This way pool[0]=Mon,
+  // pool[6]=Sun (week 1), pool[7]=Mon week 2, pool[13]=Sun week 2.
+  var monday=getCurrentMondayDate();
+  var todayIdx=todayWeekdayIndex();  // 0..6 for current week
+  var anchorIso=monday.getFullYear()+'-'+String(monday.getMonth()+1).padStart(2,'0')+'-'+String(monday.getDate()).padStart(2,'0');
+
+  // Today's meals from onboarding go into pool[todayIdx]. We need to fill
+  // the other 13 slots. Split them roughly in half across two parallel
+  // batches: this keeps each AI response under ~6k tokens (Haiku-friendly)
+  // and runs both calls concurrently for ~2x faster pool readiness.
+  var slotsToFill=[];
+  for(var i=0;i<14;i++){
+    if(i!==todayIdx)slotsToFill.push(i);
+  }
+  // Split: first half → batch A, second half → batch B (≈7 + 6 days)
+  var halfPoint=Math.ceil(slotsToFill.length/2);
+  var slotsA=slotsToFill.slice(0,halfPoint);
+  var slotsB=slotsToFill.slice(halfPoint);
+
+  // Existing today-meal names go to BOTH batches as exclusion list, so the
+  // pool never contains a copy of today's onboarding dishes.
+  var todayNames=plan.todayMeals.map(function(m){return m.name||'';}).filter(Boolean);
+
+  try{
+    // Fire both batches in parallel. Promise.all returns once both settle.
+    var results=await Promise.all([
+      generatePoolBatch(slotsA.length,todayNames,'A'),
+      generatePoolBatch(slotsB.length,todayNames,'B')
+    ]);
+    var batchA=results[0]; // array of day-arrays, or null
+    var batchB=results[1];
+
+    // If BOTH batches failed there's nothing useful to add — bail out
+    // silently and let getMealsForToday() keep using plan.todayMeals.
+    if(!Array.isArray(batchA)&&!Array.isArray(batchB)){
+      console.warn('[meal-pool] both batches failed, keeping single-day plan');
+      return;
+    }
+
+    // Build the full 14-slot pool. Today's slot stays as plan.todayMeals.
+    var pool=new Array(14);
+    pool[todayIdx]=plan.todayMeals.slice();
+
+    // Fill batch A slots
+    if(Array.isArray(batchA)){
+      for(var a=0;a<slotsA.length;a++){
+        var idxA=slotsA[a];
+        var rawA=batchA[a];
+        if(Array.isArray(rawA)&&rawA.length>0){
+          var expanded=rawA.map(expandPoolMeal).filter(Boolean);
+          if(expanded.length===4)pool[idxA]=expanded;
+        }
+      }
+    }
+    // Fill batch B slots
+    if(Array.isArray(batchB)){
+      for(var bi=0;bi<slotsB.length;bi++){
+        var idxB=slotsB[bi];
+        var rawB=batchB[bi];
+        if(Array.isArray(rawB)&&rawB.length>0){
+          var expandedB=rawB.map(expandPoolMeal).filter(Boolean);
+          if(expandedB.length===4)pool[idxB]=expandedB;
+        }
+      }
+    }
+
+    // Backfill any unset/failed slots with today's meals so the pool is
+    // always fully populated. User sees variety where AI succeeded;
+    // partial-failure days fall back to today rather than crashing.
+    for(var b=0;b<14;b++){
+      if(!Array.isArray(pool[b])||pool[b].length===0){
+        pool[b]=plan.todayMeals.slice();
+      }
+    }
+
+    plan.mealPool=pool;
+    plan.mealPoolAnchor=anchorIso;
+    saveSession();
+
+    // If user is on the nutrition tab, refresh so they see today's pool
+    // entry (which usually equals today's onboarding meals, but the
+    // assignment makes future days work).
+    if(currentView==='dashboard'&&dashTab==='nutrition'){
+      try{showTab('nutrition');}catch(_){ }
+    }
+  }catch(e){
+    console.warn('[meal-pool] generation failed (using single-day plan):',e&&e.message);
+    // No-op: plan.todayMeals still works as the legacy single-day source.
+  }
+}
+
+// ── AUTO-REFRESH: ROLLING POOL FOR PAID TIERS ─────────────────────────
+// Premium + Basic users get a sliding-window pool refresh every 7 days
+// so they never see the same dish within a 2-week window. Free tier
+// stays on the static 14-day loop (= upsell signal: "upgrade for fresh
+// recipes every week").
+//
+// Mechanics:
+//   - We track plan.mealPoolLastRefresh (ISO date of last refresh)
+//   - On every fp() call, check elapsed days since last refresh
+//   - If ≥7 days AND user is paid: regenerate ONE batch (the older half)
+//   - The newer half stays untouched, user sees rotating freshness
+//
+// Cost: 1 batch (~$0.025) per user per week ≈ $0.10/user/month.
+// Far cheaper than full 2-batch regen (which we keep for explicit
+// "rebuild plan" clicks).
+
+function daysSinceIsoDate(isoStr){
+  if(!isoStr)return Infinity;
+  try{
+    var then=new Date(isoStr);
+    var now=new Date();
+    then.setHours(0,0,0,0);
+    now.setHours(0,0,0,0);
+    return Math.floor((now.getTime()-then.getTime())/(24*60*60*1000));
+  }catch(_){
+    return Infinity;
+  }
+}
+
+// Replace half of the pool (the half that's older / about to wrap around).
+// Called from fp() on app launch / nutrition tab open. Idempotent and
+// rate-limited via plan.mealPoolLastRefresh.
+async function autoRefreshPoolIfDue(){
+  if(!plan||!Array.isArray(plan.mealPool)||plan.mealPool.length<14)return;
+  // Free tier: no auto-refresh. The 14-day loop is the cap, upgrade is
+  // the path to fresh recipes.
+  if(isFree())return;
+
+  // Have we refreshed recently? Anchor counts as initial creation date
+  // if we haven't refreshed yet.
+  var lastRefresh=plan.mealPoolLastRefresh||plan.mealPoolAnchor;
+  var daysSince=daysSinceIsoDate(lastRefresh);
+  if(daysSince<7)return;
+
+  // Pick which half to refresh. We alternate based on a counter so each
+  // call rotates a different half — meaning over 14 days, the entire
+  // pool gets renewed in two chunks of 7 days each.
+  var counter=Number(plan.mealPoolRefreshCount||0);
+  var refreshFirstHalf=(counter%2)===0;
+  var startIdx=refreshFirstHalf?0:7;
+  var endIdx=refreshFirstHalf?7:14;
+  var slotsToRefresh=[];
+  for(var i=startIdx;i<endIdx;i++){
+    slotsToRefresh.push(i);
+  }
+
+  // Build exclusion list from the half we're KEEPING — so newly
+  // generated meals don't duplicate dishes the user has just seen.
+  var keepStart=refreshFirstHalf?7:0;
+  var keepEnd=refreshFirstHalf?14:7;
+  var excludeNames=[];
+  for(var k=keepStart;k<keepEnd;k++){
+    var dayMeals=plan.mealPool[k];
+    if(Array.isArray(dayMeals)){
+      dayMeals.forEach(function(m){
+        if(m&&m.name)excludeNames.push(m.name);
+      });
+    }
+  }
+
+  // One batch is enough — half the pool is 7 days × 4 meals = 28 meals,
+  // which fits comfortably in a single ~5500-token Haiku response.
+  try{
+    var batch=await generatePoolBatch(slotsToRefresh.length,excludeNames,refreshFirstHalf?'refresh-A':'refresh-B');
+    if(!Array.isArray(batch)){
+      console.warn('[meal-pool] auto-refresh batch failed, will retry next session');
+      return;
+    }
+
+    // Apply new days to the pool. Keep old days as fallback if a slot's
+    // expansion fails — better stale than empty.
+    for(var s=0;s<slotsToRefresh.length;s++){
+      var poolIdx=slotsToRefresh[s];
+      var rawDay=batch[s];
+      if(Array.isArray(rawDay)&&rawDay.length>0){
+        var expanded=rawDay.map(expandPoolMeal).filter(Boolean);
+        if(expanded.length===4)plan.mealPool[poolIdx]=expanded;
+      }
+    }
+
+    // Stamp + bump counter so next refresh hits the OTHER half
+    var nowIso=todayDateStr();
+    plan.mealPoolLastRefresh=nowIso;
+    plan.mealPoolRefreshCount=counter+1;
+    saveSession();
+
+    // Toast only if user is actively on the nutrition tab (otherwise
+    // it would surprise them mid-task on another screen).
+    if(currentView==='dashboard'&&dashTab==='nutrition'){
+      var de=lang==='de';
+      peakToast(de?'Frische Rezepte hinzugefügt ✨':'Fresh recipes added ✨',{kind:'success',duration:1800});
+      try{showTab('nutrition');}catch(_){ }
+    }
+  }catch(e){
+    console.warn('[meal-pool] auto-refresh failed:',e&&e.message);
+  }
+}
+
 // Sport-specific bilingual fallback exercises. Used in two places:
 //  1. fetchPlan() — when AI generation hasn't started yet (showLoad screen)
 //  2. fp() — when AI generation FAILED and we need a credible visible plan
@@ -2582,7 +3011,15 @@ function getSportTips(sport,langCode){
 }
 
 function fp(){
-  if(plan)return plan;
+  if(plan){
+    // ── 14-DAY POOL SYNC ────────────────────────────────────────────────
+    // Before returning the plan, refresh plan.todayMeals from the meal
+    // pool so all downstream renderers (which read p.todayMeals[i]) see
+    // today's correct meals. Cheap: just an index lookup + slice.
+    // No-op if pool isn't generated yet (legacy single-day plan).
+    syncTodayMealsFromPool();
+    return plan;
+  }
   var deE=lang==='de';
   var sport=ud.sport||'Running';
   var level=ud.level||'Intermediate';
@@ -3055,6 +3492,11 @@ function showDash(){
   if(slEl)slEl.style.visibility='hidden';
   updateAuthUI();
   showTab(dashTab);
+  // Fire-and-forget rolling pool refresh for paid tiers. Internally
+  // rate-limited (≥7 days since last) and tier-gated (skips Free).
+  // Free of charge for the user even when triggered — the plan_generation_initial
+  // purpose tag means it doesn't count against any monthly quota.
+  try{autoRefreshPoolIfDue();}catch(_){ }
 }
 
 function isBasic(){return ud.tier==='basic';}
@@ -3389,6 +3831,66 @@ function showCuisinePickerFor(mealIdx){
   });
 }
 
+// ── MOOD-SWAP HELPERS ────────────────────────────────────────────────
+// Find a meal in the 14-day pool that matches the requested cuisine and
+// time slot, while avoiding ones the user has just seen. Returns null
+// if nothing usable in the pool — caller falls back to AI generation.
+//
+// "Recently seen" = the meal currently on screen + any meals the user
+// got via mood-swap in the last few minutes (tracked in
+// __recentMoodNames). This prevents re-roll from showing the same dish
+// twice in a row even if the cuisine has only 2 matching pool entries.
+function findPoolMealForMood(cuisine, slotTime, currentMealName){
+  if(!plan||!Array.isArray(plan.mealPool)||plan.mealPool.length<14)return null;
+  if(!cuisine||!slotTime)return null;
+
+  // Lowercase comparison for both, since AI labels can drift in casing
+  var cuTarget=String(cuisine).toLowerCase().trim();
+  var tTarget=String(slotTime).toLowerCase().trim();
+  var current=String(currentMealName||'').toLowerCase().trim();
+  var recent=window.__recentMoodNames||[];
+
+  // Collect candidates from across all 14 days
+  var candidates=[];
+  for(var d=0;d<plan.mealPool.length;d++){
+    var dayMeals=plan.mealPool[d];
+    if(!Array.isArray(dayMeals))continue;
+    for(var m=0;m<dayMeals.length;m++){
+      var meal=dayMeals[m];
+      if(!meal||typeof meal!=='object')continue;
+      var mealCuisine=String(meal.cuisine||'').toLowerCase().trim();
+      var mealTime=String(meal.time||'').toLowerCase().trim();
+      var mealName=String(meal.name||'').toLowerCase().trim();
+      if(mealTime!==tTarget)continue;
+      if(mealCuisine!==cuTarget)continue;
+      if(!mealName||mealName===current)continue;
+      if(recent.indexOf(mealName)>=0)continue;
+      candidates.push(meal);
+    }
+  }
+
+  if(candidates.length===0)return null;
+  // Pick a random candidate so re-rolls feel different each time
+  var picked=candidates[Math.floor(Math.random()*candidates.length)];
+  // Track this name so the next re-roll skips it
+  if(!window.__recentMoodNames)window.__recentMoodNames=[];
+  window.__recentMoodNames.unshift(picked.name||'');
+  if(window.__recentMoodNames.length>5)window.__recentMoodNames.length=5;
+  // Return a deep-ish copy so mutations later don't pollute the pool
+  return {
+    emoji:picked.emoji||'🍽️',
+    name:picked.name||'',
+    time:slotTime,  // preserve the ORIGINAL slot time (Breakfast/Lunch/etc.)
+    kcal:picked.kcal||0,
+    protein:picked.protein||0,
+    carbs:picked.carbs||0,
+    fat:picked.fat||0,
+    macro:picked.macro||((picked.protein||0)+'g '+(lang==='de'?'Eiweiß':'protein')),
+    cuisine:picked.cuisine||cuisine,
+    ingredients:Array.isArray(picked.ingredients)?picked.ingredients.map(function(x){return{item:x.item,qty:x.qty};}):[]
+  };
+}
+
 async function pickMood(cuisine, mealIdx){
   var a=document.getElementById('moodA');
   if(!a)return;
@@ -3402,6 +3904,28 @@ async function pickMood(cuisine, mealIdx){
   var slotTime=slot.time||'Meal';
   var slotKcal=slot.kcal||Math.round((p.calories||2000)/4);
   var slotProtein=mealMacro(slot,'protein')||Math.round((p.protein||120)/4);
+
+  // ── HYBRID STEP 1: Try pool first (instant, free) ─────────────────
+  // If we find a pool meal in the requested cuisine + time slot that
+  // isn't the current dish, use it directly — no AI call needed.
+  var poolMeal=findPoolMealForMood(cuisine,slotTime,slot.name);
+  if(poolMeal){
+    if(plan&&Array.isArray(plan.todayMeals)&&plan.todayMeals[mealIdx]){
+      // Update both the live view (todayMeals) and the underlying pool
+      // slot for today, so swaps persist into tomorrow's render too.
+      setMealForToday(mealIdx,poolMeal);
+      if(mrat&&mrat[mealIdx]!=null)delete mrat[mealIdx];
+      saveSession();
+    }
+    peakToast((de?esc(cuisine)+' '+esc(slotTime)+' bereit ✓':esc(cuisine)+' '+esc(slotTime)+' ready ✓'),{kind:'success',duration:1400});
+    window.__lastMoodPick={mealIdx:mealIdx,cuisine:cuisine};
+    showTab('nutrition');
+    return;
+  }
+
+  // ── HYBRID STEP 2: No pool match → fall back to AI generation ────
+  // This handles cuisines the user didn't pick at onboarding, or
+  // edge cases where the pool isn't fully generated yet.
   a.innerHTML='<div class="aib" style="margin-top:8px"><div class="ailbl"><div class="aidot"></div>PEAK AI</div><p>'+(de?'Generiere '+esc(cuisine)+' '+esc(slotTime)+'…':'Generating '+esc(cuisine)+' '+esc(slotTime)+'…')+'</p><div class="spin" style="width:22px;height:22px;margin:8px 0 0;border-width:2px"></div></div>';
   // Build prompt for a SINGLE meal (not the whole day) — keeps already
   // logged meals' kcal/macros in today's tracker untouched. AI also returns
@@ -3428,7 +3952,11 @@ async function pickMood(cuisine, mealIdx){
     if(plan&&Array.isArray(plan.todayMeals)&&plan.todayMeals[mealIdx]){
       // Preserve the time slot identity (in case AI returned a different label)
       meal.time=slotTime;
-      plan.todayMeals[mealIdx]=meal;
+      // Tag with the requested cuisine so future pool-lookups can match it
+      // even though this dish came from a one-off AI call (not pool gen).
+      meal.cuisine=cuisine;
+      // Use setMealForToday so it lands in both todayMeals AND pool[today]
+      setMealForToday(mealIdx,meal);
       // Reset rating for this slot only
       if(mrat&&mrat[mealIdx]!=null)delete mrat[mealIdx];
       saveSession();
@@ -5842,7 +6370,7 @@ initHistoryNav();
 bootApp().finally(function(){__bootDone=true;});
 syncThemeButton();
 </script>
-<link rel="manifest" href="/manifest.json?v=4">
+<link rel="manifest" href="/manifest.json?v=5">
 <script>
 // ── PWA: Service Worker Registration ─────────────────────────────────────
 // Force-updates the SW on every page load so new deploys reach users
