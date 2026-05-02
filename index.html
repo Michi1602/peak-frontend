@@ -1158,6 +1158,12 @@ function schedulePlanSync(){
   __planSyncTimer=setTimeout(syncPlanToBackend,1500);
 }
 async function syncPlanToBackend(){
+  // In-flight lock: avoids multiple simultaneous PUTs racing each other
+  // when several saveSession() callers fire schedulePlanSync() close
+  // together (sometimes happens after fetchPlan + auto-translation +
+  // pool refresh all completing within a few seconds).
+  if(window.__planSyncing)return;
+  window.__planSyncing=true;
   try{
     if(!plan||!plan.headline)return;
     // Don't sync the hardcoded fallback to the backend — it would block
@@ -1186,6 +1192,8 @@ async function syncPlanToBackend(){
     }
   }catch(e){
     console.warn('[plan] sync error:',e&&e.message);
+  }finally{
+    window.__planSyncing=false;
   }
 }
 
@@ -2759,34 +2767,74 @@ function deCleanup(s){
 async function translateWeekPlanToDE(week, sport, level){
   if(!week||!week.days)return week;
   var lk=levelKey(level);
-  var tasks=week.days.map(function(d){
-    if(!d||d.type==='rest'||!d.title)return Promise.resolve(d);
-    // Cache-key includes the title, so AI-generated sessions with different
-    // titles (e.g. "Explosive Lower Body" vs "Match-Specific Conditioning")
-    // don't overwrite each other's translations.
+  // SEQUENTIAL translation (was parallel via Promise.all) to avoid the
+  // 60-req/10-min aiLimiter on the backend. With Phone+Mac open after
+  // midnight, parallel translation of 7 sessions could blow through
+  // the rate limit alongside meal pool + stretch pool generation,
+  // causing some sessions to fail and the next render to retry them
+  // forever. Sequential is slower (~7s) but guaranteed to succeed.
+  //
+  // We keep a fail-fast inside the loop: if one session times out or
+  // errors, we use the original English session for that slot rather
+  // than blocking the entire translation.
+  var translated=[];
+  for(var i=0;i<week.days.length;i++){
+    var d=week.days[i];
+    if(!d||d.type==='rest'||!d.title){
+      translated.push(d);
+      continue;
+    }
+    // Cache-key: based on the ORIGINAL English title so cache hits work
+    // both before and after translation finishes.
     var key=sport+'|'+d.type+'|'+lk+'|'+d.title;
-    return translateSessionToDE(d,key);
-  });
-  var translated=await Promise.all(tasks);
+    try{
+      var result=await Promise.race([
+        translateSessionToDE(d,key),
+        // 15s per session — if Haiku is slow, fall back rather than hang
+        new Promise(function(_,reject){
+          setTimeout(function(){reject(new Error('translation timeout'));},15000);
+        })
+      ]);
+      translated.push(result||d);
+    }catch(e){
+      console.warn('[i18n] session '+i+' translation failed, using original:',e&&e.message);
+      translated.push(d);
+    }
+  }
   return {days:translated, weekNum:week.weekNum, phase:week.phase};
 }
 
-// Check if any non-rest session in week still needs DE translation
+// Check if any non-rest session in week still needs DE translation.
+//
+// CRITICAL: This must be conservative — false positives here cause an
+// infinite re-translation loop:
+//   1. First render: English title, cache miss → translation runs
+//   2. Translation fills cache keyed by ORIGINAL English title, but
+//      mutates the displayed title to German
+//   3. Next render: title is now German, cache key (now built from the
+//      German title) misses → returns true → translation runs AGAIN
+//   4. Loop until the user closes the tab (UI hangs because re-renders
+//      keep firing translation calls, each ~6sec, draining the 60/10min
+//      aiLimiter and freezing the visible plan area).
+//
+// The fix: if the title clearly does NOT look English, treat it as
+// already translated regardless of cache key — no work needed.
 function weekNeedsTranslation(week, sport, level){
   if(!week||!week.days)return false;
   var lk=levelKey(level);
   var cache=getSesCache();
   return week.days.some(function(d){
     if(!d||d.type==='rest'||!d.title)return false;
+    // Quick exit: if the title doesn't look English, the session was
+    // either generated in DE or already translated — skip.
+    if(!looksEnglish(d.title)&&!looksEnglish(d.focus)&&!looksEnglish(d.desc)){
+      return false;
+    }
     // Cache-key uses the title itself so each unique AI-generated session
-    // gets its own cached translation (previously cache hit by sport|type|level
-    // only, which incorrectly reused translations across different sessions).
+    // gets its own cached translation.
     var key=sport+'|'+d.type+'|'+lk+'|'+d.title;
     if(cache[key])return false;
-    // Also detect English text in an existing session that was never translated
-    // (e.g. "Advanced Ball Mastery", "Explosive Lower Body").
-    if(looksEnglish(d.title)||looksEnglish(d.focus)||looksEnglish(d.desc))return true;
-    return true; // no cache entry → need translation
+    return true;
   });
 }
 
@@ -3160,6 +3208,13 @@ async function enrichPoolWithAI(){
   if(!plan||!plan.todayMeals||plan.todayMeals.length===0)return;
   // Already enriched? Skip (idempotent — safe to call multiple times).
   if(Array.isArray(plan.mealPool)&&plan.mealPool.length>=14)return;
+  // In-flight guard: prevent multiple parallel generations when several
+  // triggers fire close together (e.g. fetchPlan() + loadAuthProfile()
+  // backend-pull race + auto-refresh on tab open). Without this, the
+  // user's plan could double up generation cost AND the second result
+  // overwrites the first mid-stream, producing an inconsistent pool.
+  if(window.__mealPoolGenerating)return;
+  window.__mealPoolGenerating=true;
 
   // Anchor pool day 0 to Monday of the current week. This way pool[0]=Mon,
   // pool[6]=Sun (week 1), pool[7]=Mon week 2, pool[13]=Sun week 2.
@@ -3288,6 +3343,8 @@ async function enrichPoolWithAI(){
   }catch(e){
     console.warn('[meal-pool] generation failed (using single-day plan):',e&&e.message);
     // No-op: plan.todayMeals still works as the legacy single-day source.
+  }finally{
+    window.__mealPoolGenerating=false;
   }
 }
 
@@ -4815,20 +4872,27 @@ async function showMealDetail(idx){
 // Module-level flag: prevents multiple parallel translation calls when
 // tFi is invoked repeatedly (e.g. during navigation, race conditions).
 var __weekTranslating=false;
+// Last successful translation timestamp — used as a cooldown so a buggy
+// looksEnglish() detection (e.g. AI returned hybrid German+English text
+// the regex still flags) can't immediately re-trigger another full
+// translation pass. 60s is enough time for the user to read the result
+// and either accept it or do something else.
+var __weekTranslatedAt=0;
 function tFi(p){
   var de=lang==='de';
   var sport=ud.sport||'—';var level=ud.level||'—';
   var sportDisplay=sportLabel(sport);
   // DE: trigger background translation of week templates if not yet cached.
-  // Robust version (Apr 2026): with guard flag, explicit logging, and a
-  // direct re-render via tFi(plan) instead of relying on showTab routing —
-  // showTab depends on currentView/dashTab which can momentarily desync
-  // and silently skip the re-render, leaving the user with English text.
-  if(de&&p&&p.week&&weekNeedsTranslation(p.week,sport,level)&&!__weekTranslating){
+  // Cooldown: 60s after a successful translation, skip re-triggering even
+  // if weekNeedsTranslation thinks more work is needed. Prevents the
+  // infinite re-translation loop reported on 02.05.2026 night.
+  var cooldownActive=(Date.now()-__weekTranslatedAt)<60000;
+  if(de&&p&&p.week&&!cooldownActive&&weekNeedsTranslation(p.week,sport,level)&&!__weekTranslating){
     __weekTranslating=true;
     console.log('[i18n] Starting DE translation of week plan…');
     translateWeekPlanToDE(p.week,sport,level).then(function(translated){
       __weekTranslating=false;
+      __weekTranslatedAt=Date.now();
       if(plan){
         plan.week=translated;
         saveSession();
@@ -4842,6 +4906,7 @@ function tFi(p){
       }
     }).catch(function(e){
       __weekTranslating=false;
+      __weekTranslatedAt=Date.now(); // cooldown even on failure (avoid retry storm)
       console.warn('[i18n] DE translation failed:',e&&e.message||e);
     });
   }
@@ -7947,7 +8012,7 @@ initHistoryNav();
 bootApp().finally(function(){__bootDone=true;});
 syncThemeButton();
 </script>
-<link rel="manifest" href="/manifest.json?v=13">
+<link rel="manifest" href="/manifest.json?v=14">
 <script>
 // ── PWA: Service Worker Registration ─────────────────────────────────────
 // Force-updates the SW on every page load so new deploys reach users
