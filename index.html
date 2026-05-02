@@ -141,6 +141,8 @@ input:-webkit-autofill,input:-webkit-autofill:focus{-webkit-box-shadow:0 0 0 100
 textarea{resize:vertical;min-height:64px}
 .irow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .ui{position:relative}.ui input{padding-right:42px}
+.dur-select{width:100%;padding:11px 14px;border:1.5px solid var(--ibd);background:var(--ibg);color:var(--white);font-size:13px;font-weight:600;font-family:inherit;border-radius:0;cursor:pointer;-webkit-appearance:none;-moz-appearance:none;appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='%23E8001A'><path d='M6 8L0 0h12z'/></svg>");background-repeat:no-repeat;background-position:right 12px center;background-size:10px}
+.dur-select:focus{outline:none;border-color:var(--red)}
 .utag{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:700;color:var(--red);pointer-events:none;letter-spacing:1px}
 .tiles{display:grid;gap:5px}.tiles.c2{grid-template-columns:1fr 1fr}.tiles.c3{grid-template-columns:1fr 1fr 1fr}.tiles.c4{grid-template-columns:1fr 1fr 1fr 1fr}
 .tile{border:1.5px solid var(--ibd);background:var(--ibg);padding:10px 12px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:7px;user-select:none}
@@ -1284,6 +1286,11 @@ var T={en:{
   com:'Commute',car:'Car',bus:'Bus/Train',walk:'Walking',bike:'Cycling',str:'Daily stress',
   s3:'Fitness',s3t:"What's your",s3e:'FAVOURITE SPORT?',s3s:'PEAK builds sport-specific workouts to make you better.',
   lv:'Level',beg:'Beginner',int:'Intermediate',adv:'Advanced',ses:'Sessions/week',dur:'Time/session',eq:'Where do you train?',gym:'Gym',hm:'Home',out:'Outdoors',
+  // Stretching onboarding (s3b)
+  s3b:'Mobility',s3bt:'Where do you',s3be:'NEED MOBILITY?',s3bs:'PEAK builds a daily stretching routine for your weak spots.',
+  stArea:'Choose up to 3 areas',stDur:'Time per session',
+  stHip:'Hip flexors / Hips',stChest:'Chest / Shoulders',stUpBack:'Upper back',stLowBack:'Lower back',
+  stHam:'Hamstrings / Posterior chain',stCalf:'Calves / Achilles',stNeck:'Neck',stKnee:'Knee mobility',stAnkle:'Ankle mobility',
   s4:'Nutrition',s4t:'Tell me about',s4e:'FOOD',s4s:"PEAK never suggests anything you can't eat.",
   al:'Allergies',di:'Dietary style',cu:'Favourite cuisines',co:'Cooking level',bg:'Weekly budget',none:'None',bc:'Beginner',ic:'Intermediate',ac:'Advanced chef',
   s5:'Your Goal',s5t:'What do you want to',s5e:'ACHIEVE?',
@@ -1333,6 +1340,11 @@ var T={en:{
   com:'Arbeitsweg',car:'Auto',bus:'Bus/Zug',walk:'Zu Fuß',bike:'Fahrrad',str:'Stresslevel',
   s3:'Fitness',s3t:'Was ist deine',s3e:'LIEBLINGSSPORTART?',s3s:'PEAK erstellt sportspezifische Workouts.',
   lv:'Level',beg:'Anfänger',int:'Fortgeschritten',adv:'Profi',ses:'Einheiten/Woche',dur:'Zeit/Einheit',eq:'Wo trainierst du?',gym:'Fitnessstudio',hm:'Zuhause',out:'Draußen',
+  // Stretching Onboarding (s3b)
+  s3b:'Mobilität',s3bt:'Wo brauchst du',s3be:'MOBILITÄT?',s3bs:'PEAK baut dir eine tägliche Dehn-Routine für deine Schwachstellen.',
+  stArea:'Wähle bis zu 3 Bereiche',stDur:'Zeit pro Einheit',
+  stHip:'Hüftbeuger / Hüfte',stChest:'Brust / Schultern',stUpBack:'Oberer Rücken',stLowBack:'Unterer Rücken',
+  stHam:'Hamstrings / Hintere Kette',stCalf:'Waden / Achilles',stNeck:'Nacken',stKnee:'Knie-Mobilität',stAnkle:'Sprunggelenk-Mobilität',
   s4:'Ernährung',s4t:'Erzähl mir von',s4e:'ESSEN',s4s:'PEAK schlägt nie etwas vor das du nicht essen kannst.',
   al:'Allergien',di:'Ernährungsweise',cu:'Lieblingsküchen',co:'Kochkenntnisse',bg:'Budget/Woche',none:'Keine',bc:'Anfänger',ic:'Mittelmäßig',ac:'Fortgeschrittener Koch',
   s5:'Dein Ziel',s5t:'Was möchtest du',s5e:'ERREICHEN?',
@@ -1526,6 +1538,22 @@ function setP(s,tot){
     slEl.textContent=lang==='de'?(s===70?'Fast fertig':'Check deine E-Mails'):(s===70?'Almost done':'Check your inbox');
     return;
   }
+  // Step 31 is s3b (mobility setup) — sits logically between 3 and 4.
+  // For the progress bar we treat it as "step 4 of 9", which shifts every
+  // later step by 1 (4→5, 5→6, 6→7, 7→8, 8→9). The numeric step variable
+  // stays unchanged for compatibility with hardcoded step=N references.
+  if(s===31){
+    pbEl.style.width=(3/8*100)+'%';
+    slEl.textContent=lang==='de'?'Schritt 4 von 9':'Step 4 of 9';
+    return;
+  }
+  // For steps 4+, shift the displayed numbers by 1 to account for s3b
+  if(s>=4&&s<=8){
+    var shifted=s+1;
+    pbEl.style.width=((shifted-1)/8*100)+'%';
+    slEl.textContent=lang==='de'?'Schritt '+shifted+' von 9':'Step '+shifted+' of 9';
+    return;
+  }
   pbEl.style.width=((s-1)/(tot-1)*100)+'%';
   slEl.textContent=s<=tot?(lang==='de'?'Schritt '+s+' von '+tot:'Step '+s+' of '+tot):(lang==='de'?'Fast geschafft!':'Almost there!');
 }
@@ -1537,7 +1565,7 @@ function setP(s,tot){
 var __lastRenderedStep=null;
 function render(){
   // Safety: if step is out of range, reset to intro (prevents blank screen)
-  var handlers={0:s0,1:s1,2:s2,3:s3,4:s4,5:s5,6:s6,7:s7,8:s8,70:s7f,71:s7fi};
+  var handlers={0:s0,1:s1,2:s2,3:s3,4:s4,5:s5,6:s6,7:s7,8:s8,31:s3b,70:s7f,71:s7fi};
   if(!handlers[step]){step=0;}
   currentView=step===0?'intro':'onboarding';
   setP(step,TOTAL);
@@ -1551,7 +1579,15 @@ function render(){
   }
 }
 function card(h){document.getElementById('mc').innerHTML=h;}
-function foot(lbl,fn,bk){bk=bk===undefined;return '<div class="cf">'+((!bk)&&step>1?'<button class="bbk" onclick="step--;render()">← Back</button>':'')+'<button class="bnx" onclick="('+fn.toString()+')()">'+lbl+' →</button></div>';}
+// Back-navigation mapping. Default is step--, but the s3b stretching
+// step (numeric 31) lives logically between 3 and 4, so back from step 4
+// must jump to 31, and back from 31 must jump to 3.
+function bkStep(){
+  if(step===4)return 31;
+  if(step===31)return 3;
+  return step-1;
+}
+function foot(lbl,fn,bk){bk=bk===undefined;return '<div class="cf">'+((!bk)&&step>1?'<button class="bbk" onclick="step=bkStep();render()">← Back</button>':'')+'<button class="bnx" onclick="('+fn.toString()+')()">'+lbl+' →</button></div>';}
 function sel(el,key,val){el.closest('.tiles').querySelectorAll('.tile').forEach(function(x){x.classList.remove('sel');});el.classList.add('sel');ud[key]=val;}
 function selSp(el,n){el.closest('.tiles').querySelectorAll('.stile').forEach(function(x){x.classList.remove('sel');});el.classList.add('sel');ud.sport=n;}
 
@@ -1611,7 +1647,31 @@ function selGoal(el,k){
 function tc(el,key,val){if(!ud[key])ud[key]=[];if(ud[key].includes(val)){ud[key]=ud[key].filter(function(v){return v!==val;});el.classList.remove('sel');}else{ud[key].push(val);el.classList.add('sel');}}
 function showE(id,msg){var el=document.getElementById(id);if(el){el.textContent='⚠ '+msg;el.style.display='block';}}
 function saveSession(){try{sessionStorage.setItem('pk_ud',JSON.stringify(ud));if(plan)sessionStorage.setItem('pk_plan',JSON.stringify(plan));sessionStorage.setItem('pk_train',JSON.stringify(trainState));}catch(e){}if(ud.email)scheduleTrainSync();}
-function loadSession(){try{var d=sessionStorage.getItem('pk_ud');if(d){var saved=JSON.parse(d);Object.keys(saved).forEach(function(k){if(k in saved)ud[k]=saved[k];});}var p=sessionStorage.getItem('pk_plan');if(p)plan=JSON.parse(p);var ts=sessionStorage.getItem('pk_train');if(ts){var t=JSON.parse(ts);if(t.completed)trainState.completed=t.completed;if(t.feedback)trainState.feedback=t.feedback;if(t.currentWeek)trainState.currentWeek=t.currentWeek;}}catch(e){}loadMealTrack();}
+function loadSession(){try{var d=sessionStorage.getItem('pk_ud');if(d){var saved=JSON.parse(d);Object.keys(saved).forEach(function(k){if(k in saved)ud[k]=saved[k];});}var p=sessionStorage.getItem('pk_plan');if(p)plan=JSON.parse(p);var ts=sessionStorage.getItem('pk_train');if(ts){var t=JSON.parse(ts);if(t.completed)trainState.completed=t.completed;if(t.feedback)trainState.feedback=t.feedback;if(t.currentWeek)trainState.currentWeek=t.currentWeek;}}catch(e){}loadMealTrack();migrateLegacyUd();}
+// Migration helper for users who onboarded before the May 2026 changes:
+//   - Workout dur was a free number → snap to nearest 15-min step (15..120)
+//   - Stretching fields didn't exist → set safe defaults
+function migrateLegacyUd(){
+  // 1) Snap ud.dur to 15-minute steps if it isn't already a multiple of 15.
+  //    Range clamp: 15..120. Examples: 45→45 (no change), 50→45, 55→60, 200→120.
+  if(ud.dur!==undefined&&ud.dur!==null&&ud.dur!==''){
+    var d=parseInt(ud.dur);
+    if(!isNaN(d)){
+      var snapped=Math.round(d/15)*15;
+      if(snapped<15)snapped=15;
+      if(snapped>120)snapped=120;
+      if(snapped!==d){
+        ud.dur=snapped;
+        try{saveSession();}catch(e){}
+      }
+    }
+  }
+  // 2) Stretching fields default for users without an s3b screen yet.
+  //    Empty array = "no priority areas yet, generate generic mobility";
+  //    10 min is the median session length and matches our dropdown center.
+  if(!Array.isArray(ud.stretchAreas))ud.stretchAreas=[];
+  if(!ud.stretchDur)ud.stretchDur=10;
+}
 
 // Debounced backend sync for trainState. Waits 1.5s after last change
 // so rapid actions (abhaken + feedback) only fire one request.
@@ -1692,7 +1752,72 @@ function s1(){card('<div class="ch"><div class="chip">✦ '+t('s1')+'</div><div 
 
 function s2(){card('<div class="ch"><div class="chip">✦ '+t('s2')+'</div><div class="ct">'+t('s2t')+' <em>'+t('s2e')+'</em></div><p class="cs">'+t('s2s')+'</p></div><div class="cb"><div class="field"><label>'+t('job')+'</label><div class="tiles">'+[{i:'💻',l:t('desk'),d:'Mostly sitting'},{i:'🔧',l:t('phys'),d:'On feet all day'},{i:'🔄',l:t('mix'),d:'Varies'},{i:'🌙',l:t('shift'),d:'Irregular'}].map(function(j){return '<div class="tile '+(ud.job===j.l?'sel':'')+'" onclick="sel(this,\'job\',\''+j.l+'\')"><span class="ti">'+j.i+'</span><span class="tt"><span class="tl">'+j.l+'</span><span class="td">'+j.d+'</span></span><span class="tck">✓</span></div>';}).join('')+'</div></div><div class="field"><label>'+t('com')+'</label><div class="tiles c2">'+[{i:'🚗',l:t('car')},{i:'🚌',l:t('bus')},{i:'🚶',l:t('walk')},{i:'🚲',l:t('bike')}].map(function(c){return '<div class="tile '+(ud.commute===c.l?'sel':'')+'" onclick="sel(this,\'commute\',\''+c.l+'\')"><span class="ti">'+c.i+'</span><span class="tl">'+c.l+'</span><span class="tck">✓</span></div>';}).join('')+'</div></div><div class="field"><label>'+t('str')+'</label><div class="slabs"><span>Low</span><span>Medium</span><span>High</span></div><input type="range" id="str" min="1" max="10" value="'+(ud.stress||5)+'" oninput="document.getElementById(\'sv\').textContent=this.value;ud.stress=this.value"><div class="sv" id="sv">'+(ud.stress||5)+'<span style="font-size:12px;color:var(--faint);font-family:Barlow"> /10</span></div></div></div>'+foot('Continue',function(){if(!ud.job){peakToast(lang==='de'?'Bitte Job-Typ wählen.':'Please select your job type.');return;}saveSession();step++;render();}));}
 
-function s3(){var sp=[{e:'🏃',n:'Running'},{e:'🏋️',n:'Weights'},{e:'⚽',n:'Football'},{e:'🚴',n:'Cycling'},{e:'🏊',n:'Swimming'},{e:'🧘',n:'Yoga'},{e:'🥊',n:'Martial Arts'},{e:'🏀',n:'Basketball'},{e:'🎾',n:'Tennis'},{e:'🏐',n:'Volleyball'},{e:'⛷️',n:'Skiing'},{e:'🏌️',n:'Golf'},{e:'🤸',n:'Gymnastics'},{e:'🚣',n:'Rowing'},{e:'🏇',n:'Equestrian'},{e:'🎯',n:'Other'}];card('<div class="ch"><div class="chip">✦ '+t('s3')+'</div><div class="ct">'+t('s3t')+' <em>'+t('s3e')+'</em></div><p class="cs">'+t('s3s')+'</p></div><div class="cb"><div class="field"><div class="tiles c4">'+sp.map(function(s){return '<div class="stile '+(ud.sport===s.n?'sel':'')+'" onclick="selSp(this,\''+s.n+'\')"><span class="se">'+s.e+'</span><span class="sn">'+sportLabel(s.n)+'</span></div>';}).join('')+'</div></div><div class="field"><label>'+t('lv')+'</label><div class="tiles c3">'+[t('beg'),t('int'),t('adv')].map(function(l){return '<div class="tile '+(ud.level===l?'sel':'')+'" onclick="sel(this,\'level\',\''+l+'\')"><span class="tl">'+l+'</span><span class="tck">✓</span></div>';}).join('')+'</div></div><div class="irow"><div class="field"><label>'+t('ses')+'</label><div class="ui"><input type="number" id="ses" placeholder="3" value="'+(ud.sessions||'')+'"><span class="utag">×</span></div></div><div class="field"><label>'+t('dur')+'</label><div class="ui"><input type="number" id="dur" placeholder="60" value="'+(ud.dur||'')+'"><span class="utag">MIN</span></div></div></div><div class="field"><label>'+t('eq')+'</label><div class="tiles c3">'+[{i:'🏋️',l:t('gym')},{i:'🏠',l:t('hm')},{i:'🌳',l:t('out')}].map(function(e){return '<div class="tile '+(ud.equip===e.l?'sel':'')+'" onclick="sel(this,\'equip\',\''+e.l+'\')"><span class="ti">'+e.i+'</span><span class="tl">'+e.l+'</span><span class="tck">✓</span></div>';}).join('')+'</div></div></div>'+foot('Continue',function(){ud.sessions=document.getElementById('ses').value;ud.dur=document.getElementById('dur').value;if(!ud.sport||!ud.level){peakToast(lang==='de'?'Bitte Sportart und Level wählen.':'Please pick a sport and level.');return;}saveSession();step++;render();}));}
+function s3(){var sp=[{e:'🏃',n:'Running'},{e:'🏋️',n:'Weights'},{e:'⚽',n:'Football'},{e:'🚴',n:'Cycling'},{e:'🏊',n:'Swimming'},{e:'🧘',n:'Yoga'},{e:'🥊',n:'Martial Arts'},{e:'🏀',n:'Basketball'},{e:'🎾',n:'Tennis'},{e:'🏐',n:'Volleyball'},{e:'⛷️',n:'Skiing'},{e:'🏌️',n:'Golf'},{e:'🤸',n:'Gymnastics'},{e:'🚣',n:'Rowing'},{e:'🏇',n:'Equestrian'},{e:'🎯',n:'Other'}];card('<div class="ch"><div class="chip">✦ '+t('s3')+'</div><div class="ct">'+t('s3t')+' <em>'+t('s3e')+'</em></div><p class="cs">'+t('s3s')+'</p></div><div class="cb"><div class="field"><div class="tiles c4">'+sp.map(function(s){return '<div class="stile '+(ud.sport===s.n?'sel':'')+'" onclick="selSp(this,\''+s.n+'\')"><span class="se">'+s.e+'</span><span class="sn">'+sportLabel(s.n)+'</span></div>';}).join('')+'</div></div><div class="field"><label>'+t('lv')+'</label><div class="tiles c3">'+[t('beg'),t('int'),t('adv')].map(function(l){return '<div class="tile '+(ud.level===l?'sel':'')+'" onclick="sel(this,\'level\',\''+l+'\')"><span class="tl">'+l+'</span><span class="tck">✓</span></div>';}).join('')+'</div></div><div class="irow"><div class="field"><label>'+t('ses')+'</label><div class="ui"><input type="number" id="ses" placeholder="3" value="'+(ud.sessions||'')+'"><span class="utag">×</span></div></div><div class="field"><label>'+t('dur')+'</label><select id="dur" class="dur-select">'+[15,30,45,60,75,90,105,120].map(function(d){var sel=parseInt(ud.dur||60)===d?'selected':'';return '<option value="'+d+'" '+sel+'>'+d+' min</option>';}).join('')+'</select></div></div><div class="field"><label>'+t('eq')+'</label><div class="tiles c3">'+[{i:'🏋️',l:t('gym')},{i:'🏠',l:t('hm')},{i:'🌳',l:t('out')}].map(function(e){return '<div class="tile '+(ud.equip===e.l?'sel':'')+'" onclick="sel(this,\'equip\',\''+e.l+'\')"><span class="ti">'+e.i+'</span><span class="tl">'+e.l+'</span><span class="tck">✓</span></div>';}).join('')+'</div></div></div>'+foot('Continue',function(){ud.sessions=document.getElementById('ses').value;ud.dur=document.getElementById('dur').value;if(!ud.sport||!ud.level){peakToast(lang==='de'?'Bitte Sportart und Level wählen.':'Please pick a sport and level.');return;}saveSession();step=31;render();}));}
+
+// s3b — Stretching/Mobility setup (May 2026). Inserted between s3 (sport)
+// and s4 (nutrition). Step number 31 (between 3 and 4) keeps existing
+// hardcoded step references in the rest of the codebase (step=6, step=7,
+// step=8 for paywall/email/etc.) unchanged. The flow is:
+//   s3 sets step=31 → render(31) → s3b sets step=4 on continue.
+//
+// Multi-select up to 3 problem areas + duration dropdown (5/10/15/20/25/30 min).
+// Stored as ud.stretchAreas (array of area keys) + ud.stretchDur (number).
+// Defaults for users who never see this step: stretchAreas=[], stretchDur=10.
+function s3b(){
+  if(!Array.isArray(ud.stretchAreas))ud.stretchAreas=[];
+  if(!ud.stretchDur)ud.stretchDur=10;
+  var areas=[
+    {k:'hip',l:t('stHip')},{k:'chest',l:t('stChest')},
+    {k:'upBack',l:t('stUpBack')},{k:'lowBack',l:t('stLowBack')},
+    {k:'ham',l:t('stHam')},{k:'calf',l:t('stCalf')},
+    {k:'neck',l:t('stNeck')},{k:'knee',l:t('stKnee')},
+    {k:'ankle',l:t('stAnkle')}
+  ];
+  var de=lang==='de';
+  card(
+    '<div class="ch"><div class="chip">✦ '+t('s3b')+'</div><div class="ct">'+t('s3bt')+' <em>'+t('s3be')+'</em></div><p class="cs">'+t('s3bs')+'</p></div>'+
+    '<div class="cb">'+
+      '<div class="field"><label>'+t('stArea')+'</label>'+
+        '<div class="chips">'+areas.map(function(a){
+          var sel=ud.stretchAreas.indexOf(a.k)>=0?'sel':'';
+          return '<div class="chip2 '+sel+'" onclick="tcStretch(this,\''+a.k+'\')">'+a.l+'</div>';
+        }).join('')+'</div>'+
+      '</div>'+
+      '<div class="field"><label>'+t('stDur')+'</label>'+
+        '<select id="stDur" class="dur-select">'+
+        [5,10,15,20,25,30].map(function(d){
+          var sel=parseInt(ud.stretchDur)===d?'selected':'';
+          return '<option value="'+d+'" '+sel+'>'+d+' min</option>';
+        }).join('')+
+        '</select>'+
+      '</div>'+
+    '</div>'+
+    foot('Continue',function(){
+      ud.stretchDur=parseInt(document.getElementById('stDur').value)||10;
+      // stretchAreas is mutated directly by tcStretch — already up to date
+      saveSession();
+      step=4;
+      render();
+    })
+  );
+}
+
+// Toggle handler for stretching area chips. Caps selection at 3.
+function tcStretch(el,key){
+  if(!Array.isArray(ud.stretchAreas))ud.stretchAreas=[];
+  var idx=ud.stretchAreas.indexOf(key);
+  if(idx>=0){
+    ud.stretchAreas.splice(idx,1);
+    el.classList.remove('sel');
+  }else{
+    if(ud.stretchAreas.length>=3){
+      peakToast(lang==='de'?'Maximal 3 Bereiche — fokussiertere Routine.':'Max 3 areas — keeps routine focused.');
+      return;
+    }
+    ud.stretchAreas.push(key);
+    el.classList.add('sel');
+  }
+}
 
 function s4(){var al=['Gluten','Dairy','Nuts','Peanuts','Shellfish','Eggs','Soy','Fish','Pork','Sesame','Mustard','Lactose','Fructose','Histamine'];var di=['🥩 Keto','🌱 Vegan','🥗 Vegetarian','🐟 Pescatarian','🫙 Paleo','🍖 Carnivore','🌾 Gluten-free','🧘 Mediterranean','⚡ Intermittent Fasting','💊 Diabetic-friendly'];var cu=['🇲🇽 Mexican','🍝 Italian','🍜 Asian','🥗 Mediterranean','🍔 American','🍛 Indian','🇯🇵 Japanese','🥙 Middle Eastern','🇹🇭 Thai','🇬🇷 Greek'];card('<div class="ch"><div class="chip">✦ '+t('s4')+'</div><div class="ct">'+t('s4t')+' <em>'+t('s4e')+'</em></div><p class="cs">'+t('s4s')+'</p></div><div class="cb"><div class="field"><label>'+t('al')+'</label><div class="chips">'+al.map(function(a){return '<div class="chip2 '+((ud.al||[]).includes(a)?'sel':'')+'" onclick="tc(this,\'al\',\''+a+'\')">'+a+'</div>';}).join('')+'<div class="chip2" onclick="ud.al=[];document.querySelectorAll(\'.chip2:not(.di):not(.cu)\').forEach(function(x){x.classList.remove(\'sel\')})">'+t('none')+'</div></div></div><div class="field"><label>'+t('di')+'</label><div class="chips">'+di.map(function(d){return '<div class="chip2 di '+((ud.di||[]).includes(d)?'sel':'')+'" onclick="tc(this,\'di\',\''+d+'\')">'+d+'</div>';}).join('')+'</div></div><div class="field"><label>'+t('cu')+'</label><div class="chips">'+cu.map(function(c){return '<div class="chip2 cu '+((ud.cu||[]).includes(c)?'sel':'')+'" onclick="tc(this,\'cu\',\''+c+'\')">'+c+'</div>';}).join('')+'</div></div><div class="field"><label>'+t('co')+'</label><div class="tiles c3">'+[{i:'🔰',l:t('bc'),d:'Simple & quick'},{i:'🍳',l:t('ic'),d:'Comfortable'},{i:'👨‍🍳',l:t('ac'),d:'Love cooking'}].map(function(s){return '<div class="tile '+(ud.cook===s.l?'sel':'')+'" onclick="sel(this,\'cook\',\''+s.l+'\')"><span class="ti">'+s.i+'</span><span class="tt"><span class="tl">'+s.l+'</span><span class="td">'+s.d+'</span></span><span class="tck">✓</span></div>';}).join('')+'</div></div><div class="field"><label>'+t('bg')+'</label><div class="ui"><input type="number" id="bg" placeholder="80" value="'+(ud.budget||'')+'"><span class="utag">€/WK</span></div></div></div>'+foot('Continue',function(){ud.budget=document.getElementById('bg').value;if(!ud.cook){peakToast(lang==='de'?'Bitte Kochlevel wählen.':'Please select cooking level.');return;}saveSession();step++;render();}));}
 
@@ -3451,7 +3576,7 @@ async function doPay(){
     }
     // No existing account (or logged-in Free upgrade) → proceed to Stripe Checkout
     var voucherCode=document.getElementById('vc')?document.getElementById('vc').value.trim().toUpperCase():'';
-    var res=await fetch(BACKEND+'/create-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,plan:selPlan,tier:selTier,userData:{name:ud.name,age:ud.age,gender:ud.gender,weight:ud.weight,dweight:ud.dweight,height:ud.height,sleep:ud.sleep,job:ud.job,commute:ud.commute,stress:ud.stress,sport:ud.sport,level:ud.level,sessions:ud.sessions,dur:ud.dur,equip:ud.equip,al:ud.al||[],di:ud.di||[],cu:ud.cu||[],cook:ud.cook,budget:ud.budget,goal:ud.goal,goals:ud.goals||[]},consent:{healthData:true,terms:true,at:ud.consent_at},voucher:voucherCode||null,lang:lang})});
+    var res=await fetch(BACKEND+'/create-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,plan:selPlan,tier:selTier,userData:{name:ud.name,age:ud.age,gender:ud.gender,weight:ud.weight,dweight:ud.dweight,height:ud.height,sleep:ud.sleep,job:ud.job,commute:ud.commute,stress:ud.stress,sport:ud.sport,level:ud.level,sessions:ud.sessions,dur:ud.dur,equip:ud.equip,al:ud.al||[],di:ud.di||[],cu:ud.cu||[],cook:ud.cook,budget:ud.budget,goal:ud.goal,goals:ud.goals||[],stretchAreas:ud.stretchAreas||[],stretchDur:ud.stretchDur||10},consent:{healthData:true,terms:true,at:ud.consent_at},voucher:voucherCode||null,lang:lang})});
     var data=await res.json();
     // Backend detected an existing active subscription → show portal instead
     if(res.status===409&&data.code==='ALREADY_SUBSCRIBED'){
@@ -3571,7 +3696,8 @@ async function doFreeSignup(){
           job:ud.job,commute:ud.commute,stress:ud.stress,
           sport:ud.sport,level:ud.level,sessions:ud.sessions,dur:ud.dur,equip:ud.equip,
           al:ud.al||[],di:ud.di||[],cu:ud.cu||[],cook:ud.cook,budget:ud.budget,
-          goal:ud.goal,goals:ud.goals||[]
+          goal:ud.goal,goals:ud.goals||[],
+          stretchAreas:ud.stretchAreas||[],stretchDur:ud.stretchDur||10
         },
         consent:{healthData:true,terms:true,at:ud.consent_at},
         lang:lang
@@ -5702,6 +5828,11 @@ async function loadAuthProfile(){
     if(Array.isArray(p.cu))ud.cu=p.cu;
     if(p.cook)ud.cook=p.cook;
     if(p.budget!==undefined&&p.budget!==null)ud.budget=p.budget;
+    // Stretching/mobility fields (May 2026). DB columns are snake_case;
+    // frontend uses camelCase. Default to safe values if backend returns
+    // null (e.g. legacy users who never went through s3b onboarding).
+    if(Array.isArray(p.stretch_areas))ud.stretchAreas=p.stretch_areas;
+    if(p.stretch_dur!==undefined&&p.stretch_dur!==null)ud.stretchDur=p.stretch_dur;
     // Tier defaults to 'free' if backend doesn't return a value. Critical
     // security default: previous fallback was 'premium', which meant a user
     // with a missing/null tier field would see all Premium UI features
@@ -5962,6 +6093,8 @@ function profLabel(key){
     dur:de?'Dauer':'Duration',equip:de?'Equipment':'Equipment',
     al:de?'Allergien':'Allergies',di:de?'Diät':'Diet',cu:de?'Küchen':'Cuisines',
     cook:de?'Kochlevel':'Cooking',budget:de?'Budget':'Budget',goal:de?'Ziel':'Goal',
+    stretchAreas:de?'Mobilitäts-Bereiche':'Mobility areas',
+    stretchDur:de?'Mobilität (Dauer)':'Mobility (duration)',
     email:de?'E-Mail':'Email'
   };
   return labels[key]||key;
@@ -5991,6 +6124,14 @@ function profValue(key){
   if(key==='weight'||key==='dweight')return v+' kg';
   if(key==='height')return v+' cm';
   if(key==='sleep')return v+' h';
+  if(key==='stretchDur')return v+' min';
+  // Stretching areas — stored as keys (hip, chest, …), display as
+  // translated labels so the user sees their language.
+  if(key==='stretchAreas'){
+    if(!Array.isArray(v)||v.length===0)return '—';
+    var AREA_LABELS={hip:'stHip',chest:'stChest',upBack:'stUpBack',lowBack:'stLowBack',ham:'stHam',calf:'stCalf',neck:'stNeck',knee:'stKnee',ankle:'stAnkle'};
+    return v.map(function(k){return t(AREA_LABELS[k]||k);}).join(', ');
+  }
   if(key==='dur')return v+' min';
   if(key==='sessions')return v+(lang==='de'?'× / Woche':'× / week');
   if(key==='stress')return v+'/10';
@@ -6070,7 +6211,42 @@ function showProfile(){
           var isSel=selected.indexOf(o)>=0;
           return '<div class="chip2 '+(isSel?'sel':'')+'" onclick="toggleProfChip(\''+key+'\',\''+o.replace(/'/g,"\\'")+'\',this)">'+o+'</div>';
         }).join('')+'</div>';
-      }else if(['age','weight','dweight','height','sleep','sessions','dur','stress','budget'].indexOf(key)>=0){
+      }else if(key==='dur'){
+        // Workout duration — 15-min steps, matches the onboarding dropdown.
+        // Pre-select current value snapped to the nearest valid 15-min step.
+        var durOpts=[15,30,45,60,75,90,105,120];
+        var curDur=parseInt(current)||60;
+        // Snap to nearest valid step in case legacy data slipped through
+        var snappedDur=durOpts.reduce(function(closest,d){
+          return Math.abs(d-curDur)<Math.abs(closest-curDur)?d:closest;
+        },durOpts[0]);
+        inputHtml='<select id="pe_'+key+'">'+durOpts.map(function(d){
+          return '<option value="'+d+'"'+(d===snappedDur?' selected':'')+'>'+d+' min</option>';
+        }).join('')+'</select>';
+      }else if(key==='stretchDur'){
+        // Stretching duration — 5-min steps, 5..30
+        var sdOpts=[5,10,15,20,25,30];
+        var curSD=parseInt(current)||10;
+        inputHtml='<select id="pe_'+key+'">'+sdOpts.map(function(d){
+          return '<option value="'+d+'"'+(d===curSD?' selected':'')+'>'+d+' min</option>';
+        }).join('')+'</select>';
+      }else if(key==='stretchAreas'){
+        // Multi-select for mobility focus areas (max 3) — same chips
+        // pattern as al/di/cu but with a hard cap and area key list.
+        var areaList=[
+          {k:'hip',l:t('stHip')},{k:'chest',l:t('stChest')},
+          {k:'upBack',l:t('stUpBack')},{k:'lowBack',l:t('stLowBack')},
+          {k:'ham',l:t('stHam')},{k:'calf',l:t('stCalf')},
+          {k:'neck',l:t('stNeck')},{k:'knee',l:t('stKnee')},
+          {k:'ankle',l:t('stAnkle')}
+        ];
+        var selectedAreas=Array.isArray(current)?current.slice():[];
+        inputHtml='<input type="hidden" id="pe_'+key+'" value="'+selectedAreas.join('||')+'">';
+        inputHtml+='<div class="chips" id="peChips_'+key+'">'+areaList.map(function(a){
+          var isSel=selectedAreas.indexOf(a.k)>=0;
+          return '<div class="chip2 '+(isSel?'sel':'')+'" onclick="toggleStretchAreaChip(\''+a.k+'\',this)">'+a.l+'</div>';
+        }).join('')+'</div>';
+      }else if(['age','weight','dweight','height','sleep','sessions','stress','budget'].indexOf(key)>=0){
         inputHtml='<input type="number" id="pe_'+key+'" value="'+(current||'')+'">';
       }else{
         inputHtml='<input type="text" id="pe_'+key+'" value="'+(current||'').toString().replace(/"/g,'&quot;')+'">';
@@ -6097,6 +6273,10 @@ function showProfile(){
   // Training
   c+='<div class="prf-sec"><div class="prf-sec-t">'+(de?'Training':'Training')+'</div>';
   c+=row('sport')+row('level')+row('sessions')+row('dur')+row('equip')+row('goal');
+  c+='</div>';
+  // Mobilität / Stretching (May 2026)
+  c+='<div class="prf-sec"><div class="prf-sec-t">'+(de?'Mobilität':'Mobility')+'</div>';
+  c+=row('stretchAreas')+row('stretchDur');
   c+='</div>';
   // Ernährung
   c+='<div class="prf-sec"><div class="prf-sec-t">'+(de?'Ernährung':'Nutrition')+'</div>';
@@ -6146,6 +6326,28 @@ function toggleProfChip(key, value, el){
   hidden.value=arr.join('||');
 }
 
+// Mobility/stretching focus area chip toggle. Hard-capped at 3 selections
+// to keep the AI-generated routine focused. Stored as area keys (not
+// localized labels) so the value survives language switches.
+function toggleStretchAreaChip(key, el){
+  var hidden=document.getElementById('pe_stretchAreas');
+  if(!hidden)return;
+  var arr=hidden.value?hidden.value.split('||').filter(Boolean):[];
+  var idx=arr.indexOf(key);
+  if(idx>=0){
+    arr.splice(idx,1);
+    el.classList.remove('sel');
+  }else{
+    if(arr.length>=3){
+      peakToast(lang==='de'?'Maximal 3 Bereiche — fokussiertere Routine.':'Max 3 areas — keeps routine focused.');
+      return;
+    }
+    arr.push(key);
+    el.classList.add('sel');
+  }
+  hidden.value=arr.join('||');
+}
+
 function editProfileField(key){
   profEditing=key;
   showProfile();
@@ -6161,13 +6363,13 @@ async function saveProfile(key){
   if(!inp)return;
   var raw=inp.value;
   var newVal;
-  if(['age','weight','dweight','height','sleep','sessions','dur','stress','budget'].indexOf(key)>=0){
+  if(['age','weight','dweight','height','sleep','sessions','dur','stress','budget','stretchDur'].indexOf(key)>=0){
     newVal=raw===''?null:parseFloat(raw);
     if(newVal!==null&&(isNaN(newVal)||newVal<0)){
       peakToast(lang==='de'?'Bitte gültige Zahl eingeben.':'Please enter a valid number.');
       return;
     }
-  }else if(key==='al'||key==='di'||key==='cu'){
+  }else if(key==='al'||key==='di'||key==='cu'||key==='stretchAreas'){
     var rawArr=raw?raw.split('||').map(function(s){return s.trim();}).filter(Boolean):[];
     // Dedupe case-insensitively: keep first occurrence (normalized casing from chips)
     var seen={};
@@ -6618,7 +6820,7 @@ initHistoryNav();
 bootApp().finally(function(){__bootDone=true;});
 syncThemeButton();
 </script>
-<link rel="manifest" href="/manifest.json?v=8">
+<link rel="manifest" href="/manifest.json?v=9">
 <script>
 // ── PWA: Service Worker Registration ─────────────────────────────────────
 // Force-updates the SW on every page load so new deploys reach users
