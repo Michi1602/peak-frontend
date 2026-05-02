@@ -3355,21 +3355,36 @@ async function generateStretchBatch(slots, batchLabel){
     '  - "rest": no workout that day → produce "full" array (5-7 moves)\n'+
     '    covering all focus areas + general mobility.\n\n'+
     'Slots:\n'+slotsText+'\n\n'+
-    'Each exercise must have: name (short, max 5 words), detail (sets×duration\n'+
-    'or sets×reps, e.g. "2×45s each side"), focus (area key from this list:\n'+
-    'hip, chest, upBack, lowBack, ham, calf, neck, knee, ankle, general).\n\n'+
+    'Each exercise MUST have these fields:\n'+
+    '  - name: short title, max 5 words\n'+
+    '  - detail: sets × duration/reps, e.g. "2×45s each side"\n'+
+    '  - focus: one area key from: hip, chest, upBack, lowBack, ham,\n'+
+    '    calf, neck, knee, ankle, general\n'+
+    '  - howTo: an OBJECT with these fields:\n'+
+    '    - steps: array of 3-5 numbered short instructions someone who\n'+
+    '      has never done the move can follow ("Stand tall...", "Step\n'+
+    '      forward...", "Hold for...")\n'+
+    '    - cues: array of 2-3 short positive form pointers ("Keep heel\n'+
+    '      flat", "Spine long", "Breathe deeply")\n'+
+    '    - mistakes: array of 2-3 common errors to avoid ("Don\'t bounce",\n'+
+    '      "Avoid arching the lower back")\n'+
+    '    - why: ONE sentence describing the benefit and why this exercise\n'+
+    '      matters for the user\'s sport ('+sport+')\n\n'+
+    'CRITICAL: howTo.steps must be ACTIONABLE — a beginner reading them\n'+
+    'should be able to perform the exercise correctly without seeing a\n'+
+    'video. Be specific about positioning, body parts, direction.\n\n'+
     'Variety: across the '+slots.length+' slots, do NOT repeat the same\n'+
     'exercise. Mix techniques (PNF, dynamic flow, static holds, joint\n'+
     'circles, fascia work). Sport-specific moves welcome.\n\n'+
     'Total duration per slot ≈ '+dur+' minutes. Be realistic.\n\n'+
     'Return ONLY a JSON array of routine objects, no markdown, no prose:\n'+
     '[\n'+
-    '  {"type":"training","pre":[{"name":"...","detail":"...","focus":"..."}],"post":[...]},\n'+
-    '  {"type":"rest","full":[{"name":"...","detail":"...","focus":"..."}]}\n'+
+    '  {"type":"training","pre":[{"name":"...","detail":"...","focus":"...","howTo":{"steps":[...],"cues":[...],"mistakes":[...],"why":"..."}}],"post":[...]},\n'+
+    '  {"type":"rest","full":[{"name":"...","detail":"...","focus":"...","howTo":{...}}]}\n'+
     ']';
 
   try{
-    var result=await aiGenJSON(prompt,5500,'stretch_pool_'+batchLabel);
+    var result=await aiGenJSON(prompt,9000,'stretch_pool_'+batchLabel);
     if(!Array.isArray(result))return [];
     return result;
   }catch(e){
@@ -5520,9 +5535,19 @@ function tMo(p){
 // Renders one mobility section (Pre/Post/Full) with title + exercise list
 function renderMobilitySection(title,exercises,sectionKey){
   if(!Array.isArray(exercises)||exercises.length===0)return '';
-  var html='<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:var(--red);text-transform:uppercase;margin:18px 0 8px">'+title+'</div>';
+  var de=lang==='de';
+  var total=exercises.length;
+  // Cohesive container styling — exercises numbered 1..N with a thin
+  // connector line on the left, footer that ties them together as ONE
+  // routine. This visually communicates "do all of these" instead of
+  // "pick one, ignore the rest" which the previous tile design suggested.
+  var html='<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:var(--red);text-transform:uppercase;margin:18px 0 4px">'+title+'</div>';
+  html+='<div style="font-size:11px;color:var(--faint);margin-bottom:10px">'+(de?'Alle '+total+' Übungen ergeben deine '+title.toLowerCase()+'.':'All '+total+' exercises form your '+title.toLowerCase()+'.')+'</div>';
+  // Container with continuous left border to suggest "one routine"
+  html+='<div style="border-left:2px solid var(--red);padding-left:10px;display:flex;flex-direction:column;gap:4px">';
   html+=exercises.map(function(ex,idx){
-    return '<div onclick="openStretch(\''+sectionKey+'\','+idx+')" style="padding:10px 12px;background:var(--s2);border:1px solid var(--border);margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:8px">'+
+    return '<div onclick="openStretch(\''+sectionKey+'\','+idx+')" style="padding:10px 12px;background:var(--s2);border:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:10px">'+
+      '<div style="flex-shrink:0;width:22px;height:22px;border-radius:50%;background:var(--red);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">'+(idx+1)+'</div>'+
       '<div style="flex:1;min-width:0">'+
         '<div style="font-size:13px;font-weight:600;color:var(--white);margin-bottom:2px">'+ex.name+'</div>'+
         '<div style="font-size:11px;color:var(--ink2)">'+ex.detail+'</div>'+
@@ -5530,6 +5555,9 @@ function renderMobilitySection(title,exercises,sectionKey){
       '<span style="color:var(--faint);font-size:10px;flex-shrink:0">→</span>'+
     '</div>';
   }).join('');
+  html+='</div>';
+  // Footer reinforces the "do all" message
+  html+='<div style="font-size:10px;color:var(--faint);margin-top:8px;text-align:center;font-style:italic">'+(de?'↑ '+total+' Übungen · der Reihe nach durchführen':'↑ '+total+' exercises · perform in sequence')+'</div>';
   return html;
 }
 
@@ -5582,13 +5610,200 @@ var STRETCH_EXPL_BY_FOCUS={
   }
 };
 
-// Look up an explanation. Falls back through: focus key → general.
+// Look up an explanation. Three-tier resolution:
+//   1. exercise.howTo present? Use it directly (AI generated this).
+//   2. Match by exercise.name in STRETCH_HOWTO_BY_NAME (static library).
+//   3. Fallback to focus-based generic guidance (STRETCH_EXPL_BY_FOCUS).
+//
+// Output shape always: {steps:[...], cues:[...], mistakes:[...], why:'...'}
 function getStretchExplanation(exercise){
   var de=lang==='de';
+  // Tier 1: AI-supplied structured how-to
+  if(exercise&&exercise.howTo&&typeof exercise.howTo==='object'){
+    var h=exercise.howTo;
+    if(Array.isArray(h.steps)&&h.steps.length){
+      return {
+        steps:h.steps,
+        cues:Array.isArray(h.cues)?h.cues:[],
+        mistakes:Array.isArray(h.mistakes)?h.mistakes:[],
+        why:h.why||''
+      };
+    }
+  }
+  // Tier 2: Static library by exercise name
+  var name=exercise&&exercise.name;
+  if(name&&STRETCH_HOWTO_BY_NAME[name]){
+    var entry=STRETCH_HOWTO_BY_NAME[name];
+    return de?entry.de:entry.en;
+  }
+  // Tier 3: Generic fallback per focus area — at least gives the user
+  // safe instructions and the reasoning, even if not exercise-specific.
   var focus=(exercise&&exercise.focus)||'general';
   var byFocus=STRETCH_EXPL_BY_FOCUS[focus]||STRETCH_EXPL_BY_FOCUS.general;
-  return de?byFocus.de:byFocus.en;
+  var f=de?byFocus.de:byFocus.en;
+  return {
+    steps:[
+      de?'Diese Übung wurde von der KI generiert — die genaue Ausführung erfordert evtl. Recherche.':'This exercise was AI-generated — exact execution may require additional research.',
+      de?'Bewege dich langsam und kontrolliert in die Position.':'Move slowly and controlled into position.',
+      de?'Halte die Position oder bewege dich gemäß der Vorgabe.':'Hold the position or move per the prescription.',
+      de?'Kehre kontrolliert zur Ausgangsposition zurück.':'Return to start position with control.'
+    ],
+    cues:[f.how],
+    mistakes:[],
+    why:f.what+' '+f.why
+  };
 }
+
+// ── EXECUTABLE HOW-TO LIBRARY (May 2026) ──────────────────────────────
+// Step-by-step instructions for each static-library exercise so a user
+// who has never done the move can execute it safely from text alone.
+// Each entry has: steps (3-5), cues (what to focus on), mistakes (what
+// to avoid), why (one-sentence benefit). Both DE and EN.
+//
+// Naming MUST match STRETCH_LIB and STRETCH_GENERAL exercise names
+// exactly — the lookup is by string match.
+var STRETCH_HOWTO_BY_NAME={
+  'Walking Lunges with Twist':{
+    en:{
+      steps:['Stand tall with feet hip-width apart, hands at chest.','Step forward with the right foot into a deep lunge — front knee at 90°, back knee just above the floor.','Rotate your torso to the right (over your front leg). Hold 1 second.','Push off the front foot, return to standing, then step forward with the left leg.','Continue alternating for the prescribed reps.'],
+      cues:['Front knee tracks over the second toe — never collapses inward.','Keep chest tall, don\'t lean forward.','Twist comes from the upper back, not from forcing the lower spine.'],
+      mistakes:['Knee caving inward','Front foot too short → knee passes way over toes','Holding breath during the twist'],
+      why:'Activates hip flexors, quads, and glutes while opening the thoracic spine — perfect dynamic warm-up before any sport.'
+    },
+    de:{
+      steps:['Aufrecht stehen, Füße hüftbreit, Hände vor der Brust.','Mit dem rechten Fuß einen tiefen Ausfallschritt nach vorn — vorderes Knie 90°, hinteres Knie knapp über dem Boden.','Oberkörper nach rechts rotieren (über das vordere Bein). 1 Sekunde halten.','Vom vorderen Fuß abdrücken, zurück in den Stand, dann mit links nach vorn.','Im Wechsel für die vorgegebenen Wiederholungen.'],
+      cues:['Vorderes Knie zeigt über die zweite Zehe — niemals nach innen kippen.','Brust aufgerichtet, nicht nach vorn lehnen.','Drehung kommt aus dem oberen Rücken, nicht aus dem unteren erzwingen.'],
+      mistakes:['Knie kippt nach innen','Schritt zu kurz → Knie weit über die Zehe hinaus','Atem anhalten beim Drehen'],
+      why:'Aktiviert Hüftbeuger, Quadrizeps und Gesäß und öffnet die Brustwirbelsäule — perfektes dynamisches Aufwärmen vor jedem Sport.'
+    }
+  },
+  'Pigeon Pose':{
+    en:{
+      steps:['Start in a high plank position. Bring your right knee forward toward your right wrist.','Lower the right shin so it sits diagonally across the mat (closer to parallel = harder).','Slide the left leg straight back, top of the foot on the floor. Hips stay square to the front.','Lower onto your forearms or fully down to the floor — wherever you feel a deep but tolerable stretch.','Hold and breathe. Switch sides after the prescribed time.'],
+      cues:['Hips stay square — if your hip is hiking up, slide a folded towel under it.','Front foot stays flexed (toes pulling toward shin) to protect the knee.','Breathe slowly. Each exhale, sink slightly deeper.'],
+      mistakes:['Letting the back hip drop sideways','Pointed front foot (loads the knee dangerously)','Bouncing or forcing depth'],
+      why:'Deep external hip rotator + glute stretch — directly opens the area that gets short from sitting and running.'
+    },
+    de:{
+      steps:['In hoher Plank-Position starten. Rechtes Knie nach vorn zum rechten Handgelenk bringen.','Rechtes Schienbein diagonal über die Matte legen (parallel zur Mattenkante = schwerer).','Linkes Bein gerade nach hinten strecken, Fußrücken am Boden. Hüfte parallel zur Vorderkante.','Auf die Unterarme absenken oder ganz zum Boden — soweit es dehnt aber noch erträglich ist.','Halten und atmen. Nach der vorgegebenen Zeit Seite wechseln.'],
+      cues:['Hüfte bleibt parallel — wenn sie kippt, gefaltetes Handtuch unter die hohe Hüftseite legen.','Vorderer Fuß angeflext (Zehen zum Schienbein) um das Knie zu schützen.','Langsam atmen. Mit jeder Ausatmung etwas tiefer sinken.'],
+      mistakes:['Hintere Hüfte kippt zur Seite','Vorderer Fuß gestreckt (gefährliche Knie-Belastung)','Federn oder Tiefe erzwingen'],
+      why:'Tiefe Dehnung der Hüft-Außenrotatoren und Gesäß — öffnet direkt den Bereich, der vom Sitzen und Laufen verkürzt.'
+    }
+  },
+  'Doorway Chest Stretch':{
+    en:{
+      steps:['Stand in a doorway. Place your right forearm on the door frame, elbow at 90° at shoulder height.','Step forward with the right foot, keeping the forearm pressed against the frame.','Rotate the chest gently away from the doorway until you feel a stretch across the front of the shoulder and chest.','Hold for the prescribed time, breathing slowly.','Switch sides.'],
+      cues:['Keep the shoulder pulled DOWN, not shrugged up to the ear.','Chest open, ribs down — don\'t arch the lower back to "feel more".','Stop at the first solid stretch sensation, never push into pinch.'],
+      mistakes:['Shrugging the shoulder upward','Arching the lower back','Forcing too deep — chest tissue tears under high tension'],
+      why:'Opens the pectoralis major and minor — counters the rounded-shoulder posture from desk work.'
+    },
+    de:{
+      steps:['In einen Türrahmen stellen. Rechten Unterarm an den Rahmen, Ellbogen 90° auf Schulterhöhe.','Mit dem rechten Fuß einen Schritt nach vorn, Unterarm bleibt gegen den Rahmen gedrückt.','Brust sanft vom Türrahmen wegdrehen, bis Dehnung in vorderer Schulter und Brust spürbar.','Vorgegebene Zeit halten, langsam atmen.','Seite wechseln.'],
+      cues:['Schulter NACH UNTEN halten, nicht zum Ohr hochziehen.','Brust offen, Rippen runter — nicht den unteren Rücken überstrecken um "mehr zu fühlen".','Beim ersten soliden Dehngefühl stoppen, nie ins Klemmen drücken.'],
+      mistakes:['Schulter hochziehen','Unteren Rücken überstrecken','Zu tief erzwingen — Brustgewebe reißt unter hoher Spannung'],
+      why:'Öffnet Pectoralis major und minor — gleicht die Rund-Schulter-Haltung vom Schreibtisch aus.'
+    }
+  },
+  'Cat-Cow Flow':{
+    en:{
+      steps:['Start on hands and knees. Hands directly under shoulders, knees under hips.','Inhale: drop the belly toward the floor, lift the chest and tailbone (Cow). Look slightly up.','Exhale: round the upper back to the ceiling, tuck the chin and tailbone (Cat).','Move slowly with the breath — one full breath cycle per rep.','Continue for the prescribed reps.'],
+      cues:['Movement starts at the tailbone and travels up the spine, vertebra by vertebra.','Hands stay grounded — don\'t let the wrists collapse.','Quality over speed — slow movement reaches more vertebrae.'],
+      mistakes:['Rushing through the reps','Only moving the lumbar spine — the thoracic should round and extend too','Holding the breath'],
+      why:'Mobilises every segment of the spine, decompresses discs, and connects breath to movement.'
+    },
+    de:{
+      steps:['Im Vierfüßlerstand starten. Hände unter den Schultern, Knie unter der Hüfte.','Einatmen: Bauch fallen lassen, Brust und Steißbein heben (Kuh). Leicht nach oben blicken.','Ausatmen: Oberen Rücken zur Decke runden, Kinn und Steißbein einziehen (Katze).','Langsam mit dem Atem bewegen — eine volle Atmung pro Wiederholung.','Für die vorgegebenen Wiederholungen fortfahren.'],
+      cues:['Bewegung startet im Steißbein und wandert Wirbel für Wirbel die Wirbelsäule hoch.','Hände gegründet — Handgelenke nicht einknicken lassen.','Qualität vor Geschwindigkeit — langsame Bewegung erreicht mehr Wirbel.'],
+      mistakes:['Wiederholungen überstürzen','Nur den unteren Rücken bewegen — auch die Brustwirbelsäule soll runden und strecken','Atem anhalten'],
+      why:'Mobilisiert jeden Wirbelsäulen-Abschnitt, entlastet die Bandscheiben und verbindet Atem mit Bewegung.'
+    }
+  },
+  'Thread the Needle':{
+    en:{
+      steps:['Start on hands and knees. Reach the right arm under your body to the left, palm up.','Lower the right shoulder and side of the head to the floor (or as close as comfortable).','The left arm can stay where it is, or reach forward and overhead for more thoracic rotation.','Hold for the prescribed time, breathing into the upper back.','Slowly unwind and switch sides.'],
+      cues:['Hips stay stacked over the knees — don\'t collapse to one side.','Pressure stays on the shoulder and arm, NOT on the head/neck.','Breathe into the side of the ribcage that\'s being stretched.'],
+      mistakes:['Shifting the hips → loses the thoracic rotation','Putting weight on the head','Forcing too deep too fast'],
+      why:'Targets thoracic rotation — the most commonly stiff part of the spine for desk workers and athletes alike.'
+    },
+    de:{
+      steps:['Im Vierfüßlerstand starten. Rechten Arm unter dem Körper nach links durchführen, Handfläche nach oben.','Rechte Schulter und Kopfseite zum Boden senken (oder so weit wie angenehm).','Linker Arm kann bleiben, oder nach vorn und über den Kopf strecken für mehr Brustwirbel-Rotation.','Vorgegebene Zeit halten, in den oberen Rücken atmen.','Langsam zurück und Seite wechseln.'],
+      cues:['Hüfte bleibt mittig über den Knien — nicht zur Seite kippen.','Druck auf Schulter und Arm, NICHT auf Kopf/Nacken.','In die gedehnte Rippenseite atmen.'],
+      mistakes:['Hüfte kippt → Brustwirbel-Rotation geht verloren','Gewicht auf den Kopf','Zu schnell zu tief erzwingen'],
+      why:'Zielt auf Brustwirbel-Rotation — der am häufigsten steife Wirbelsäulen-Bereich bei Bürotätigen und Sportlern.'
+    }
+  },
+  'Child\'s Pose with Side Reach':{
+    en:{
+      steps:['Kneel on the floor with big toes touching, knees wide apart.','Sit your hips back onto your heels and stretch the arms forward, forehead toward the floor.','Walk both hands to the right — feel the stretch along the entire left side of the back.','Hold, breathing into the stretched side.','Walk hands back to center, then over to the left side and repeat.'],
+      cues:['Hips stay grounded on the heels even as you reach to the side.','Both palms stay on the floor — don\'t let the trailing one lift.','Long, slow exhales let the side body release more.'],
+      mistakes:['Hips lifting off heels','Tensing the shoulders up to the ears','Holding the breath'],
+      why:'Decompresses the lumbar spine and stretches the lats and quadratus lumborum — the often-tight side back muscles.'
+    },
+    de:{
+      steps:['Auf den Boden knien, große Zehen berühren sich, Knie weit auseinander.','Hüfte zurück auf die Fersen setzen, Arme nach vorn strecken, Stirn zum Boden.','Beide Hände nach rechts wandern — Dehnung entlang der gesamten linken Rückenseite spüren.','Halten, in die gedehnte Seite atmen.','Hände zurück zur Mitte, dann nach links und wiederholen.'],
+      cues:['Hüfte bleibt auf den Fersen, auch wenn die Hände zur Seite wandern.','Beide Handflächen am Boden — nicht die hintere abheben lassen.','Lange, langsame Ausatmungen lassen die Seite mehr loslassen.'],
+      mistakes:['Hüfte hebt von den Fersen ab','Schultern zu den Ohren ziehen','Atem anhalten'],
+      why:'Entlastet die Lendenwirbelsäule und dehnt Latissimus und Quadratus lumborum — die oft verspannten seitlichen Rückenmuskeln.'
+    }
+  },
+  'Seated Hamstring Stretch':{
+    en:{
+      steps:['Sit on the floor with the right leg straight in front, left leg bent with the sole of the foot against the right inner thigh.','Sit tall, then hinge forward FROM THE HIPS (not by rounding the spine).','Reach toward your right foot — go only as far as the spine stays long.','Hold, breathing into the stretch. On each exhale, hinge a tiny bit deeper.','Switch sides.'],
+      cues:['Spine stays long — better hands on shins than rounded forward to the toes.','Slight bend in the front knee is fine if needed to keep the back flat.','Toe of the front foot pulls toward you (active dorsiflexion) — adds calf and nerve glide.'],
+      mistakes:['Rounding the back to "reach the toes"','Bouncing','Locking the front knee aggressively'],
+      why:'Lengthens the hamstrings without overstretching the lower back — the safe, productive way.'
+    },
+    de:{
+      steps:['Auf den Boden setzen, rechtes Bein gerade nach vorn, linkes Bein gebeugt, Fußsohle gegen den rechten Innenschenkel.','Aufrecht sitzen, dann AUS DER HÜFTE nach vorn beugen (nicht den Rücken runden).','Zum rechten Fuß strecken — nur so weit wie die Wirbelsäule lang bleibt.','Halten, in die Dehnung atmen. Mit jeder Ausatmung minimal tiefer.','Seite wechseln.'],
+      cues:['Wirbelsäule lang — lieber Hände am Schienbein als runder Rücken zu den Zehen.','Leichte Beuge im vorderen Knie OK, wenn der Rücken sonst rundet.','Zehe des vorderen Fußes zu dir ziehen (aktive Dorsalflexion) — fügt Waden- und Nerven-Gleiten hinzu.'],
+      mistakes:['Rücken runden um "zur Zehe zu kommen"','Federn','Vorderes Knie aggressiv durchstrecken'],
+      why:'Verlängert die Hamstrings ohne den unteren Rücken zu überdehnen — der sichere, produktive Weg.'
+    }
+  },
+  'Wall Calf Stretch':{
+    en:{
+      steps:['Stand facing a wall, place both hands on it at chest height.','Step the right foot back, keeping it straight, heel pressed to the floor.','The left leg bends forward, knee toward the wall, until you feel a stretch in the back of the right calf.','Hold for the prescribed time. Then bend the back (right) knee slightly to shift the stretch lower (soleus).','Switch sides.'],
+      cues:['Back heel MUST stay glued to the floor — that\'s where the stretch lives.','Keep the back leg straight for upper calf (gastrocnemius), bent for lower calf (soleus).','Hips face the wall — don\'t rotate them.'],
+      mistakes:['Heel lifting off the floor','Bouncing into the stretch','Rotating the hips toward the working leg'],
+      why:'Mobilises the calf and Achilles complex — improves ankle dorsiflexion which protects the knees and improves squat depth.'
+    },
+    de:{
+      steps:['Vor eine Wand stellen, beide Hände auf Brusthöhe an die Wand.','Rechten Fuß nach hinten setzen, gerade lassen, Ferse fest am Boden.','Linkes Bein nach vorn beugen, Knie Richtung Wand, bis Dehnung in der hinteren rechten Wade.','Vorgegebene Zeit halten. Dann hinteres (rechtes) Knie leicht beugen um die Dehnung tiefer zu setzen (Soleus).','Seite wechseln.'],
+      cues:['Hintere Ferse MUSS am Boden bleiben — da sitzt die Dehnung.','Hinteres Bein gerade für oberen Wadenmuskel (Gastrocnemius), gebeugt für unteren (Soleus).','Hüfte zeigt zur Wand — nicht rotieren.'],
+      mistakes:['Ferse hebt vom Boden','In die Dehnung federn','Hüfte zum Arbeitsbein rotieren'],
+      why:'Mobilisiert die Waden- und Achilles-Struktur — verbessert die Sprunggelenks-Dorsalflexion, was Knie schützt und Squat-Tiefe steigert.'
+    }
+  },
+  'Quad Stretch':{
+    en:{
+      steps:['Stand on one leg (use a wall or chair for balance if needed).','Bend the other knee, grab the ankle behind you with the same-side hand.','Pull the heel toward your glute — feel the stretch in the front of the thigh.','Tuck the pelvis under (tighten the abs slightly) to deepen the stretch into the hip flexor.','Hold, then switch.'],
+      cues:['Knees stay close together — don\'t let the bent knee splay out.','Pelvis tucked under — without this, you stretch only the quad and miss the hip flexor.','Stand tall — don\'t lean forward.'],
+      mistakes:['Pulling the heel sideways instead of straight back','Knee flaring out','Hyperextending the lower back'],
+      why:'Lengthens the quadriceps and hip flexor — directly counters the chronic shortness from sitting.'
+    },
+    de:{
+      steps:['Auf einem Bein stehen (Wand oder Stuhl als Stütze wenn nötig).','Anderes Knie beugen, Knöchel hinten mit der gleichseitigen Hand greifen.','Ferse zum Gesäß ziehen — Dehnung im vorderen Oberschenkel spüren.','Becken nach unten einrollen (Bauch leicht anspannen) um die Dehnung in den Hüftbeuger zu vertiefen.','Halten, dann wechseln.'],
+      cues:['Knie bleiben dicht beieinander — gebeugtes Knie nicht nach außen kippen.','Becken eingerollt — sonst dehnst du nur den Oberschenkel und verfehlst den Hüftbeuger.','Aufrecht stehen — nicht nach vorn lehnen.'],
+      mistakes:['Ferse seitlich statt gerade nach hinten ziehen','Knie nach außen kippen','Unteren Rücken überstrecken'],
+      why:'Verlängert Quadrizeps und Hüftbeuger — gleicht die chronische Verkürzung vom Sitzen direkt aus.'
+    }
+  },
+  'Deep Squat Hold':{
+    en:{
+      steps:['Stand with feet slightly wider than hip-width, toes turned out 15-30°.','Lower into a deep squat — hips below knees, heels flat on the floor.','Place elbows on the inside of the knees, hands together in prayer.','Use the elbows to gently push the knees outward, lengthening the spine upward.','Hold for the prescribed time.'],
+      cues:['Heels MUST stay flat — if they lift, place a small wedge or rolled towel under them.','Chest up, spine long — don\'t collapse into a C-shape.','Push knees out actively, don\'t let them cave inward.'],
+      mistakes:['Heels rising','Knees collapsing inward','Forward-rounded back'],
+      why:'Restores ankle dorsiflexion, hip mobility, and spinal extension simultaneously — one of the most powerful resting positions humans can do.'
+    },
+    de:{
+      steps:['Etwas weiter als hüftbreit stehen, Zehen 15-30° nach außen.','Tief in die Hocke — Hüfte unter den Knien, Fersen flach am Boden.','Ellbogen an die Innenseite der Knie, Hände vor der Brust gefaltet.','Mit den Ellbogen die Knie sanft nach außen drücken, Wirbelsäule nach oben strecken.','Vorgegebene Zeit halten.'],
+      cues:['Fersen MÜSSEN flach bleiben — wenn sie heben, kleinen Keil oder Handtuch drunter.','Brust hoch, Wirbelsäule lang — nicht in C-Form zusammensacken.','Knie aktiv nach außen drücken, nicht nach innen kippen lassen.'],
+      mistakes:['Fersen heben','Knie kippen nach innen','Rücken nach vorn gerundet'],
+      why:'Stellt gleichzeitig Sprunggelenks-Dorsalflexion, Hüft-Mobilität und Wirbelsäulen-Streckung wieder her — eine der stärksten Ruhepositionen.'
+    }
+  }
+};
 
 // Resolve an exercise from the rendered routine by section + index.
 // Sections are 'pre', 'post', 'full' depending on training/rest day.
@@ -5615,17 +5830,59 @@ function openStretch(sectionKey,idx){
   var de=lang==='de';
   var expl=getStretchExplanation(ex);
   var tabs=[{k:'nutrition',l:t('nu')},{k:'fitness',l:t('fi')},{k:'mobility',l:t('mo')},{k:'recovery',l:t('re')},{k:'scanner',l:t('sc')},{k:'log',l:t('lg')},{k:'recipes',l:t('rp')}];
+
+  // Step list with numbered circles (visual hierarchy + actionable feel)
+  var stepsHtml='';
+  if(Array.isArray(expl.steps)&&expl.steps.length){
+    stepsHtml='<h3>'+(de?'Schritt für Schritt':'Step by step')+'</h3>'+
+      '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">'+
+      expl.steps.map(function(step,i){
+        return '<div style="display:flex;gap:12px;align-items:flex-start">'+
+          '<div style="flex-shrink:0;width:24px;height:24px;border-radius:50%;background:var(--red);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px">'+(i+1)+'</div>'+
+          '<div style="flex:1;font-size:13px;color:var(--ink2);line-height:1.55">'+step+'</div>'+
+        '</div>';
+      }).join('')+
+      '</div>';
+  }
+
+  // Cues — what to focus on. Green check marks for positive guidance.
+  var cuesHtml='';
+  if(Array.isArray(expl.cues)&&expl.cues.length){
+    cuesHtml='<h3>'+(de?'Worauf achten':'What to focus on')+'</h3>'+
+      '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:18px">'+
+      expl.cues.map(function(cue){
+        return '<div style="display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--ink2);line-height:1.55"><span style="color:#22c55e;flex-shrink:0;font-weight:700">✓</span><span>'+cue+'</span></div>';
+      }).join('')+
+      '</div>';
+  }
+
+  // Mistakes — common errors. Red x marks for what to avoid.
+  var mistakesHtml='';
+  if(Array.isArray(expl.mistakes)&&expl.mistakes.length){
+    mistakesHtml='<h3>'+(de?'Häufige Fehler':'Common mistakes')+'</h3>'+
+      '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:18px">'+
+      expl.mistakes.map(function(m){
+        return '<div style="display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--ink2);line-height:1.55"><span style="color:var(--red);flex-shrink:0;font-weight:700">✗</span><span>'+m+'</span></div>';
+      }).join('')+
+      '</div>';
+  }
+
+  // Why — single-line benefit
+  var whyHtml='';
+  if(expl.why){
+    whyHtml='<h3>'+(de?'Warum diese Übung':'Why this exercise')+'</h3>'+
+      '<p style="margin-bottom:18px">'+expl.why+'</p>';
+  }
+
   var c='<div class="rdb">'+
-    '<div class="rdb-back" onclick="showTab(\'mobility\')">← '+(de?'Zurück':'Back')+'</div>'+
+    '<div class="rdb-back" onclick="showTab(\'mobility\')">← '+(de?'Zurück zur Routine':'Back to routine')+'</div>'+
     '<div style="font-size:40px;margin-bottom:10px">🧘</div>'+
     '<h1>'+ex.name+'</h1>'+
-    '<p style="color:var(--ink2);font-size:12px;margin-bottom:4px">'+(de?'Vorgabe':'Prescription')+': '+ex.detail+'</p>'+
-    '<h3>'+(de?'Was es trainiert':'What it targets')+'</h3>'+
-    '<p>'+expl.what+'</p>'+
-    '<h3>'+(de?'Warum es wichtig ist':'Why it matters')+'</h3>'+
-    '<p>'+expl.why+'</p>'+
-    '<h3>'+(de?'So machst du es richtig':'How to do it right')+'</h3>'+
-    '<p>'+expl.how+'</p>'+
+    '<p style="color:var(--ink2);font-size:13px;margin-bottom:24px">'+(de?'Vorgabe':'Prescription')+': <strong style="color:var(--white)">'+ex.detail+'</strong></p>'+
+    stepsHtml+
+    cuesHtml+
+    mistakesHtml+
+    whyHtml+
   '</div>';
   card('<div class="dhead"><div class="dgreet">🧘 '+ex.name.toUpperCase()+'</div><div class="dsub">'+ex.detail+'</div></div><div class="dnav">'+tabs.map(function(tb){return '<button class="ntab '+(tb.k==='mobility'?'act':'')+'" data-tab="'+tb.k+'" onclick="showTab(\''+tb.k+'\')">'+tb.l+'</button>';}).join('')+'</div>'+c);
 }
@@ -6901,6 +7158,46 @@ function profLabel(key){
 
 function profValue(key){
   var v=ud[key];
+  // Sport — use the dedicated sportLabel() helper (has its own SPORT_DE map).
+  if(key==='sport'){
+    return v?sportLabel(v):'—';
+  }
+  // Allergies, diet, cuisines — stored as arrays of English (or emoji+English)
+  // strings. We translate each entry via per-key dictionaries. Match works
+  // regardless of stored language so a user who toggled DE/EN mid-onboarding
+  // sees the right labels either way.
+  var ALLERGY_DE={
+    'Gluten':'Gluten','Dairy':'Milchprodukte','Nuts':'Nüsse','Peanuts':'Erdnüsse',
+    'Shellfish':'Schalentiere','Eggs':'Eier','Soy':'Soja','Fish':'Fisch','Pork':'Schwein',
+    'Sesame':'Sesam','Mustard':'Senf','Lactose':'Laktose','Fructose':'Fruktose','Histamine':'Histamin'
+  };
+  var DIET_DE={
+    '🥩 Keto':'🥩 Keto','🌱 Vegan':'🌱 Vegan','🥗 Vegetarian':'🥗 Vegetarisch',
+    '🐟 Pescatarian':'🐟 Pescetarisch','🫙 Paleo':'🫙 Paleo','🍖 Carnivore':'🍖 Carnivore',
+    '🌾 Gluten-free':'🌾 Glutenfrei','🧘 Mediterranean':'🧘 Mediterran',
+    '⚡ Intermittent Fasting':'⚡ Intervallfasten','💊 Diabetic-friendly':'💊 Diabetiker-geeignet'
+  };
+  var CUISINE_DE={
+    '🇲🇽 Mexican':'🇲🇽 Mexikanisch','🍝 Italian':'🍝 Italienisch','🍜 Asian':'🍜 Asiatisch',
+    '🥗 Mediterranean':'🥗 Mediterran','🍔 American':'🍔 Amerikanisch','🍛 Indian':'🍛 Indisch',
+    '🇯🇵 Japanese':'🇯🇵 Japanisch','🥙 Middle Eastern':'🥙 Nahöstlich',
+    '🇹🇭 Thai':'🇹🇭 Thailändisch','🇬🇷 Greek':'🇬🇷 Griechisch'
+  };
+  // Helper that translates a single entry via a dict in either direction
+  function tr(val,dict){
+    if(lang==='de'){
+      if(dict[val])return dict[val];
+      // val might already be DE — find by reverse lookup
+      for(var en in dict){if(dict[en]===val)return val;}
+      return val;
+    }
+    // EN: if val is a DE label, find EN key
+    for(var k in dict){if(dict[k]===val)return k;}
+    return val;
+  }
+  if(key==='al'&&Array.isArray(v))return v.length?v.map(function(x){return tr(x,ALLERGY_DE);}).join(', '):'—';
+  if(key==='di'&&Array.isArray(v))return v.length?v.map(function(x){return tr(x,DIET_DE);}).join(', '):'—';
+  if(key==='cu'&&Array.isArray(v))return v.length?v.map(function(x){return tr(x,CUISINE_DE);}).join(', '):'—';
   // Enum-Felder mit EN/DE Übersetzung. Match auf beiden Sprachen.
   var ENUMS={
     goal:{g1:['Lose weight','Abnehmen'],g2:['Build muscle','Muskelaufbau'],g3:['Improve performance','Performance steigern'],g4:['Eat cleaner','Gesünder essen'],g5:['Recover better','Besser regenerieren'],g6:['Daily habits','Tägliche Gewohnheiten']},
@@ -7058,7 +7355,24 @@ function showProfile(){
     var val=profValue(key);
     var valHtml;
     if((key==='al'||key==='di'||key==='cu')&&Array.isArray(ud[key])&&ud[key].length){
-      valHtml='<div class="prf-chips">'+ud[key].map(function(v){return '<span class="prf-chip">'+v+'</span>';}).join('')+'</div>';
+      // Translate each entry the same way profValue does for the inline
+      // single-line case — keeps the chip view in the user's language.
+      var DICTS={
+        al:{'Gluten':'Gluten','Dairy':'Milchprodukte','Nuts':'Nüsse','Peanuts':'Erdnüsse','Shellfish':'Schalentiere','Eggs':'Eier','Soy':'Soja','Fish':'Fisch','Pork':'Schwein','Sesame':'Sesam','Mustard':'Senf','Lactose':'Laktose','Fructose':'Fruktose','Histamine':'Histamin'},
+        di:{'🥩 Keto':'🥩 Keto','🌱 Vegan':'🌱 Vegan','🥗 Vegetarian':'🥗 Vegetarisch','🐟 Pescatarian':'🐟 Pescetarisch','🫙 Paleo':'🫙 Paleo','🍖 Carnivore':'🍖 Carnivore','🌾 Gluten-free':'🌾 Glutenfrei','🧘 Mediterranean':'🧘 Mediterran','⚡ Intermittent Fasting':'⚡ Intervallfasten','💊 Diabetic-friendly':'💊 Diabetiker-geeignet'},
+        cu:{'🇲🇽 Mexican':'🇲🇽 Mexikanisch','🍝 Italian':'🍝 Italienisch','🍜 Asian':'🍜 Asiatisch','🥗 Mediterranean':'🥗 Mediterran','🍔 American':'🍔 Amerikanisch','🍛 Indian':'🍛 Indisch','🇯🇵 Japanese':'🇯🇵 Japanisch','🥙 Middle Eastern':'🥙 Nahöstlich','🇹🇭 Thai':'🇹🇭 Thailändisch','🇬🇷 Greek':'🇬🇷 Griechisch'}
+      };
+      var dict=DICTS[key];
+      var translated=ud[key].map(function(v){
+        if(lang==='de'){
+          if(dict[v])return dict[v];
+          for(var en in dict){if(dict[en]===v)return v;}
+          return v;
+        }
+        for(var k in dict){if(dict[k]===v)return k;}
+        return v;
+      });
+      valHtml='<div class="prf-chips">'+translated.map(function(v){return '<span class="prf-chip">'+v+'</span>';}).join('')+'</div>';
     }else{
       valHtml='<span class="prf-val">'+val+'</span>';
     }
@@ -7633,7 +7947,7 @@ initHistoryNav();
 bootApp().finally(function(){__bootDone=true;});
 syncThemeButton();
 </script>
-<link rel="manifest" href="/manifest.json?v=12">
+<link rel="manifest" href="/manifest.json?v=13">
 <script>
 // ── PWA: Service Worker Registration ─────────────────────────────────────
 // Force-updates the SW on every page load so new deploys reach users
