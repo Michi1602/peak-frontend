@@ -553,17 +553,105 @@ async function aiGenJSON(prompt, maxTokens, purpose){
     else if(firstBracket>=0)start=firstBracket;
     if(start>0)clean=clean.slice(start);
   }
+  // ── ATTEMPT 1: Direct parse ───────────────────────────────────────
   try{
     return JSON.parse(clean);
-  }catch(e){
-    // Log a snippet of the raw response so we can debug bad outputs in
-    // production without surfacing raw AI text to the user.
+  }catch(e1){
+    // ── ATTEMPT 2: Truncation recovery ──────────────────────────────
+    // Haiku occasionally hits the max_tokens ceiling mid-object and
+    // returns a JSON that's missing closing braces/brackets. Walk the
+    // string and rebuild what's missing by counting open vs. closed
+    // structural characters (skipping anything inside strings).
+    try{
+      var repaired=tryRepairTruncatedJSON(clean);
+      if(repaired){
+        var parsed=JSON.parse(repaired);
+        console.warn('[aiGenJSON] recovered truncated JSON for purpose='+purpose+' (length='+(text||'').length+')');
+        return parsed;
+      }
+    }catch(_){ /* fall through to attempt 3 */ }
+
+    // ── ATTEMPT 3: Last-resort substring ────────────────────────────
+    // Find the last } or ] and try parsing up to that point. Catches
+    // cases where the AI emitted extra trailing prose AFTER a valid
+    // JSON block.
+    try{
+      var lastBrace=Math.max(clean.lastIndexOf('}'),clean.lastIndexOf(']'));
+      if(lastBrace>0){
+        var sliced=clean.slice(0,lastBrace+1);
+        var parsed2=JSON.parse(sliced);
+        console.warn('[aiGenJSON] recovered via last-brace trim for purpose='+purpose);
+        return parsed2;
+      }
+    }catch(_){ /* fall through */ }
+
+    // All recovery strategies exhausted — log + throw
     console.error('[aiGenJSON] parse failed for purpose='+purpose+', length='+(text||'').length+', snippet:',(text||'').slice(0,300));
     var err=new Error('AI returned invalid JSON');
     err.aiRaw=text;
     err.aiPurpose=purpose;
     throw err;
   }
+}
+
+// Attempt to repair JSON that was truncated mid-object (Haiku running
+// into max_tokens). Counts unbalanced { [ outside of strings and appends
+// the matching closing characters. Returns null if the string is too
+// broken for repair to be viable. Best-effort — caller still wraps in
+// try/catch in case the rebuilt string is itself malformed.
+function tryRepairTruncatedJSON(s){
+  if(!s||typeof s!=='string')return null;
+  var inString=false;
+  var escapeNext=false;
+  var stack=[];  // tracks unclosed { and [ in order
+  for(var i=0;i<s.length;i++){
+    var c=s[i];
+    if(escapeNext){escapeNext=false;continue;}
+    if(c==='\\'){escapeNext=true;continue;}
+    if(c==='"'){inString=!inString;continue;}
+    if(inString)continue;
+    if(c==='{'||c==='[')stack.push(c);
+    else if(c==='}'){
+      if(stack[stack.length-1]==='{')stack.pop();
+    }else if(c===']'){
+      if(stack[stack.length-1]==='[')stack.pop();
+    }
+  }
+  // If the string ended INSIDE a quoted string, the JSON is too broken
+  // to repair safely (we'd need to invent the rest of the value).
+  if(inString)return null;
+  // Already balanced? Then the parse failure was for some OTHER reason
+  // (bad escape, trailing comma, etc.) — caller's other strategies handle it.
+  if(stack.length===0)return s;
+  // Trim trailing partial token. Common patterns at truncation boundary:
+  //   ,"key": "partia        ← string mid-typing
+  //   ,"key":               ← key with no value yet
+  //   ,                     ← orphan comma after last item
+  // Walk back to last comma OR last colon and drop everything after.
+  var trimmed=s
+    .replace(/,\s*"[^"]*$/, '')             // ,"halfQuoted...
+    .replace(/,\s*[a-zA-Z_]\w*\s*$/, '')    // ,bareKey
+    .replace(/:\s*[^,}\]]*$/, ':null')      // key: <partial-value>  →  key:null
+    .replace(/,\s*$/, '');                  // trailing comma
+  // Rebuild stack against the trimmed string (positions may have shifted)
+  inString=false;escapeNext=false;stack=[];
+  for(var j=0;j<trimmed.length;j++){
+    var ch=trimmed[j];
+    if(escapeNext){escapeNext=false;continue;}
+    if(ch==='\\'){escapeNext=true;continue;}
+    if(ch==='"'){inString=!inString;continue;}
+    if(inString)continue;
+    if(ch==='{'||ch==='[')stack.push(ch);
+    else if(ch==='}'){if(stack[stack.length-1]==='{')stack.pop();}
+    else if(ch===']'){if(stack[stack.length-1]==='[')stack.pop();}
+  }
+  if(inString)return null;
+  // Append matching closers in reverse order (innermost first)
+  var closers='';
+  for(var k=stack.length-1;k>=0;k--){
+    closers+=(stack[k]==='{')?'}':']';
+  }
+  return trimmed+closers;
 }
 
 // Build goal string for AI prompts — includes primary + secondary goals
@@ -1670,7 +1758,7 @@ async function fetchPlan(isRegen){
     }
     var k=kcal||2000;
     var deF=lang==='de';
-    plan={headline:(deF?'Deine ':'Your ')+sport+(deF?'-Transformation beginnt jetzt':' transformation starts now'),_lang:lang,calories:k,protein:Math.round(parseFloat(ud.weight||75)*1.8),carbs:Math.round(k*0.4/4),fat:Math.round(k*0.3/9),timeline:(deF?'12 Wochen':'12 weeks'),todayMeals:[{emoji:'🍳',name:t('fbMealEggs'),time:'Breakfast',kcal:420,protein:28,carbs:42,fat:14,macro:'28g '+t('macroProtein'),ingredients:deF?[{item:'Eier',qty:'3'},{item:'Avocado',qty:'1/2'},{item:'Vollkornbrot',qty:'2 Scheiben'},{item:'Olivenöl',qty:'1 EL'}]:[{item:'Eggs',qty:'3'},{item:'Avocado',qty:'1/2'},{item:'Whole grain bread',qty:'2 slices'},{item:'Olive oil',qty:'1 tbsp'}]},{emoji:'🥗',name:t('fbMealChicken'),time:'Lunch',kcal:550,protein:45,carbs:48,fat:18,macro:'45g '+t('macroProtein'),ingredients:deF?[{item:'Hähnchenbrust',qty:'200g'},{item:'Quinoa',qty:'80g'},{item:'Gemüse (gemischt)',qty:'150g'},{item:'Olivenöl',qty:'1 EL'}]:[{item:'Chicken breast',qty:'200g'},{item:'Quinoa',qty:'80g'},{item:'Mixed vegetables',qty:'150g'},{item:'Olive oil',qty:'1 tbsp'}]},{emoji:'🍽️',name:t('fbMealSalmon'),time:'Dinner',kcal:580,protein:40,carbs:55,fat:22,macro:'40g '+t('macroProtein'),ingredients:deF?[{item:'Lachsfilet',qty:'180g'},{item:'Süßkartoffel',qty:'200g'},{item:'Brokkoli',qty:'150g'},{item:'Zitrone',qty:'1/2'}]:[{item:'Salmon filet',qty:'180g'},{item:'Sweet potato',qty:'200g'},{item:'Broccoli',qty:'150g'},{item:'Lemon',qty:'1/2'}]},{emoji:'🍎',name:t('fbMealYoghurt'),time:'Snack',kcal:180,protein:15,carbs:18,fat:5,macro:'15g '+t('macroProtein'),ingredients:deF?[{item:'Griechischer Joghurt',qty:'200g'},{item:'Beeren (gemischt)',qty:'80g'},{item:'Honig',qty:'1 TL'}]:[{item:'Greek yoghurt',qty:'200g'},{item:'Mixed berries',qty:'80g'},{item:'Honey',qty:'1 tsp'}]}],workout:{title:sport+' '+t('fbWorkTitle'),focus:t('fbWorkFocus'),desc:(deF?'Sportspezifische Übungen für einen besseren ':'Sport-specific exercises to make you a better ')+sport+(deF?'-Athleten.':' athlete.'),duration:parseInt(ud.dur||60),exercises:exFallback},recovery:{tip:t('tipToday'),sleep:t('tipSleep'),hydration:t('tipHydration')},milestones:[t('fbMileW3'),t('fbMileW7'),t('fbMileW12')]};
+    plan={_isFallback:true,headline:(deF?'Deine ':'Your ')+sport+(deF?'-Transformation beginnt jetzt':' transformation starts now'),_lang:lang,calories:k,protein:Math.round(parseFloat(ud.weight||75)*1.8),carbs:Math.round(k*0.4/4),fat:Math.round(k*0.3/9),timeline:(deF?'12 Wochen':'12 weeks'),todayMeals:[{emoji:'🍳',name:t('fbMealEggs'),time:'Breakfast',kcal:420,protein:28,carbs:42,fat:14,macro:'28g '+t('macroProtein'),ingredients:deF?[{item:'Eier',qty:'3'},{item:'Avocado',qty:'1/2'},{item:'Vollkornbrot',qty:'2 Scheiben'},{item:'Olivenöl',qty:'1 EL'}]:[{item:'Eggs',qty:'3'},{item:'Avocado',qty:'1/2'},{item:'Whole grain bread',qty:'2 slices'},{item:'Olive oil',qty:'1 tbsp'}]},{emoji:'🥗',name:t('fbMealChicken'),time:'Lunch',kcal:550,protein:45,carbs:48,fat:18,macro:'45g '+t('macroProtein'),ingredients:deF?[{item:'Hähnchenbrust',qty:'200g'},{item:'Quinoa',qty:'80g'},{item:'Gemüse (gemischt)',qty:'150g'},{item:'Olivenöl',qty:'1 EL'}]:[{item:'Chicken breast',qty:'200g'},{item:'Quinoa',qty:'80g'},{item:'Mixed vegetables',qty:'150g'},{item:'Olive oil',qty:'1 tbsp'}]},{emoji:'🍽️',name:t('fbMealSalmon'),time:'Dinner',kcal:580,protein:40,carbs:55,fat:22,macro:'40g '+t('macroProtein'),ingredients:deF?[{item:'Lachsfilet',qty:'180g'},{item:'Süßkartoffel',qty:'200g'},{item:'Brokkoli',qty:'150g'},{item:'Zitrone',qty:'1/2'}]:[{item:'Salmon filet',qty:'180g'},{item:'Sweet potato',qty:'200g'},{item:'Broccoli',qty:'150g'},{item:'Lemon',qty:'1/2'}]},{emoji:'🍎',name:t('fbMealYoghurt'),time:'Snack',kcal:180,protein:15,carbs:18,fat:5,macro:'15g '+t('macroProtein'),ingredients:deF?[{item:'Griechischer Joghurt',qty:'200g'},{item:'Beeren (gemischt)',qty:'80g'},{item:'Honig',qty:'1 TL'}]:[{item:'Greek yoghurt',qty:'200g'},{item:'Mixed berries',qty:'80g'},{item:'Honey',qty:'1 tsp'}]}],workout:{title:sport+' '+t('fbWorkTitle'),focus:t('fbWorkFocus'),desc:(deF?'Sportspezifische Übungen für einen besseren ':'Sport-specific exercises to make you a better ')+sport+(deF?'-Athleten.':' athlete.'),duration:parseInt(ud.dur||60),exercises:exFallback},recovery:{tip:t('tipToday'),sleep:t('tipSleep'),hydration:t('tipHydration')},milestones:[t('fbMileW3'),t('fbMileW7'),t('fbMileW12')]};
     plan.week=synthWeekPlan(sport,level,parseInt(ud.sessions||3),parseInt(ud.dur||60),plan.workout);
     saveSession();
     enrichWeekWithAI();
@@ -2788,22 +2876,35 @@ async function enrichPoolWithAI(){
   var todayIdx=todayWeekdayIndex();  // 0..6 for current week
   var anchorIso=monday.getFullYear()+'-'+String(monday.getMonth()+1).padStart(2,'0')+'-'+String(monday.getDate()).padStart(2,'0');
 
-  // Today's meals from onboarding go into pool[todayIdx]. We need to fill
-  // the other 13 slots. Split them roughly in half across two parallel
-  // batches: this keeps each AI response under ~6k tokens (Haiku-friendly)
-  // and runs both calls concurrently for ~2x faster pool readiness.
+  // ── FALLBACK-PLAN HANDLING ────────────────────────────────────────
+  // If plan._isFallback === true, the initial AI call failed and we're
+  // using the hardcoded eggs/chicken/salmon/yoghurt placeholders. We
+  // must NOT seed pool[todayIdx] with those — otherwise the user gets
+  // a generic Saturday forever (until the next regen). Instead generate
+  // ALL 14 days from scratch and don't pass today's "fake" meals to
+  // the exclusion list (we want the AI to feel free to suggest
+  // anything, including dishes similar to the fallback if they fit).
+  var isFallbackPlan=plan._isFallback===true;
   var slotsToFill=[];
-  for(var i=0;i<14;i++){
-    if(i!==todayIdx)slotsToFill.push(i);
+  if(isFallbackPlan){
+    // Fill all 14 — the today-slot's fallback meals will be replaced too
+    for(var fi=0;fi<14;fi++)slotsToFill.push(fi);
+  }else{
+    // Today's REAL onboarding meals stay in pool[todayIdx]. Generate the other 13.
+    for(var i=0;i<14;i++){
+      if(i!==todayIdx)slotsToFill.push(i);
+    }
   }
-  // Split: first half → batch A, second half → batch B (≈7 + 6 days)
+  // Split: first half → batch A, second half → batch B
   var halfPoint=Math.ceil(slotsToFill.length/2);
   var slotsA=slotsToFill.slice(0,halfPoint);
   var slotsB=slotsToFill.slice(halfPoint);
 
-  // Existing today-meal names go to BOTH batches as exclusion list, so the
-  // pool never contains a copy of today's onboarding dishes.
-  var todayNames=plan.todayMeals.map(function(m){return m.name||'';}).filter(Boolean);
+  // Exclusion list: only feed REAL meal names to the AI. Don't echo
+  // hardcoded fallback names, which would constrain the prompt without
+  // benefit (the AI doesn't need to know what our static placeholders
+  // look like — it just needs to generate variety on its own).
+  var todayNames=isFallbackPlan ? [] : plan.todayMeals.map(function(m){return m.name||'';}).filter(Boolean);
 
   try{
     // Fire both batches in parallel. Promise.all returns once both settle.
@@ -2821,9 +2922,14 @@ async function enrichPoolWithAI(){
       return;
     }
 
-    // Build the full 14-slot pool. Today's slot stays as plan.todayMeals.
+    // Build the full 14-slot pool.
+    // Real-plan path: pool[todayIdx] keeps today's onboarding meals.
+    // Fallback-plan path: every slot comes from the AI (we already
+    // generated all 14 in batches A+B).
     var pool=new Array(14);
-    pool[todayIdx]=plan.todayMeals.slice();
+    if(!isFallbackPlan){
+      pool[todayIdx]=plan.todayMeals.slice();
+    }
 
     // Fill batch A slots
     if(Array.isArray(batchA)){
@@ -2848,17 +2954,36 @@ async function enrichPoolWithAI(){
       }
     }
 
-    // Backfill any unset/failed slots with today's meals so the pool is
-    // always fully populated. User sees variety where AI succeeded;
-    // partial-failure days fall back to today rather than crashing.
+    // Backfill any unset/failed slots. For fallback-plans we use the
+    // first successful AI day as the seed (better than the hardcoded
+    // placeholders that triggered this whole branch). For normal plans
+    // we use today's real meals.
+    var backfillSeed=null;
+    if(isFallbackPlan){
+      // Find the first generated day that's actually populated
+      for(var fb=0;fb<14;fb++){
+        if(Array.isArray(pool[fb])&&pool[fb].length===4){
+          backfillSeed=pool[fb];
+          break;
+        }
+      }
+    }
+    if(!backfillSeed)backfillSeed=plan.todayMeals;
     for(var b=0;b<14;b++){
       if(!Array.isArray(pool[b])||pool[b].length===0){
-        pool[b]=plan.todayMeals.slice();
+        pool[b]=backfillSeed.slice();
       }
     }
 
     plan.mealPool=pool;
     plan.mealPoolAnchor=anchorIso;
+    // We just replaced the fallback meals with real AI-generated ones,
+    // so the plan is no longer a fallback. Promote todayMeals to the
+    // real pool entry for today and clear the marker.
+    if(isFallbackPlan){
+      plan.todayMeals=pool[todayIdx].slice();
+      delete plan._isFallback;
+    }
     saveSession();
     // Push fresh pool to backend so other devices pick it up on next login
     scheduleMealPoolSync();
@@ -6443,7 +6568,7 @@ initHistoryNav();
 bootApp().finally(function(){__bootDone=true;});
 syncThemeButton();
 </script>
-<link rel="manifest" href="/manifest.json?v=6">
+<link rel="manifest" href="/manifest.json?v=7">
 <script>
 // ── PWA: Service Worker Registration ─────────────────────────────────────
 // Force-updates the SW on every page load so new deploys reach users
