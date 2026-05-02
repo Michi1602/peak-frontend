@@ -938,6 +938,26 @@ function todayWeekdayIndex(){
   return (d+6)%7;
 }
 
+// Plan staleness threshold (days). After this, loadAuthProfile triggers
+// a fresh AI-generated plan instead of reusing the sessionStorage copy.
+// 30 days balances variety (user gets a "fresh start" each month) with
+// cost (one regen/user/month at most from this code path; the explicit
+// regen button is separate and rate-limited by the monthly quota anyway).
+var PLAN_STALE_DAYS=30;
+
+function planIsStale(p){
+  if(!p)return true;
+  if(!p.generatedAt)return true; // No timestamp = legacy plan from before May 2026 → refresh
+  try{
+    var then=new Date(p.generatedAt);
+    var now=new Date();
+    var diffDays=Math.floor((now.getTime()-then.getTime())/(24*60*60*1000));
+    return diffDays>=PLAN_STALE_DAYS;
+  }catch(_){
+    return true; // unparseable timestamp → treat as stale
+  }
+}
+
 // ── 14-DAY MEAL POOL (May 2026) ──────────────────────────────────────
 // Plan now contains a 14-day meal rotation (mealPool[0..13]). Each entry
 // is an array of 4 meals (Breakfast/Lunch/Dinner/Snack) — same structure
@@ -1745,6 +1765,7 @@ async function fetchPlan(isRegen){
     var planPurpose=isRegen?'plan_generation':'plan_generation_initial';
     plan=await aiGenJSON(prompt,2200,planPurpose);
     plan._lang=lang; // Track which language this plan was generated in
+    plan.generatedAt=new Date().toISOString(); // Timestamp for stale-check (May 2026)
     if(plan.workout&&plan.workout.exercises&&typeof plan.workout.exercises[0]==='string'){plan.workout.exercises=plan.workout.exercises.map(function(e){return{name:e,detail:''};});}
     // Ensure weekly plan exists (Chat 1: synthesise from today's workout; Chat 2+ will use templates)
     if(!plan.week)plan.week=synthWeekPlan(sport,level,parseInt(ud.sessions||3),parseInt(ud.dur||60),plan.workout);
@@ -5726,7 +5747,36 @@ async function loadAuthProfile(){
     card('<div class="lw"><div class="spin"></div><div class="lt">'+(de?'Lade dein Dashboard...':'Loading your dashboard...')+'</div></div>');
 
     if(ud.sport&&ud.goal){
-      try{await fetchPlan();}catch(e){console.error('Plan fetch failed:',e);}
+      // ── PLAN STALE-CHECK (May 2026 optimization) ─────────────────────
+      // Up to here the legacy code regenerated a fresh AI plan on every
+      // single login, even if a fully-valid plan already lived in
+      // sessionStorage. That cost ~$0.05 + ~6 sec of loading per login
+      // — multiplied across all sessions, mostly wasteful.
+      //
+      // Now: only call fetchPlan() if at least one is true:
+      //   1. No plan in sessionStorage yet (fresh signup or wiped storage)
+      //   2. Plan is the hardcoded fallback (last AI call had failed —
+      //      we always want to retry on next login)
+      //   3. Plan is older than 30 days (avoid stagnation; users who
+      //      come back after a long break get a fresh, current-week plan)
+      //
+      // The explicit "Regenerate plan" button still calls fetchPlan(true)
+      // unconditionally — so users can always force a refresh manually.
+      var needsFetch=false;
+      var skipReason='';
+      if(!plan){
+        needsFetch=true;
+      }else if(plan._isFallback){
+        needsFetch=true;
+        skipReason='retrying after fallback';
+      }else if(planIsStale(plan)){
+        needsFetch=true;
+        skipReason='stale (>30d)';
+      }
+      if(needsFetch){
+        try{await fetchPlan();}catch(e){console.error('Plan fetch failed:',e);}
+      }
+      // else: plan is fresh enough, sessionStorage value is fine
     }
 
     // ── RESTORE MEAL POOL FROM BACKEND ─────────────────────────────────
@@ -6568,7 +6618,7 @@ initHistoryNav();
 bootApp().finally(function(){__bootDone=true;});
 syncThemeButton();
 </script>
-<link rel="manifest" href="/manifest.json?v=7">
+<link rel="manifest" href="/manifest.json?v=8">
 <script>
 // ── PWA: Service Worker Registration ─────────────────────────────────────
 // Force-updates the SW on every page load so new deploys reach users
