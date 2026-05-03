@@ -1044,6 +1044,56 @@ function syncTodayMealsFromPool(){
   if(Array.isArray(meals)&&meals.length>0){
     plan.todayMeals=meals.slice(); // shallow copy so swap doesn't mutate pool through ref aliasing
   }
+  // Apply today-only overrides AFTER the pool sync so they survive
+  // re-renders. Overrides expire at midnight (date-keyed) so a "swap
+  // breakfast for my saved recipe" today doesn't permanently change
+  // the pool for tomorrow.
+  applyTodayMealOverrides();
+}
+
+// ── TODAY-ONLY MEAL OVERRIDES (May 2026) ─────────────────────────────
+// Lets a user replace one of today's planned meals with a saved recipe
+// WITHOUT mutating the 14-day pool. The override is keyed by date so it
+// auto-expires at midnight when the pool index rolls forward.
+//
+// Storage shape: plan.todayOverrides = { date:'2026-05-03', meals:{0:meal,2:meal} }
+// where meals is keyed by mealIdx (0=breakfast, 1=lunch, 2=dinner, 3=snack).
+function applyTodayMealOverrides(){
+  if(!plan||!plan.todayOverrides)return;
+  if(!Array.isArray(plan.todayMeals))return;
+  var todayStr=todayDateStr();
+  // Wrong-day overrides are stale — drop them entirely so they don't
+  // hang around accumulating across days.
+  if(plan.todayOverrides.date!==todayStr){
+    delete plan.todayOverrides;
+    return;
+  }
+  var meals=plan.todayOverrides.meals||{};
+  Object.keys(meals).forEach(function(idxStr){
+    var idx=parseInt(idxStr,10);
+    if(!isNaN(idx)&&idx>=0&&idx<plan.todayMeals.length&&meals[idxStr]){
+      plan.todayMeals[idx]=meals[idxStr];
+    }
+  });
+}
+
+// Set a today-only override. Does NOT touch the pool — tomorrow the
+// original pool meal returns. Triggered from "Use as today's meal" on
+// a saved recipe.
+function setTodayMealOverride(mealIdx,meal){
+  if(!plan)return;
+  var todayStr=todayDateStr();
+  if(!plan.todayOverrides||plan.todayOverrides.date!==todayStr){
+    plan.todayOverrides={date:todayStr,meals:{}};
+  }
+  plan.todayOverrides.meals[mealIdx]=meal;
+  // Mirror into the live render-array so the next render shows it
+  if(Array.isArray(plan.todayMeals)){
+    plan.todayMeals[mealIdx]=meal;
+  }
+  saveSession();
+  // Sync the override to backend (cross-device, stays for today only)
+  if(typeof schedulePlanSync==='function')schedulePlanSync();
 }
 
 // ── BACKEND SYNC (May 2026) ──────────────────────────────────────────
@@ -4453,7 +4503,13 @@ function tNu(p){
     var checkBox='<span class="meal-check'+(checked?' on':'')+'" onclick="toggleMealCheck('+i+',event)" role="checkbox" aria-checked="'+(checked?'true':'false')+'" title="'+(de?'Mahlzeit abhaken':'Mark as eaten')+'">'+(checked?'✓':'')+'</span>';
     var rowStyle=checked?' style="opacity:0.65"':'';
     var nameStyle=checked?' style="text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:2px"':'';
-    return '<div class="mc"'+rowStyle+'>'+checkBox+'<span class="me" onclick="showMealDetail('+i+')" style="cursor:pointer">'+m.emoji+'</span><div class="mi" onclick="showMealDetail('+i+')" style="cursor:pointer"><div class="mn"'+nameStyle+'>'+m.name+'</div><div class="mm">'+mealTimeLabel(m.time)+' · '+translateMacro(m.macro)+'</div>'+(!r?'<div class="rrow" onclick="event.stopPropagation()">'+[1,2,3,4,5].map(function(s){return '<span class="star" onclick="rateMeal('+i+','+s+',this)">⭐</span>';}).join('')+'</div>':'<div style="font-size:10px;color:var(--red);margin-top:3px">'+(de?'BEWERTET':'RATED')+' '+r+'/5 ✓</div>')+'</div><span class="mk" onclick="showMealDetail('+i+')" style="cursor:pointer">'+m.kcal+' kcal</span><span style="color:var(--faint);font-size:10px;margin-left:5px;cursor:pointer" onclick="showMealDetail('+i+')">→</span></div>';
+    // Show a small "TODAY ONLY" badge when this slot has been overridden
+    // by a user-generated recipe (the override expires at midnight).
+    var isOverride=plan&&plan.todayOverrides&&plan.todayOverrides.date===todayDateStr()&&plan.todayOverrides.meals&&plan.todayOverrides.meals[i];
+    var overrideBadge=isOverride
+      ? '<span style="display:inline-block;font-size:8px;font-weight:700;letter-spacing:1.5px;color:#fff;background:var(--red);padding:2px 5px;margin-left:6px;vertical-align:middle">'+(de?'NUR HEUTE':'TODAY ONLY')+'</span>'
+      : '';
+    return '<div class="mc"'+rowStyle+'>'+checkBox+'<span class="me" onclick="showMealDetail('+i+')" style="cursor:pointer">'+m.emoji+'</span><div class="mi" onclick="showMealDetail('+i+')" style="cursor:pointer"><div class="mn"'+nameStyle+'>'+m.name+overrideBadge+'</div><div class="mm">'+mealTimeLabel(m.time)+' · '+translateMacro(m.macro)+'</div>'+(!r?'<div class="rrow" onclick="event.stopPropagation()">'+[1,2,3,4,5].map(function(s){return '<span class="star" onclick="rateMeal('+i+','+s+',this)">⭐</span>';}).join('')+'</div>':'<div style="font-size:10px;color:var(--red);margin-top:3px">'+(de?'BEWERTET':'RATED')+' '+r+'/5 ✓</div>')+'</div><span class="mk" onclick="showMealDetail('+i+')" style="cursor:pointer">'+m.kcal+' kcal</span><span style="color:var(--faint);font-size:10px;margin-left:5px;cursor:pointer" onclick="showMealDetail('+i+')">→</span></div>';
   }).join('');
   if(!isBasic()&&!isFree()){
     var moodAiHtml='<div class="aib" style="margin-top:11px"><div class="ailbl"><div class="aidot"></div>PEAK AI</div><p>'+(de?'Nicht nach Plan? ':'Not feeling the plan? ')+'<span style="color:var(--red);cursor:pointer;font-weight:700" onclick="showMoodPicker()">'+(de?'Küche wählen →':'Pick a cuisine →')+'</span></p>';
@@ -5610,7 +5666,22 @@ function renderMobilitySection(title,exercises,sectionKey){
   // routine. This visually communicates "do all of these" instead of
   // "pick one, ignore the rest" which the previous tile design suggested.
   var html='<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:var(--red);text-transform:uppercase;margin:18px 0 4px">'+title+'</div>';
-  html+='<div style="font-size:11px;color:var(--faint);margin-bottom:10px">'+(de?'Alle '+total+' Übungen ergeben deine '+title.toLowerCase()+'.':'All '+total+' exercises form your '+title.toLowerCase()+'.')+'</div>';
+  // Subtitle: hardcode per section to avoid toLowerCase() butchering the
+  // German section headings (e.g. "VOLLE MOBILITÄT — PAUSENTAG" rendered
+  // as "volle mobilität — pausentag" — looks like a bug).
+  var subtitleDE, subtitleEN;
+  if(sectionKey==='pre'){
+    subtitleDE='Alle '+total+' Übungen sind dein Warm-up vor dem Training.';
+    subtitleEN='All '+total+' exercises are your pre-workout warm-up.';
+  }else if(sectionKey==='post'){
+    subtitleDE='Alle '+total+' Übungen sind dein Cool-down nach dem Training.';
+    subtitleEN='All '+total+' exercises are your post-workout cool-down.';
+  }else{
+    // 'full' (rest day)
+    subtitleDE='Alle '+total+' Übungen sind deine Mobility-Routine für heute.';
+    subtitleEN='All '+total+' exercises are your mobility routine for today.';
+  }
+  html+='<div style="font-size:11px;color:var(--faint);margin-bottom:10px">'+(de?subtitleDE:subtitleEN)+'</div>';
   // Container with continuous left border to suggest "one routine"
   html+='<div style="border-left:2px solid var(--red);padding-left:10px;display:flex;flex-direction:column;gap:4px">';
   html+=exercises.map(function(ex,idx){
@@ -6614,9 +6685,101 @@ async function genRec(){
     html+='<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:var(--red);text-transform:uppercase;margin:10px 0 6px">'+(de?'Zutaten':'Ingredients')+'</div>';
     html+=rec.shoppingList.map(function(s){return '<div style="font-size:12px;padding:3px 0;color:var(--ink2);border-bottom:1px solid var(--border)">🛒 '+s+'</div>';}).join('');
     if(rec.tip)html+='<div class="aib" style="margin-top:9px"><div class="ailbl"><div class="aidot"></div>'+(de?'Tipp':'Chef Tip')+'</div><p>'+rec.tip+'</p></div>';
+    // ── "Use as today's meal" CTA (May 2026) ──────────────────────────
+    // Lets the user replace ONE of today's planned meals with this freshly
+    // generated recipe. Only affects today (date-keyed override) — tomorrow
+    // the original pool meal returns. Solves "I want to try this recipe
+    // tonight without losing my planned dinner from the rotation."
+    var slotLabels=de?['Frühstück','Mittagessen','Abendessen','Snack']:['Breakfast','Lunch','Dinner','Snack'];
+    // Stash the recipe globally so the slot button can read it without
+    // serialising into onclick attributes (would break on apostrophes).
+    window.__lastGenRecipe=rec;
+    html+='<div style="margin-top:14px;padding:12px;background:var(--s2);border:1px solid var(--border)">'+
+      '<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:var(--red);text-transform:uppercase;margin-bottom:8px">'+
+        (de?'In heutigen Plan einfügen':'Use as today\'s meal')+
+      '</div>'+
+      '<div style="font-size:11px;color:var(--ink2);margin-bottom:10px;line-height:1.5">'+
+        (de?'Welche Mahlzeit von heute soll ersetzt werden? Gilt nur für heute, morgen kommt die ursprüngliche Mahlzeit zurück.':'Which of today\'s meals should this replace? One-time only — tomorrow your original meal returns.')+
+      '</div>'+
+      '<div class="tiles c2">'+
+      slotLabels.map(function(lbl,idx){
+        return '<button class="tile" style="padding:10px 8px;font-size:12px;font-weight:600" onclick="useRecipeAsTodayMeal('+idx+')">'+lbl+'</button>';
+      }).join('')+
+      '</div>'+
+    '</div>';
     html+='</div>';
     if(el)el.innerHTML=html;
   }catch(e){if(el)el.innerHTML='<div style="font-size:12px;color:var(--faint);padding:10px;border:1px solid var(--border)">'+(de?'Konnte Rezept nicht generieren. Erneut versuchen.':'Could not generate recipe. Please try again.')+'</div>';}
+}
+
+// ── USE GENERATED RECIPE AS TODAY'S MEAL (May 2026) ──────────────────
+// User generated a recipe in the Recipes tab (genRec) and wants to slot
+// it into ONE of today's planned meal slots (breakfast/lunch/dinner/snack).
+// One-time only: stored as plan.todayOverrides which auto-expires at
+// midnight, so tomorrow the original pool meal returns.
+//
+// Schema adaptation: the AI recipe schema (from genRec's prompt) and the
+// meal schema (used by todayMeals) are different — recipe.time is minutes,
+// meal.time is the slot label; recipe.ingredients are strings, meal
+// ingredients are {item,qty} objects. We adapt before storing.
+function useRecipeAsTodayMeal(slotIdx){
+  var rec=window.__lastGenRecipe;
+  if(!rec||!rec.name){
+    peakToast(lang==='de'?'Kein Rezept gefunden.':'No recipe found.');
+    return;
+  }
+  if(!plan||!Array.isArray(plan.todayMeals)||!plan.todayMeals[slotIdx]){
+    peakToast(lang==='de'?'Heutige Mahlzeit nicht gefunden.':'Today\'s meal not found.');
+    return;
+  }
+  var de=lang==='de';
+  // Slot label maps mealIdx → time string used by the meal schema
+  var SLOT_TIMES=['Breakfast','Lunch','Dinner','Snack'];
+  var SLOT_EMOJIS=['🍳','🥗','🍽️','🍎'];
+  var slotTime=SLOT_TIMES[slotIdx]||'Meal';
+  // Pull the existing meal's emoji as fallback (preserves theme), else default
+  var existingMeal=plan.todayMeals[slotIdx];
+  var emoji=(existingMeal&&existingMeal.emoji)||SLOT_EMOJIS[slotIdx]||'🍽️';
+  // Adapt ingredients: recipe gives strings ("200g chicken breast"),
+  // meal schema needs {item, qty}. We split on the FIRST space-separated
+  // token that looks like a quantity (number+unit). Best-effort — if no
+  // quantity is detected, the whole string becomes "item" with qty="".
+  function adaptIngredient(str){
+    if(typeof str!=='string')return null;
+    str=str.trim();
+    if(!str)return null;
+    // Try to match: "200g item", "1.5 tbsp item", "3 large eggs", "1/2 lemon"
+    var m=str.match(/^([\d.\/]+\s*\S*)\s+(.+)$/);
+    if(m){
+      return {qty:m[1].trim(),item:m[2].trim()};
+    }
+    return {item:str,qty:''};
+  }
+  var adaptedIngredients=Array.isArray(rec.ingredients)
+    ? rec.ingredients.map(adaptIngredient).filter(Boolean).slice(0,8)
+    : [];
+  // Build the meal object matching the pool-meal schema
+  var newMeal={
+    emoji:emoji,
+    name:rec.name,
+    time:slotTime,
+    kcal:Number(rec.kcal)||0,
+    protein:Number(rec.protein)||0,
+    carbs:Number(rec.carbs)||0,
+    fat:Number(rec.fat)||0,
+    macro:(Number(rec.protein)||0)+'g '+(de?'Protein':'protein'),
+    ingredients:adaptedIngredients
+  };
+  setTodayMealOverride(slotIdx,newMeal);
+  // Clear the rating for this slot — it's a different meal now
+  if(typeof mrat==='object'&&mrat[slotIdx]!=null)delete mrat[slotIdx];
+  var slotLabel=de?(['Frühstück','Mittagessen','Abendessen','Snack'][slotIdx]||'Mahlzeit'):slotTime;
+  peakToast(
+    de?'\''+rec.name+'\' ist jetzt dein '+slotLabel+' für heute.':'\''+rec.name+'\' is now your '+slotLabel.toLowerCase()+' for today.',
+    {kind:'success',duration:2400}
+  );
+  // Jump to the nutrition tab so the user immediately sees the swap
+  showTab('nutrition');
 }
 
 // ── RATINGS ───────────────────────────────────────────────────────────
@@ -8019,7 +8182,7 @@ initHistoryNav();
 bootApp().finally(function(){__bootDone=true;});
 syncThemeButton();
 </script>
-<link rel="manifest" href="/manifest.json?v=15">
+<link rel="manifest" href="/manifest.json?v=16">
 <script>
 // ── PWA: Service Worker Registration ─────────────────────────────────────
 // Force-updates the SW on every page load so new deploys reach users
