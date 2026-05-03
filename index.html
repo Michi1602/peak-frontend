@@ -1737,12 +1737,15 @@ var SPORT_DE={
   'Cycling':'Radsport','Swimming':'Schwimmen','Yoga':'Yoga',
   'Martial Arts':'Kampfsport','Basketball':'Basketball','Tennis':'Tennis',
   'Volleyball':'Volleyball','Skiing':'Skifahren','Golf':'Golf',
-  'Gymnastics':'Turnen','Rowing':'Rudern','Equestrian':'Reiten','Other':'Sport'
+  'Gymnastics':'Turnen','Rowing':'Rudern','Equestrian':'Reiten','Other':'Anderer Sport'
 };
 function sportLabel(sport,forLang){
   if(!sport)return '—';
   var l=forLang||lang;
   if(l==='de')return SPORT_DE[sport]||sport;
+  // EN: "Other" looks unprofessional in the sport picker (just floating "Other")
+  // — make it self-explanatory as the catch-all option.
+  if(sport==='Other')return 'Other Sport';
   return sport;
 }
 // Maps a goal label in any language back to its stable key (g1..g6). This
@@ -7065,15 +7068,18 @@ async function loadAuthProfile(){
 function showNeedSubscription(email){
   var de=lang==='de';
   document.getElementById('pb').style.width='0%';
-  document.getElementById('sl').textContent=de?'Abo benötigt':'Subscription needed';
+  document.getElementById('sl').textContent=de?'Setup abschließen':'Complete setup';
   var chip=de?'✦ Fast geschafft':'✦ Almost there';
-  var title=de?'Noch kein Abo':'No subscription yet';
+  var title=de?'Setup abschließen':'Complete your setup';
   var sub=email
-    ? (de?'Du bist als <strong>'+email+'</strong> angemeldet, aber hast noch kein PEAK-Abo.':'You\'re signed in as <strong>'+email+'</strong>, but you don\'t have a PEAK subscription yet.')
-    : (de?'Du bist angemeldet, aber hast noch kein PEAK-Abo.':'You\'re signed in, but you don\'t have a PEAK subscription yet.');
-  var body=de?'Starte dein 7-Tage-Trial und schalte deinen personalisierten Plan frei.':'Start your 7-day trial to unlock your personalised plan.';
-  var startBtn=de?'TRIAL STARTEN →':'START TRIAL →';
+    ? (de?'Du bist als <strong>'+email+'</strong> angemeldet, aber dein Profil ist noch nicht vollständig.':'You\'re signed in as <strong>'+email+'</strong>, but your profile isn\'t complete yet.')
+    : (de?'Du bist angemeldet, aber dein Profil ist noch nicht vollständig.':'You\'re signed in, but your profile isn\'t complete yet.');
+  var body=de?'Schließe das Onboarding ab um deinen personalisierten Plan zu erhalten — kostenlos, ohne Kreditkarte.':'Finish onboarding to unlock your personalised plan — free, no card required.';
+  var freeBtn=de?'KOSTENLOS LOSLEGEN →':'GET STARTED FREE →';
+  var trialBtn=de?'Premium-Trial starten':'Start premium trial';
   var logoutBtn=de?'Abmelden':'Sign out';
+  // Pre-fill email so signup-free can repair the orphaned auth user
+  if(email)ud.email=email;
   card(
     '<div class="ch"><div class="chip">'+chip+'</div>'+
     '<div class="ct">'+title+'</div>'+
@@ -7086,9 +7092,10 @@ function showNeedSubscription(email){
     '<li>'+(de?'Regenerations-Protokoll':'Recovery protocol')+'</li>'+
     '</ul>'+
     '</div>'+
-    '<div class="cf" style="gap:8px">'+
-    '<button class="bbk" onclick="logout()">'+logoutBtn+'</button>'+
-    '<button class="bnx" onclick="step=1;render()" style="flex:1;letter-spacing:2px">'+startBtn+'</button>'+
+    '<div class="cf" style="flex-direction:column;gap:8px">'+
+    '<button class="bnx" onclick="step=1;render()" style="width:100%;letter-spacing:2px">'+freeBtn+'</button>'+
+    '<button class="bbk" onclick="selTier=\'premium\';selPlan=\'annual\';step=6;render()" style="width:100%">'+trialBtn+'</button>'+
+    '<button class="bbk" onclick="logout()" style="width:100%;border:none;background:transparent">'+logoutBtn+'</button>'+
     '</div>'
   );
 }
@@ -8012,7 +8019,7 @@ initHistoryNav();
 bootApp().finally(function(){__bootDone=true;});
 syncThemeButton();
 </script>
-<link rel="manifest" href="/manifest.json?v=14">
+<link rel="manifest" href="/manifest.json?v=15">
 <script>
 // ── PWA: Service Worker Registration ─────────────────────────────────────
 // Force-updates the SW on every page load so new deploys reach users
